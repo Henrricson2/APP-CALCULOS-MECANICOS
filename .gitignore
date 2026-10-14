@@ -1,0 +1,10 @@
+# entorno y caches
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+# datos locales: base de proyectos y configuración (contiene la clave de Google Maps)
+datos/
+# carpetas personales
+Programacion*/
+salida/
