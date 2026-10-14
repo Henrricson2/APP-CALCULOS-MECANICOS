@@ -1,6 +1,6 @@
 // Igual que la app de APUs: network-first para el código propio, cache-first para
 // recursos estáticos y para Python en el navegador (Pyodide, ~40 MB, se descarga una vez).
-const CACHE = 'calculos-mt-v4';
+const CACHE = 'calculos-mt-v5';
 const APP = ['./', './index.html', './styles.css?v=4', './js/app.js?v=4', './js/motor.js?v=4', './js/perfil.js?v=4', './js/geo-ui.js?v=4', './js/mapa.js?v=4',
   './manifest.webmanifest', './icon.svg', './icon-192.png', './defaults.json', './ejemplo.json'];
 
@@ -9,7 +9,7 @@ self.addEventListener('install', (e) => {
   self.skipWaiting();
 });
 self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE && !k.startsWith('pyodide')).map((k) => caches.delete(k)))));
+  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE && !k.startsWith('pyodide') && !k.startsWith('leaflet')).map((k) => caches.delete(k)))));
   self.clients.claim();
 });
 
@@ -19,6 +19,15 @@ self.addEventListener('fetch', (e) => {
   if (url.origin === self.location.origin && url.pathname.includes('/api/')) return; // API: siempre red
 
   if (url.hostname.endsWith('googleapis.com') || url.hostname.endsWith('gstatic.com')) return; // Google Maps: nunca en caché (condiciones de uso)
+  // Teselas de mapas gratuitos (Esri, OpenStreetMap, OpenTopoMap): siempre red, sin guardar (condiciones de uso)
+  if (/(arcgisonline\.com|openstreetmap\.org|opentopomap\.org)$/.test(url.hostname)) return;
+  if (url.hostname === 'unpkg.com' && url.pathname.startsWith('/leaflet@')) { // Leaflet: cache-first (librería fija por versión)
+    e.respondWith(caches.open('leaflet-1.9.4').then(async (c) => {
+      const hit = await c.match(e.request); if (hit) return hit;
+      const r = await fetch(e.request); if (r.ok) c.put(e.request, r.clone()); return r;
+    }));
+    return;
+  }
   if (url.hostname === 'cdn.jsdelivr.net') { // Pyodide: cache-first permanente
     e.respondWith(caches.open('pyodide-v0.27.2').then(async (c) => {
       const hit = await c.match(e.request); if (hit) return hit;

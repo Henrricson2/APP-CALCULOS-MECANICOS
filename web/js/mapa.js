@@ -2,6 +2,7 @@
 //   - PlantaSVG: dibujo vectorial propio en coordenadas MAGNA-SIRGAS Origen Nacional
 //     (siempre disponible, sin internet ni claves).
 //   - PlantaGoogle: Google Maps satelital (requiere clave de Google Maps Platform).
+//   - PlantaLeaflet: satélite GRATIS con Leaflet (la librería de Folium) + Esri World Imagery / OSM.
 // Eventos (opciones): onSelect(i), onMove(i, punto), onInsert(i, punto) -> inserta entre i e i+1,
 // onAdd(punto), onMedir(a, b) -> Promise<metros>.  punto = {E, N} (planta) o {lat, lon} (Google).
 
@@ -269,6 +270,116 @@ export class PlantaGoogle {
       Promise.resolve(this.op.onMedir?.(this.medida.a, pt)).then((m) => {
         if (m == null) return;
         this.etqMed.setContent(`<b>${m.toFixed(2)} m</b> (geodésica)`); this.etqMed.setPosition({ lat: pt.lat, lng: pt.lon }); this.etqMed.open(this.mapa);
+      });
+      return;
+    }
+    if (origen === -1) this.op.onSelect?.(-1);
+  }
+}
+
+// ===================================================================== Leaflet (gratis)
+// Leaflet es la librería JavaScript que usa Folium (Python) por dentro. Fondos sin clave:
+// Esri World Imagery (satélite), OpenStreetMap y OpenTopoMap, con su atribución obligatoria.
+const LEAFLET = 'https://unpkg.com/leaflet@1.9.4/dist/';
+let cargaLeaflet = null;
+export function cargarLeaflet() {
+  if (window.L?.map) return Promise.resolve();
+  if (cargaLeaflet) return cargaLeaflet;
+  cargaLeaflet = new Promise((ok, mal) => {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet'; css.href = LEAFLET + 'leaflet.css';
+    document.head.appendChild(css);
+    const s = document.createElement('script');
+    s.src = LEAFLET + 'leaflet.js';
+    s.onload = () => ok();
+    s.onerror = () => { cargaLeaflet = null; mal(new Error('No se pudo cargar Leaflet (¿sin internet?). Use la planta sin fondo.')); };
+    document.head.appendChild(s);
+  });
+  return cargaLeaflet;
+}
+
+export const FONDOS_GRATIS = {
+  satelite: { nombre: 'Satélite (Esri World Imagery)', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', max: 19,
+    attr: 'Imágenes &copy; <a href="https://www.esri.com">Esri</a>, Maxar, Earthstar Geographics y la comunidad de usuarios SIG' },
+  calles: { nombre: 'Calles (OpenStreetMap)', url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', max: 19,
+    attr: '&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' },
+  topo: { nombre: 'Topográfico (OpenTopoMap)', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', max: 17,
+    attr: 'Mapa &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA), datos &copy; OpenStreetMap' },
+};
+
+export class PlantaLeaflet {
+  constructor(cont, op) {
+    const L = window.L;
+    this.cont = cont; this.op = op; this.tipo = 'leaflet';
+    this.postes = []; this.sel = -1; this.modo = 'mover'; this.etiquetas = true; this.coords = false; this.marcas = []; this.medida = null;
+    cont.innerHTML = '<div class="gmapa"></div>';
+    this.mapa = L.map(cont.querySelector('.gmapa'), { zoomControl: true, maxZoom: 20 }).setView([2.9273, -75.2819], 15);
+    const capas = {};
+    for (const [k, f] of Object.entries(FONDOS_GRATIS)) {
+      capas[f.nombre] = L.tileLayer(f.url, { maxZoom: 20, maxNativeZoom: f.max, attribution: f.attr, subdomains: 'abc' });
+    }
+    capas[FONDOS_GRATIS.satelite.nombre].addTo(this.mapa);
+    this.etqSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 20, maxNativeZoom: 19, attribution: 'Etiquetas &copy; Esri' }).addTo(this.mapa);
+    L.control.layers(capas, { 'Nombres y límites (Esri)': this.etqSat }, { position: 'topright' }).addTo(this.mapa);
+    L.control.scale({ imperial: false, position: 'bottomright' }).addTo(this.mapa);
+    this.capaPostes = L.layerGroup().addTo(this.mapa);
+    this.linea = L.polyline([], { color: COL.linea, weight: 4 }).addTo(this.mapa);
+    this.lineaMed = L.polyline([], { color: '#ffffff', weight: 2, dashArray: '6 4' }).addTo(this.mapa);
+    this.mapa.on('click', (e) => this._click(e.latlng, -1));
+    this.linea.on('click', (e) => { L.DomEvent.stopPropagation(e); this._click(e.latlng, 'linea'); });
+    this._ro = new ResizeObserver(() => this.mapa.invalidateSize()); this._ro.observe(cont);
+  }
+  destruir() { this._ro.disconnect(); this.mapa.remove(); this.cont.innerHTML = ''; }
+  setModo(m) { this.modo = m; this.medida = null; this.lineaMed.setLatLngs([]); this.mapa.closePopup(); this.cont.dataset.modo = m; this._marcas(); }
+  setCapas({ etiquetas, coords }) { if (etiquetas != null) this.etiquetas = etiquetas; if (coords != null) this.coords = coords; this._marcas(); }
+  setPostes(postes, sel = -1, ajustar = false) {
+    this.postes = postes; this.sel = sel; this._marcas();
+    this.linea.setLatLngs(postes.filter((p) => p.lat != null).map((p) => [p.lat, p.lon]));
+    if (ajustar || !this._ajustado) { this.ajustar(); this._ajustado = true; }
+  }
+  ajustar() {
+    const v = this.postes.filter((p) => p.lat != null); if (!v.length) return;
+    this.mapa.fitBounds(window.L.latLngBounds(v.map((p) => [p.lat, p.lon])), { padding: [40, 40], maxZoom: 18 });
+  }
+  enfocar(i) { const p = this.postes[i]; if (p?.lat != null) this.mapa.panTo([p.lat, p.lon]); }
+  dibujar() { this._marcas(); }
+  _marcas() {
+    const L = window.L;
+    this.capaPostes.clearLayers();
+    this.postes.forEach((p, i) => {
+      if (p.lat == null) return;
+      const color = i === this.sel ? COL.sel : p.tipo === 'R' ? COL.ret : COL.sus;
+      const forma = p.tipo === 'R' ? 'border-radius:2px' : 'border-radius:50%';
+      const etq = [this.etiquetas ? esc(p.nombre) : '', this.coords ? `${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}` : ''].filter(Boolean).join('<br>');
+      const icon = L.divIcon({ className: 'lf-poste', iconSize: [16, 16], iconAnchor: [8, 8],
+        html: `<span class="lf-punto" style="background:${color};${forma}"></span>${p.bloqueado ? '<span class="lf-candado">🔒</span>' : ''}${etq ? `<span class="lf-etq">${etq}</span>` : ''}` });
+      const m = L.marker([p.lat, p.lon], { icon, draggable: this.modo === 'mover' && !p.bloqueado, title: p.nombre, keyboard: false });
+      m.on('click', (e) => { L.DomEvent.stopPropagation(e); if (this.modo === 'medir') this._click(e.latlng, i); else this.op.onSelect?.(i); });
+      m.on('dragend', (e) => { const ll = e.target.getLatLng(); this.op.onMove?.(i, { lat: ll.lat, lon: ll.lng }); });
+      m.addTo(this.capaPostes);
+    });
+  }
+  _click(ll, origen) {
+    const pt = { lat: ll.lat, lon: ll.lng };
+    if (this.modo === 'agregar' && origen !== 'linea') return this.op.onAdd?.(pt);
+    if (this.modo === 'insertar') {
+      const v = this.postes.map((p, i) => ({ p, i })).filter((o) => o.p.lat != null);
+      const a = this.mapa.latLngToContainerPoint(ll); let mejor = { d: 14, i: -1 };
+      for (let j = 0; j < v.length - 1; j++) {
+        const p1 = this.mapa.latLngToContainerPoint([v[j].p.lat, v[j].p.lon]), p2 = this.mapa.latLngToContainerPoint([v[j + 1].p.lat, v[j + 1].p.lon]);
+        const r = distSeg(a.x, a.y, p1.x, p1.y, p2.x, p2.y);
+        if (r.d < mejor.d) mejor = { d: r.d, i: v[j].i };
+      }
+      if (mejor.i >= 0) return this.op.onInsert?.(mejor.i, pt);
+      return this.op.onAviso?.('Toque sobre un vano (línea naranja) para insertar un poste.');
+    }
+    if (this.modo === 'medir') {
+      if (!this.medida || this.medida.b) { this.medida = { a: pt }; this.lineaMed.setLatLngs([[pt.lat, pt.lon]]); this.mapa.closePopup(); return; }
+      this.medida.b = pt;
+      this.lineaMed.setLatLngs([[this.medida.a.lat, this.medida.a.lon], [pt.lat, pt.lon]]);
+      Promise.resolve(this.op.onMedir?.(this.medida.a, pt)).then((d) => {
+        if (d != null) window.L.popup().setLatLng([pt.lat, pt.lon]).setContent(`<b>${d.toFixed(2)} m</b> (geodésica)`).openOn(this.mapa);
       });
       return;
     }

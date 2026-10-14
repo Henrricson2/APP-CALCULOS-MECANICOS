@@ -31,17 +31,25 @@ Un solo motor Python (`calculos_mecanicos/`) para todas las plataformas:
   (lat/lon decimal o GMS, MAGNA-SIRGAS Origen Nacional, Gauss-Krüger, UTM, coordenadas locales con
   puntos de control Helmert/afín), candidatos detectados automáticamente que el usuario confirma,
   validación (fuera de Colombia, duplicados, cotas vacías ≠ 0), vista previa del trazado.
-- **Mapa / planta**: Google Maps satelital (clave en *Parámetros → Mapa satelital*) o planta vectorial
-  propia sin fondo. Mover (arrastrar), insertar en un vano, agregar, duplicar, reordenar, bloquear,
+- **Mapa / planta** con tres motores:
+  - **Satélite gratis (predeterminado)**: [Leaflet](https://leafletjs.com) — la librería que usa Folium —
+    con imágenes Esri World Imagery, OpenStreetMap y OpenTopoMap. Sin clave ni costo; requiere internet.
+  - Google Maps satelital (opcional, clave en *Parámetros → Mapa satelital*).
+  - Planta vectorial propia sin fondo (funciona sin internet; se usa automáticamente si no hay conexión).
+  Mover (arrastrar), insertar en un vano, agregar, duplicar, reordenar, bloquear,
   eliminar, medir (distancia geodésica), etiquetas y coordenadas, deshacer/rehacer (Ctrl+Z / Ctrl+Y).
 - Cada poste conserva **identificador permanente** y **coordenadas originales**; internamente se usa
   MAGNA-SIRGAS Origen Nacional (Res. IGAC 471 de 2020) y la abscisa del perfil es la distancia
   geodésica acumulada. Las cotas indican su fuente (topografía, archivo, interpolada, por verificar).
 - **Exportación KML/KMZ** para Google Earth conservando identificadores.
+- **Mapa web HTML** (botón *⇩ Mapa web HTML*): un solo archivo con el trazado sobre satélite gratuito,
+  hecho con **Folium** si está instalado (o con una plantilla Leaflet propia). Se abre en PC o celular y se
+  puede enviar por correo.
 - Transformaciones con **pyproj (PROJ/EPSG)**; respaldo propio (series de Krüger n⁶ + Vincenty)
   verificado contra pyproj en las pruebas (≤ 1 cm).
 
-### Clave de Google Maps
+### Clave de Google Maps (opcional)
+No es necesaria: el satélite gratuito funciona sin clave. Úsela solo si prefiere las imágenes de Google.
 1. Google Cloud Console → crear proyecto → habilitar **Maps JavaScript API** → crear clave.
 2. Restringir la clave por **sitio web** a la dirección de la app (p. ej. `http://127.0.0.1:8766/*` y la IP de la intranet).
 3. Pegarla en *Parámetros → Mapa satelital*. Cupo gratuito: 10 000 cargas de mapa/mes.
@@ -51,15 +59,19 @@ Un solo motor Python (`calculos_mecanicos/`) para todas las plataformas:
 | Acción | Archivo |
 |---|---|
 | Instalar (una vez) | `INSTALAR.bat` |
-| Abrir la app en el PC | `INICIAR_APP.bat` |
+| Abrir la app en el PC | `INICIAR_APP.bat` (o `EJECUTAR.bat`) |
 | Usar desde el celular (misma Wi-Fi) | `INICIAR_APP_RED.bat` → abrir en el celular la dirección que muestra → menú del navegador → *Agregar a pantalla de inicio* |
+| Probar el modo web sin servidor | `PROBAR_MODO_WEB.bat` |
+| Versión de escritorio clásica (Tkinter) | `EJECUTAR_ESCRITORIO_CLASICO.bat` |
 | Pruebas automáticas | `PRUEBAS.bat` |
 
 Cerrar la ventana negra del servidor cierra la app.
 
-### Publicar en internet (opcional)
-Ejecute `python construir_web.py` y publique la carpeta `web/` en cualquier hosting estático:
-el cálculo corre con Python en el navegador (Pyodide), sin servidor.
+### Publicar en internet (opcional, gratis)
+Suba la carpeta a un repositorio de GitHub; el flujo `.github/workflows/deploy-pages.yml`
+corre las pruebas, ejecuta `construir_web.py` y publica `web/` en GitHub Pages
+(Settings → Pages → Source: GitHub Actions). En la web el cálculo corre con Pyodide,
+por lo que **no** necesita servidor.
 
 ## Datos de entrada
 Excel (mismo formato del `DATOS.xlsx` original), plantilla descargable desde la app,
@@ -81,6 +93,7 @@ pegado directo desde Excel o edición en la tabla de la app.
 ├─ calculos_mecanicos/
 │  ├─ motor.py               fachada JSON (servidor y navegador)
 │  ├─ config.py · cambio_estado.py · catenaria.py · datos.py · plantillado.py · exportar.py
+│  └─ gui.py                 versión de escritorio clásica
 ├─ tests/                    pruebas automáticas (pytest)
 ├─ ejemplos/                 DATOS.xlsx, ejemplo completo y salidas
 └─ INFORME_REVISION.md       revisión técnica del código original

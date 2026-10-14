@@ -272,3 +272,10 @@ tr.row-actual td { background: var(--soft-teal); }
   .sidebar, .topbar, .actions, .perfil-nav { display: none !important; }
   .app-shell { display: block; }
 }
+
+/* Mapa gratuito (Leaflet) */
+.lf-poste { background: none; border: 0; }
+.lf-punto { display: block; width: 16px; height: 16px; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); box-sizing: border-box; }
+.lf-candado { position: absolute; left: 12px; top: -10px; font-size: 11px; }
+.lf-etq { position: absolute; left: 18px; top: -4px; white-space: nowrap; font: 600 12px/1.25 system-ui, sans-serif; color: #fff; text-shadow: 0 0 3px #000, 0 0 3px #000; pointer-events: none; }
+.mapa-cont[data-modo="insertar"] .leaflet-container, .mapa-cont[data-modo="agregar"] .leaflet-container, .mapa-cont[data-modo="medir"] .leaflet-container { cursor: crosshair; }

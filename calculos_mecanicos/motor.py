@@ -193,12 +193,15 @@ def _base(nombre: str) -> str:
 
 def exportar(payload: dict, formato: str) -> tuple[bytes, str, str]:
     """Devuelve (contenido, nombre_archivo, tipo_mime)."""
-    if formato in ("kml", "kmz"):
+    if formato in ("kml", "kmz", "html"):
         from . import kml
         nombre = (payload.get("proyecto") or {}).get("nombre") or "Proyecto"
         doc = {"nombre": nombre, "postes": payload.get("apoyos") or []}
         if not any(p.get("lat") is not None for p in doc["postes"]):
             raise ValueError("Los postes no tienen coordenadas geográficas: importe o ubique los postes en el mapa.")
+        if formato == "html":
+            from .mapa_html import proyecto_a_html
+            return proyecto_a_html(doc).encode("utf-8"), _base(nombre) + "_MAPA.html", "text/html; charset=utf-8"
         if formato == "kml":
             return kml.proyecto_a_kml(doc).encode("utf-8"), _base(nombre) + ".kml", "application/vnd.google-earth.kml+xml"
         return kml.proyecto_a_kmz(doc), _base(nombre) + ".kmz", "application/vnd.google-earth.kmz"

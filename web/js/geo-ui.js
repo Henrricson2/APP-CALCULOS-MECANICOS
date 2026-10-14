@@ -1,6 +1,6 @@
 // Etapa 1: proyectos persistentes, asistente de importación con sistemas de coordenadas,
 // vista en planta (Google Maps o planta propia), panel de propiedades y deshacer/rehacer.
-import { PlantaSVG, PlantaGoogle, cargarGoogle } from './mapa.js?v=4';
+import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=5';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
@@ -287,12 +287,12 @@ export function instalarGeo(C) {
   function vistaMapa() {
     const herr = [['mover', '✥ Mover / seleccionar'], ['insertar', '⊕ Insertar en vano'], ['agregar', '＋ Agregar al final'], ['medir', '📏 Medir']];
     return `<div class="page-head" style="margin-bottom:12px"><div><h1>Mapa y vista en planta</h1><p>Arrastre postes para moverlos, inserte apoyos sobre un vano o mida distancias. Los cambios recalculan vanos y perfil.</p></div>
-      <div class="actions"><button class="btn" data-act="importar">⇪ Importar coordenadas</button><button class="btn" id="m-kmz">⇩ KMZ Google Earth</button></div></div>
+      <div class="actions"><button class="btn" data-act="importar">⇪ Importar coordenadas</button><button class="btn" id="m-kmz">⇩ KMZ Google Earth</button><button class="btn" id="m-html" title="Mapa satelital interactivo en un solo archivo HTML (Folium/Leaflet, gratis)">⇩ Mapa web HTML</button></div></div>
       <div class="mapa-toolbar card">
         <div class="tool-grupo">${herr.map(([k, t]) => `<button class="tool ${S.mapaModo === k ? 'active' : ''}" data-modo="${k}">${t}</button>`).join('')}</div>
         <div class="tool-grupo"><button class="tool" id="m-undo" title="Deshacer (Ctrl+Z)">↶</button><button class="tool" id="m-redo" title="Rehacer (Ctrl+Y)">↷</button><button class="tool" id="m-fit" title="Ajustar vista">⤢</button>
           <label class="tool chk"><input type="checkbox" id="m-etq" ${S.capas.etiquetas ? 'checked' : ''}> Etiquetas</label><label class="tool chk"><input type="checkbox" id="m-coord" ${S.capas.coords ? 'checked' : ''}> Coordenadas</label></div>
-        <div class="tool-grupo"><select class="select" id="m-motor" style="width:auto"><option value="google">Satélite (Google Maps)</option><option value="planta">Planta sin fondo</option></select></div>
+        <div class="tool-grupo"><select class="select" id="m-motor" style="width:auto"><option value="leaflet">Satélite gratis (Leaflet + Esri/OSM)</option><option value="google">Satélite (Google Maps, con clave)</option><option value="planta">Planta sin fondo</option></select></div>
       </div>
       <div class="mapa-layout"><div class="card mapa-card"><div class="mapa-cont" id="mapa-cont"></div></div><aside class="card mapa-panel" id="mapa-panel"></aside></div>`;
   }
@@ -309,18 +309,21 @@ export function instalarGeo(C) {
     };
     const sel = $('#m-motor', vc);
     let clave = S.config?.google_maps_key;
-    const preferido = localStorage.getItem('cm-mapa') || (clave ? 'google' : 'planta');
+    let preferido = 'leaflet'; try { preferido = localStorage.getItem('cm-mapa') || 'leaflet'; } catch { /* */ }
     sel.value = preferido;
     async function montar(tipo) {
       planta?.destruir?.(); planta = null;
       if (tipo === 'google') {
         if (!clave) {
-          cont.innerHTML = `<div class="empty"><div class="big">🛰</div><h3>Falta la clave de Google Maps</h3><p>Configure la clave en <b>Parámetros → Mapa satelital</b> para ver el fondo satelital. Mientras tanto use la planta sin fondo.</p><button class="btn btn-soft" id="m-a-planta">Usar planta sin fondo</button></div>`;
-          $('#m-a-planta', cont).onclick = () => { sel.value = 'planta'; sel.onchange(); };
+          cont.innerHTML = `<div class="empty"><div class="big">🛰</div><h3>Falta la clave de Google Maps</h3><p>Configure la clave en <b>Parámetros → Mapa satelital</b>, o use el satélite gratuito (Leaflet + Esri), que no requiere clave.</p><button class="btn btn-soft" id="m-a-planta">Usar satélite gratis</button></div>`;
+          $('#m-a-planta', cont).onclick = () => { sel.value = 'leaflet'; sel.onchange(); };
           return;
         }
         try { cargando('Cargando Google Maps…'); await cargarGoogle(clave); cargando(''); planta = new PlantaGoogle(cont, op); }
         catch (e) { cargando(''); toast(e.message, 'error'); sel.value = 'planta'; return montar('planta'); }
+      } else if (tipo === 'leaflet') {
+        try { cargando('Cargando mapa satelital gratuito…'); await cargarLeaflet(); cargando(''); planta = new PlantaLeaflet(cont, op); }
+        catch (e) { cargando(''); toast(e.message, 'warn'); sel.value = 'planta'; return montar('planta'); }
       } else planta = new PlantaSVG(cont, op);
       planta.setModo(S.mapaModo); planta.setCapas(S.capas); planta.setPostes(S.apoyos, S.sel, true);
     }
@@ -332,6 +335,7 @@ export function instalarGeo(C) {
     $('#m-etq', vc).onchange = (e) => { S.capas.etiquetas = e.target.checked; planta?.setCapas(S.capas); };
     $('#m-coord', vc).onchange = (e) => { S.capas.coords = e.target.checked; planta?.setCapas(S.capas); };
     $('#m-kmz', vc).onclick = () => C.exportar('kmz');
+    $('#m-html', vc).onclick = () => C.exportar('html');
     if (!hayGeo()) {
       cont.innerHTML = `<div class="empty"><div class="big">🗺</div><h3>Los postes no tienen coordenadas geográficas</h3><p>Importe un archivo con latitud/longitud, Este/Norte (MAGNA-SIRGAS, UTM) o coordenadas locales con puntos de control.</p><button class="btn btn-primary" data-act="importar">⇪ Importar coordenadas</button></div>`;
       C.enlazarAcciones(cont); pintarPanel(); return;

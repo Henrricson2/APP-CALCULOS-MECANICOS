@@ -4,5 +4,6 @@ pandas>=2.0
 matplotlib>=3.7
 openpyxl>=3.1
 pyproj>=3.6       # transformaciones oficiales EPSG (PROJ); hay respaldo propio si falta
+folium>=0.17      # mapa web HTML con satélite gratuito (Leaflet); hay plantilla propia si falta
 ezdxf>=1.1        # opcional: si falta, el DXF se genera con el escritor R12 interno
 pytest>=7         # solo para ejecutar las pruebas

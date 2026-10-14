@@ -328,3 +328,37 @@ def test_almacen_proyectos_y_versiones(tmp_path):
     assert a.listar()[0]["n_postes"] == 2
     a.archivar(pid)
     assert a.listar() == []
+
+
+# ------------------------------------------------------------- mapa web gratuito (Leaflet / Folium)
+_POSTES_MAPA = {"nombre": "Prueba <mapa>", "postes": [
+    {"nombre": "P1", "lat": 2.9273, "lon": -75.2819, "z": 440.0, "altura": 10.5, "tipo": "R"},
+    {"nombre": "P2", "lat": 2.9282, "lon": -75.2810, "z": 442.1, "altura": 10.5, "tipo": "S"},
+    {"nombre": "P3</script>", "lat": 2.9290, "lon": -75.2800, "z": None, "altura": None, "tipo": "R"}]}
+
+
+def test_mapa_html_plantilla_propia():
+    from calculos_mecanicos.mapa_html import proyecto_a_html
+    h = proyecto_a_html(_POSTES_MAPA, usar_folium=False)
+    assert "leaflet@1.9.4" in h and "World_Imagery" in h and "openstreetmap" in h
+    assert "Prueba &lt;mapa&gt;" in h and "P3</script>" not in h  # escapado
+    assert h.count('"lat"') == 3
+
+
+def test_mapa_html_sin_coordenadas():
+    from calculos_mecanicos.mapa_html import proyecto_a_html
+    with pytest.raises(ValueError):
+        proyecto_a_html({"nombre": "x", "postes": [{"nombre": "P1"}]})
+
+
+def test_exportar_html_desde_motor():
+    from calculos_mecanicos import motor
+    datos, nombre, mime = motor.exportar({"proyecto": {"nombre": "Linea 1"}, "apoyos": _POSTES_MAPA["postes"]}, "html")
+    assert nombre.endswith("_MAPA.html") and mime.startswith("text/html") and b"<html" in datos.lower()
+
+
+@pytest.mark.skipif(not __import__("calculos_mecanicos.mapa_html", fromlist=["x"]).HAY_FOLIUM, reason="folium no instalado")
+def test_mapa_html_con_folium():
+    from calculos_mecanicos.mapa_html import proyecto_a_html
+    h = proyecto_a_html(_POSTES_MAPA, usar_folium=True)
+    assert "World_Imagery" in h and "leaflet" in h.lower()
