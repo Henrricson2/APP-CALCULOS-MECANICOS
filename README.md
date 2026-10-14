@@ -51,10 +51,8 @@ Un solo motor Python (`calculos_mecanicos/`) para todas las plataformas:
 | Acción | Archivo |
 |---|---|
 | Instalar (una vez) | `INSTALAR.bat` |
-| Abrir la app en el PC | `INICIAR_APP.bat` (o `EJECUTAR.bat`) |
+| Abrir la app en el PC | `INICIAR_APP.bat` |
 | Usar desde el celular (misma Wi-Fi) | `INICIAR_APP_RED.bat` → abrir en el celular la dirección que muestra → menú del navegador → *Agregar a pantalla de inicio* |
-| Probar el modo web sin servidor | `PROBAR_MODO_WEB.bat` |
-| Versión de escritorio clásica (Tkinter) | `EJECUTAR_ESCRITORIO_CLASICO.bat` |
 | Pruebas automáticas | `PRUEBAS.bat` |
 
 Cerrar la ventana negra del servidor cierra la app.
@@ -85,7 +83,6 @@ pegado directo desde Excel o edición en la tabla de la app.
 ├─ calculos_mecanicos/
 │  ├─ motor.py               fachada JSON (servidor y navegador)
 │  ├─ config.py · cambio_estado.py · catenaria.py · datos.py · plantillado.py · exportar.py
-│  └─ gui.py                 versión de escritorio clásica
 ├─ tests/                    pruebas automáticas (pytest)
 ├─ ejemplos/                 DATOS.xlsx, ejemplo completo y salidas
 └─ INFORME_REVISION.md       revisión técnica del código original
