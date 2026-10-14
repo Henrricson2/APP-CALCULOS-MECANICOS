@@ -8,3 +8,5 @@ datos/
 # carpetas personales
 Programacion*/
 salida/
+# generado por construir_web.py (modo sin servidor)
+web/py/

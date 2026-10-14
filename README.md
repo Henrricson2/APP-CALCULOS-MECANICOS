@@ -57,11 +57,9 @@ Un solo motor Python (`calculos_mecanicos/`) para todas las plataformas:
 
 Cerrar la ventana negra del servidor cierra la app.
 
-### Publicar en internet (opcional, gratis)
-Suba la carpeta a un repositorio de GitHub; el flujo `.github/workflows/deploy-pages.yml`
-corre las pruebas, ejecuta `construir_web.py` y publica `web/` en GitHub Pages
-(Settings → Pages → Source: GitHub Actions). En la web el cálculo corre con Pyodide,
-por lo que **no** necesita servidor.
+### Publicar en internet (opcional)
+Ejecute `python construir_web.py` y publique la carpeta `web/` en cualquier hosting estático:
+el cálculo corre con Python en el navegador (Pyodide), sin servidor.
 
 ## Datos de entrada
 Excel (mismo formato del `DATOS.xlsx` original), plantilla descargable desde la app,
