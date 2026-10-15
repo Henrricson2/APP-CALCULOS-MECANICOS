@@ -127,6 +127,7 @@ class ConfigSalida:
     vanos_por_pagina: int = 5
     exageracion_vertical_dxf: float = 1.0         # 1.0 = escala 1:1 (como el original)
     intervalo_cotas_m: float = 5.0                # rejilla del eje Y del perfil (pantalla y PDF)
+    exageracion_vertical_perfil: float = 5.0      # perfil: X 1:1 · Y 5:1 (alturas ×5); 0 = sin escala
     altura_texto_dxf: float = 1.5
     puntos_por_vano: int = 200
 

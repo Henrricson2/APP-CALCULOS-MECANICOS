@@ -1,6 +1,6 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
 import { detectarMotor } from './motor.js?v=10';
-import { dibujarPerfil, paginas, abscisaK } from './perfil.js?v=10';
+import { dibujarPerfil, paginas, paginasEscala, abscisaK } from './perfil.js?v=10';
 import { instalarGeo } from './geo-ui.js?v=10';
 
 const CLAVE = 'cm-proyecto-v2';
@@ -340,6 +340,7 @@ const VISTAS = {
         ${campo('criterios.fluencia_delta_t_c', 'Fluencia: Δt equivalente (°C)', cr.fluencia_delta_t_c)}
         ${campo('criterios.n_fases', 'Número de fases', cr.n_fases, '', 'numeric')}
         ${campo('criterios.desperdicio_conductor', 'Desperdicio de conductor (fracción)', cr.desperdicio_conductor, '0.03 = 3 %')}
+        ${campo('salida.exageracion_vertical_perfil', 'Escala vertical del perfil (Y n:1)', p.salida.exageracion_vertical_perfil ?? 5, 'X 1:1 · Y 5:1 (alturas ×5). Si no cabe, se parte en tramos. 0 = sin escala')}
         ${campo('salida.intervalo_cotas_m', 'Intervalo de cotas del perfil (m)', p.salida.intervalo_cotas_m ?? 5, 'Líneas del eje Y cada 5 m (pantalla y PDF)')}
         ${campo('salida.exageracion_vertical_dxf', 'Exageración vertical DXF', p.salida.exageracion_vertical_dxf, '1 = escala 1:1')}
       </div></div>
@@ -359,12 +360,10 @@ const VISTAS = {
   perfil() {
     const r = S.resultado;
     if (!r) return sinResultado();
-    const pags = paginas(r.perfil, porPagina());
-    S.pagina = Math.min(S.pagina, pags.length - 1);
-    const opts = pags.map(([a, b], i) => `<option value="${i}" ${i === S.pagina ? 'selected' : ''}>Vanos ${a + 1}–${b}</option>`).join('') + `<option value="-1" ${S.pagina === -1 ? 'selected' : ''}>Toda la línea</option>`;
+    const opts = '';
     return `${avisoDesactualizado()}<div class="page-head"><div><h1>Perfil / plantillado</h1><p>Toque un apoyo o un vano para ver sus datos. ▲ = arrancamiento · ✕ = no cumple distancia mínima.</p></div></div>
     <div class="card"><div class="perfil-bar"><div class="perfil-nav"><button class="btn btn-small" id="pag-ant">◀</button><select class="select" id="pag-sel" style="width:auto">${opts}</select><button class="btn btn-small" id="pag-sig">▶</button></div>
-      <span class="muted small">${r.perfil.vanos.length} vanos · ${pags.length} páginas</span></div>
+      <span class="muted small" id="pag-info"></span></div>
       <div class="perfil-wrap" id="perfil-svg"></div>
       <div class="perfil-legend"><span><i style="border-color:#1f6fb2"></i>Conductor caliente (${h(S.proyecto.hipotesis_plantillado)})</span>${r.perfil.modo === 'cambio_estado' ? `<span><i style="border-color:#7fb6df;border-top-style:dashed"></i>Conductor frío (${h(S.proyecto.hipotesis_arrancamiento)})</span>` : ''}${r.perfil.terreno ? `<span><i style="border-color:#a07c4a"></i>Terreno</span><span><i style="border-color:#c84c4c;border-top-style:dashed"></i>Distancia mínima ${nf(r.perfil.dmin)} m</span>` : ''}<span>■ Retención · ● Suspensión</span></div></div>`;
   },
@@ -499,10 +498,17 @@ const ENLACES = {
   perfil(vc) {
     enlazarAcciones(vc);
     const cont = $('#perfil-svg', vc); if (!cont) return;
-    const pags = paginas(S.resultado.perfil, porPagina());
+    const perfil = S.resultado.perfil;
+    const exV = +(S.proyecto.salida?.exageracion_vertical_perfil ?? 5);
+    // escala fija X 1:1 · Y exV:1: el trazado se parte en tramos que quepan en pantalla
+    const { pags, kx } = exV > 0 ? paginasEscala(perfil, cont, exV, porPagina()) : { pags: paginas(perfil, porPagina()), kx: 0 };
+    S.pagina = Math.min(S.pagina, pags.length - 1);
+    $('#pag-sel', vc).innerHTML = pags.map(([a, b], i) => `<option value="${i}">Tramo ${i + 1}: vanos ${a + 1}–${b}</option>`).join('') + '<option value="-1">Toda la línea (vista general, sin escala)</option>';
+    $('#pag-info', vc).textContent = `${perfil.vanos.length} vanos · ${pags.length} tramo(s)${exV > 0 ? ` · escala X 1:1 · Y ${exV}:1` : ''}`;
     const pintar = () => {
-      const [a, b] = S.pagina === -1 ? [0, S.resultado.perfil.vanos.length] : pags[S.pagina];
-      dibujarPerfil(cont, S.resultado.perfil, a, b, { tipApoyo, tipVano, pasoY: S.proyecto.salida?.intervalo_cotas_m ?? 5 });
+      const [a, b] = S.pagina === -1 ? [0, perfil.vanos.length] : pags[S.pagina];
+      const escala = S.pagina === -1 || !(exV > 0) ? {} : { exV, kx };
+      dibujarPerfil(cont, perfil, a, b, { tipApoyo, tipVano, pasoY: S.proyecto.salida?.intervalo_cotas_m ?? 5, ...escala });
       $('#pag-sel', vc).value = String(S.pagina);
     };
     $('#pag-ant', vc).onclick = () => { S.pagina = S.pagina <= 0 ? pags.length - 1 : S.pagina - 1; pintar(); };

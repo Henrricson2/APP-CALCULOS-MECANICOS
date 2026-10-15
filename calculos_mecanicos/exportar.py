@@ -36,7 +36,57 @@ def paginas(res: ResultadoPlantillado) -> list[tuple[int, int]]:
     return [(i, min(i + paso, n)) for i in range(0, n, paso)]
 
 
-def dibujar_perfil(ax, res: ResultadoPlantillado, inicio: int, fin: int) -> None:
+# Escalas normalizadas de plano (1:N)
+_ESCALAS = [100, 125, 200, 250, 500, 750, 1000, 1250, 1500, 2000, 2500, 5000, 7500, 10000, 20000, 25000, 50000]
+
+
+def _rango_y(res: ResultadoPlantillado, i: int, j: int) -> tuple[float, float]:
+    """Cotas mínima y máxima a dibujar para los vanos [i, j)."""
+    ys = []
+    for c, cf in zip(res.catenarias[i:j], res.catenarias_frias[i:j]):
+        ys += [float(c.y1), float(c.y2), float(c.y(c.x_flecha_maxima)), float(cf.y(cf.x_flecha_maxima))]
+    ap = res.apoyos
+    ys += list(ap["Cota Y (m)"].iloc[i:j + 1]) + list(ap["Cota amarre (m)"].iloc[i:j + 1])
+    if res.datos.terreno is not None or res.datos.y_es_terreno:
+        xt = np.linspace(ap["X (m)"].iloc[i], ap["X (m)"].iloc[j], 30 * (j - i) + 1)
+        yt = res.terreno(xt)
+        ys += [float(yt.min()), float(yt.max() + res.proyecto.criterios.distancia_minima_terreno_m)]
+    return min(ys), max(ys)
+
+
+def paginas_escala(res: ResultadoPlantillado, ancho_in: float, alto_in: float, ex: float):
+    """Tramos del perfil a escala fija X 1:N · Y 1:(N/ex) (misma N en todas las hojas).
+
+    Devuelve (tramos, N). N es la escala normalizada más pequeña con la que caben ~vanos_por_pagina
+    vanos típicos; si un tramo no cabe a lo ancho o a lo alto, se parte.
+    """
+    ap = res.apoyos["X (m)"].to_numpy()
+    vanos = np.sort(np.diff(ap))
+    mediana = float(vanos[len(vanos) // 2]) if len(vanos) else 100.0
+    vpp = max(1, res.proyecto.salida.vanos_por_pagina)
+    n_req = mediana * vpp / (ancho_in * 0.0254)        # 1:N para que quepan vpp vanos típicos
+    ref = min(vpp, len(vanos))                          # …y que su desnivel típico quepa a lo alto
+    desn = sorted(_rango_y(res, i, i + ref)[1] - _rango_y(res, i, i + ref)[0] + 6
+                  for i in range(0, len(vanos) - ref + 1)) or [20.0]
+    n_req = max(n_req, desn[len(desn) // 2] * ex / (alto_in * 0.0254))
+    N = next((e for e in _ESCALAS if e >= n_req), _ESCALAS[-1])
+    m_por_in = N * 0.0254                               # metros reales por pulgada de papel
+    tramos, i, n = [], 0, len(vanos)
+    while i < n:
+        j = i + 1
+        while j < n:
+            ancho = (ap[j + 1] - ap[i]) / m_por_in
+            lo, hi = _rango_y(res, i, j + 1)
+            alto = (hi - lo + 6) * ex / m_por_in
+            if ancho > ancho_in or alto > alto_in:
+                break
+            j += 1
+        tramos.append((i, j))
+        i = j
+    return tramos, N
+
+
+def dibujar_perfil(ax, res: ResultadoPlantillado, inicio: int, fin: int, escala=None) -> None:
     """Dibuja los vanos [inicio, fin) en el eje matplotlib `ax`."""
     ap = res.apoyos
     x0 = ap["X (m)"].iloc[0]
@@ -49,7 +99,7 @@ def dibujar_perfil(ax, res: ResultadoPlantillado, inicio: int, fin: int) -> None
     if tiene_terreno:
         xt = np.linspace(xa, xb, 50 * (fin - inicio) + 1)
         yt = res.terreno(xt)
-        ax.fill_between(xt, yt, yt.min() - 5, color="#d8c7a8", alpha=0.6, lw=0)
+        ax.fill_between(xt, yt, yt.min() - 1000, color="#d8c7a8", alpha=0.6, lw=0)
         ax.plot(xt, yt, color="#7a5c2e", lw=1.2, label="Terreno")
         ax.plot(xt, yt + dmin, color="#c0392b", lw=1, ls="--",
                 label=f"Distancia mínima {dmin:.2f} m")
@@ -92,6 +142,14 @@ def dibujar_perfil(ax, res: ResultadoPlantillado, inicio: int, fin: int) -> None
     marg = max(3.0, 0.15 * (hi - lo))
     ax.set_ylim(lo - marg, hi + marg)
     ax.set_xlim(xa - 0.01 * (xb - xa), xb + 0.01 * (xb - xa))
+    if escala:  # (N, ex, ancho_in, alto_in): misma escala en todas las hojas
+        N, ex, ancho_in, alto_in = escala
+        m_por_in = N * 0.0254
+        lo_d, hi_d = _rango_y(res, inicio, fin)
+        ax.set_xlim(xa, xa + ancho_in * m_por_in)
+        alto_m = alto_in * m_por_in / ex
+        yc = (lo_d + hi_d) / 2
+        ax.set_ylim(yc - alto_m / 2, yc + alto_m / 2)
     paso_y = float(getattr(res.proyecto.salida, "intervalo_cotas_m", 0) or 0)
     if paso_y > 0:  # cotas cada `paso_y` m (5 m por defecto); rótulos espaciados si quedan muy juntos
         from matplotlib.ticker import MultipleLocator
@@ -103,7 +161,9 @@ def dibujar_perfil(ax, res: ResultadoPlantillado, inicio: int, fin: int) -> None
     ax.grid(True, alpha=0.35)
     ax.set_xlabel("Abscisa (K + m)")
     ax.set_ylabel("Cota (m)")
-    ax.set_title(f"Plantillado – vanos {inicio + 1} a {fin}", fontsize=11)
+    ax.set_title(f"Plantillado – vanos {inicio + 1} a {fin}"
+                 + (f"   ·   Escala horizontal 1:{escala[0]:g} · vertical 1:{escala[0] / escala[1]:g}"
+                    f" (Y {escala[1]:g}:1)" if escala else ""), fontsize=11)
     ax.legend(loc="upper right", fontsize=7, framealpha=0.85)
 
 
@@ -208,10 +268,22 @@ def exportar_pdf(res: ResultadoPlantillado, ruta: str | Path) -> Path:
         pdf.savefig(fig); plt.close(fig)
 
         # --- perfiles
-        for ini, fin in paginas(res):
-            fig, ax = plt.subplots(figsize=(16.54, 11.69))
-            dibujar_perfil(ax, res, ini, fin)
-            fig.tight_layout()
+        ex = float(getattr(res.proyecto.salida, "exageracion_vertical_perfil", 0) or 0)
+        caja = [0.06, 0.08, 0.92, 0.85]                     # área del perfil en la hoja A3
+        ancho_in, alto_in = 16.54 * caja[2], 11.69 * caja[3]
+        if ex > 0:
+            tramos, N = paginas_escala(res, ancho_in, alto_in, ex)
+        else:
+            tramos, N = paginas(res), None
+        for ini, fin in tramos:
+            fig = plt.figure(figsize=(16.54, 11.69))
+            if N:
+                ax = fig.add_axes(caja)
+                dibujar_perfil(ax, res, ini, fin, (N, ex, ancho_in, alto_in))
+            else:
+                ax = fig.add_subplot(111)
+                dibujar_perfil(ax, res, ini, fin)
+                fig.tight_layout()
             pdf.savefig(fig); plt.close(fig)
 
         # --- tabla de vanos
