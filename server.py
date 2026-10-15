@@ -220,6 +220,24 @@ def abrir_navegador(url: str):
     webbrowser.open(url)
 
 
+class Servidor(ThreadingHTTPServer):
+    """En Windows, SO_REUSEADDR deja que VARIOS procesos escuchen el mismo puerto y las
+    peticiones se reparten entre versiones viejas y nuevas. Se usa uso exclusivo del puerto."""
+    allow_reuse_address = not sys.platform.startswith("win")
+    daemon_threads = True
+
+    def server_bind(self):
+        if sys.platform.startswith("win") and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
+def _pids_escuchando(puerto: int) -> set[str]:
+    salida = subprocess.run(["netstat", "-ano", "-p", "TCP"], capture_output=True, text=True).stdout
+    return {ln.split()[-1] for ln in salida.splitlines()
+            if f":{puerto} " in ln and "LISTENING" in ln.upper() and ln.split()[-1].isdigit()}
+
+
 def reemplazar_version_vieja(puerto: int) -> bool:
     """Si en el puerto corre OTRA versión de esta app, la cierra para abrir la nueva.
 
@@ -235,25 +253,23 @@ def reemplazar_version_vieja(puerto: int) -> bool:
         return False
     if not (salud.get("ok") and salud.get("motor") == "servidor"):
         return False                      # el puerto lo usa otro programa: no se toca
-    if salud.get("version") == __version__:
-        return False                      # es la misma versión: se reutiliza
-    print(f"Hay abierta una versión anterior de la app (v{salud.get('version')}). Cerrándola para abrir v{__version__}…")
+    # Siempre se reemplaza el servidor que esté abierto (aunque diga la misma versión): así nunca
+    # quedan procesos viejos atendiendo. Los datos están en la base SQLite, no se pierde nada.
+    print(f"Había otra ventana de la app abierta (v{salud.get('version')}). Cerrándola para abrir v{__version__}…")
     try:
         req = urllib.request.Request(base + "/api/apagar", data=b"{}", method="POST",
                                      headers={"Content-Type": "application/json"})
         urllib.request.urlopen(req, timeout=3).read()
     except Exception:
-        if sys.platform.startswith("win"):   # versiones viejas no tienen /api/apagar
-            try:
-                salida = subprocess.run(["netstat", "-ano", "-p", "TCP"], capture_output=True, text=True).stdout
-                pids = {ln.split()[-1] for ln in salida.splitlines()
-                        if f":{puerto} " in ln and "LISTENING" in ln.upper()}
-                for pid in pids:
-                    if pid.isdigit() and int(pid) != os.getpid():
-                        subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True)
-            except Exception:
-                return False
-        else:
+        pass
+    if sys.platform.startswith("win"):
+        # versiones anteriores no tienen /api/apagar y pueden quedar VARIAS escuchando el puerto
+        time.sleep(1.0)
+        try:
+            for pid in _pids_escuchando(puerto):
+                if int(pid) != os.getpid():
+                    subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True)
+        except Exception:
             return False
     for _ in range(20):
         time.sleep(0.3)
@@ -275,7 +291,7 @@ def main(argv=None):
     srv = None
     for intento in range(2):
         try:
-            srv = ThreadingHTTPServer((host, a.puerto), Manejador)
+            srv = Servidor((host, a.puerto), Manejador)
             break
         except OSError:
             if intento == 0 and reemplazar_version_vieja(a.puerto):
