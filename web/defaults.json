@@ -1,5 +1,5 @@
 {
- "version": "2.7.4",
+ "version": "2.7.5",
  "proyecto_defecto": {
   "nombre": "Proyecto de línea de media tensión",
   "conductor": {
@@ -65,6 +65,7 @@
   "salida": {
    "vanos_por_pagina": 5,
    "exageracion_vertical_dxf": 1.0,
+   "exageracion_vertical_perfil": 5.0,
    "altura_texto_dxf": 1.5,
    "puntos_por_vano": 200
   },

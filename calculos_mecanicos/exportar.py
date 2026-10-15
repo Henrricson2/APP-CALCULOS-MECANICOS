@@ -92,10 +92,14 @@ def dibujar_perfil(ax, res: ResultadoPlantillado, inicio: int, fin: int) -> None
     marg = max(3.0, 0.15 * (hi - lo))
     ax.set_ylim(lo - marg, hi + marg)
     ax.set_xlim(xa - 0.01 * (xb - xa), xb + 0.01 * (xb - xa))
+    ex = float(getattr(res.proyecto.salida, "exageracion_vertical_perfil", 0) or 0)
+    if ex > 0:  # relación fija de escalas: 1 m vertical se dibuja `ex` veces más largo que 1 m horizontal
+        ax.set_aspect(ex, adjustable="datalim")
     ax.grid(True, alpha=0.35)
     ax.set_xlabel("Abscisa (K + m)")
     ax.set_ylabel("Cota (m)")
-    ax.set_title(f"Plantillado – vanos {inicio + 1} a {fin}", fontsize=11)
+    ax.set_title(f"Plantillado – vanos {inicio + 1} a {fin}"
+                 + (f"   ·   Escala X 1:1 · Y 1:{ex:g}" if ex > 0 else ""), fontsize=11)
     ax.legend(loc="upper right", fontsize=7, framealpha=0.85)
 
 

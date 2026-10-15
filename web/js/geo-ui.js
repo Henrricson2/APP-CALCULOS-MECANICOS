@@ -1,7 +1,7 @@
 // Etapa 1: proyectos persistentes, asistente de importación con sistemas de coordenadas,
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
 import { obtenerCotas, FUENTES, muestrasRecorrido } from './elevacion.js';
-import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=9';
+import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=10';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
