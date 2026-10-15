@@ -99,12 +99,22 @@ export function instalarGeo(C) {
     if (S.meta.id || S.apoyos.length) await guardarServidor();
   }
   async function abrirGuardado(id) {
-    await guardarActual();
+    if (id !== S.meta.id) await guardarActual(); // si es el mismo proyecto, se recarga la copia guardada
     const p = await almacen().obtener(id);
     cargarProyecto(p);
     toast(`Proyecto «${p.nombre}» abierto${S.resultado ? ' con su último cálculo' : ''}.`, 'success');
     C.ir(S.resultado ? 'resumen' : 'datos', true);
     if (!S.resultado && S.apoyos.length >= 2) C.calcular({ irA: 'resumen' });
+  }
+  // Al abrir la app: si el proyecto abierto tiene una copia más reciente guardada (otra ventana,
+  // otro PC del equipo), se carga esa copia en lugar de la que quedó en este navegador.
+  async function sincronizarAlIniciar() {
+    if (!almacen() || !S.meta.id) return false;
+    try {
+      const p = await almacen().obtener(S.meta.id);
+      if (p && p.actualizado && (!S.meta.guardado || p.actualizado > S.meta.guardado)) { cargarProyecto(p); return true; }
+    } catch { /* proyecto borrado o sin conexión: se sigue con la copia local */ }
+    return false;
   }
   // Crea un proyecto nuevo e independiente: parámetros por defecto (o copiados), sin estructuras ni cálculo.
   async function crearProyecto({ nombre, meta = {}, estado = null, copiarParametros = false }) {
@@ -756,6 +766,6 @@ export function instalarGeo(C) {
     vistas: { proyectos: vistaProyectos },
     enlaces: { proyectos: enlazarProyectos },
     vistaEstructuras, enlazarEstructuras,
-    asistente, cambiar, deshacer, rehacer, guardarServidor, crearProyecto, editar: editarCampo, eliminar, programarGuardado, hayGeo, rpc, listaSistemas,
+    asistente, cambiar, deshacer, rehacer, guardarServidor, crearProyecto, sincronizarAlIniciar, editar: editarCampo, eliminar, programarGuardado, hayGeo, rpc, listaSistemas,
   };
 }
