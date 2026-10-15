@@ -81,6 +81,22 @@ def preparar_apoyos(apoyos: list[dict]) -> tuple[list[dict], list[str], list[flo
     return apoyos, errores, defl
 
 
+def _terreno_por_estructuras(terreno, apoyos):
+    """El perfil del terreno pasa exactamente por la base de cada estructura (su cota Z):
+    el poste queda parado sobre el terreno aunque la cota se haya corregido después."""
+    from .estructuras import _f
+    if not terreno or not any(a.get("lat") not in (None, "") for a in apoyos):
+        return terreno
+    bases = [(_f(a.get("x")), _f(a.get("y"))) for a in apoyos]
+    bases = [(x, y) for x, y in bases if x is not None and y is not None]
+    if not bases:
+        return terreno
+    pts = [t for t in terreno if _f(t.get("x")) is not None and _f(t.get("cota")) is not None
+           and all(abs(_f(t["x"]) - x) > 0.5 for x, _ in bases)]
+    pts += [{"x": x, "cota": y} for x, y in bases]
+    return sorted(pts, key=lambda t: _f(t["x"]))
+
+
 _CAMPOS_ESTRUCTURA = ("poste_altura", "poste_rotura", "poste_peso", "templetes")
 
 
@@ -92,7 +108,8 @@ def _datos_payload(payload: dict, proyecto: Proyecto):
         L = _f(a.get("poste_altura"))
         if L:  # la altura de amarre depende de la altura del poste
             a["altura"] = round(altura_amarre_desde_poste(L, proyecto.criterios), 3)
-    d = construir_datos(apoyos, payload.get("terreno"), None, proyecto.criterios, payload.get("origen", "web"))
+    terreno = _terreno_por_estructuras(payload.get("terreno"), apoyos)
+    d = construir_datos(apoyos, terreno, None, proyecto.criterios, payload.get("origen", "web"))
     d.errores = errores + d.errores
     d.deflexiones = defl
     validos = [a for a in apoyos if not (a.get("x") in (None, "") and a.get("y") in (None, "") and a.get("nombre") in (None, ""))]
@@ -310,6 +327,9 @@ def rpc(nombre: str, datos: dict) -> dict:
                 E, N = geo.desde_geograficas(geo.INTERNO, float(p["lat"]), float(p["lon"]))
                 out.append({"E": E, "N": N})
             return {"ok": True, "puntos": out}
+        if nombre == "perfil_muestras":
+            pts = [(float(p["lat"]), float(p["lon"])) for p in d.get("puntos", [])]
+            return {"ok": True, **geo.muestras_perfil(pts, float(d.get("paso_m") or 10), int(d.get("max_muestras") or 2000))}
         if nombre == "geo_distancia":
             a, b = d["a"], d["b"]
             return {"ok": True, "distancia_m": geo.distancia_geodesica(float(a["lat"]), float(a["lon"]),

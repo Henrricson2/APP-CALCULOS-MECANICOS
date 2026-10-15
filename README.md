@@ -31,6 +31,13 @@ Un solo motor Python (`calculos_mecanicos/`) para todas las plataformas:
   (lat/lon decimal o GMS, MAGNA-SIRGAS Origen Nacional, Gauss-Krüger, UTM, coordenadas locales con
   puntos de control Helmert/afín), candidatos detectados automáticamente que el usuario confirma,
   validación (fuera de Colombia, duplicados, cotas vacías ≠ 0), vista previa del trazado.
+- **Perfil del terreno solo con latitud/longitud** (botón *⛰ Perfil del terreno*): la app toma puntos
+  cada 10 m a lo largo del trazado y consulta la altura del terreno en **Google** (Elevation, el mismo
+  modelo de Google Earth; requiere la clave con «Elevation API» habilitada) o gratis sin clave en
+  **SRTM 30 m** (OpenTopoData; respaldo Copernicus 90 m de Open-Meteo). Llena la cota Z de cada estructura
+  (el poste queda sobre el terreno) y el perfil entre estructuras; luego calcula y abre el perfil. Las
+  cotas quedan marcadas «estimada»; las de topografía o escritas a mano se conservan. Avisa si se mueven
+  estructuras después de obtenerlo.
 - **Postes y templetes**: cada estructura lleva su poste (altura, carga de rotura, peso; catálogo
   referencial editable) y, solo donde se necesiten, sus templetes (cantidad, cable ASTM A475, distancia al
   anclaje, altura). La **altura de amarre sale de la altura del poste** (L − (0.10·L + 0.60) − 0.20 m).

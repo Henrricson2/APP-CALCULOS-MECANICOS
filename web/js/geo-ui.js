@@ -1,6 +1,7 @@
 // Etapa 1: proyectos persistentes, asistente de importación con sistemas de coordenadas,
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
-import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=8';
+import { obtenerCotas, FUENTES } from './elevacion.js';
+import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=9';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
@@ -346,7 +347,7 @@ export function instalarGeo(C) {
   function vistaEstructuras() {
     const herr = [['mover', '✥ Mover', 'Arrastrar y seleccionar estructuras'], ['insertar', '⊕ Insertar', 'Clic sobre un vano para insertar una estructura'], ['agregar', '＋ Nueva', 'Clic en el mapa para agregar una estructura al final'], ['medir', '📏 Medir', 'Medir distancia geodésica']];
     return `<div class="page-head" style="margin-bottom:12px"><div><h1>Estructuras y mapa</h1><p>Registre cada estructura con sus coordenadas: se agrega a la tabla y se dibuja en el mapa al instante. Edite en la tabla o arrastre en el mapa; todo queda sincronizado.</p></div>
-      <div class="actions"><button class="btn" data-act="importar">⇪ Importar archivo</button><button class="btn" id="dm-pegar">⎘ Pegar varias</button><button class="btn" id="m-kmz">⇩ KMZ</button><button class="btn" id="m-html" title="Mapa satelital en un solo archivo HTML (Folium/Leaflet, gratis)">⇩ Mapa HTML</button></div></div>
+      <div class="actions"><button class="btn btn-primary" id="dm-perfil" title="Cotas Z y perfil del terreno desde Google o un modelo de elevación gratuito">⛰ Perfil del terreno</button><button class="btn" data-act="importar">⇪ Importar archivo</button><button class="btn" id="dm-pegar">⎘ Pegar varias</button><button class="btn" id="m-kmz">⇩ KMZ</button><button class="btn" id="m-html" title="Mapa satelital en un solo archivo HTML (Folium/Leaflet, gratis)">⇩ Mapa HTML</button></div></div>
       <div class="dm-layout">
         <div class="dm-izq">
           <div class="card dm-form-card">
@@ -363,12 +364,13 @@ export function instalarGeo(C) {
             </form>
             <p class="small muted" style="margin:6px 0 0">Enter = agregar y seguir con la siguiente. Coordenadas en decimal o grados-minutos-segundos. La altura de amarre sale de la altura del poste; los templetes se agregan en la tabla (⚓) solo donde se necesiten.</p>
           </div>
+          <div id="dm-avisos"></div>
           <div class="card" style="margin-top:12px"><div class="section-head"><h2>Estructuras <span class="badge" id="dm-n">${S.apoyos.length}</span></h2>
             <span class="small muted" id="dm-resumen"></span></div>
             <div id="dm-tabla"></div></div>
-          <div class="card" style="margin-top:12px"><div class="section-head"><h3>Perfil del terreno <span class="badge">${S.terreno.length} puntos</span></h3>
-            <button class="btn btn-small btn-soft" id="btn-pegar-terreno">⎘ Pegar terreno</button></div>
-            <p class="muted small" style="margin:0">Opcional: pares (abscisa, cota) de topografía entre estructuras.</p></div>
+          <div class="card" style="margin-top:12px"><div class="section-head"><h3>Perfil del terreno <span class="badge" id="dm-nter">${S.terreno.length} puntos</span></h3>
+            <div class="actions"><button class="btn btn-small btn-primary" id="dm-perfil2">⛰ Obtener del mapa</button><button class="btn btn-small btn-soft" id="btn-pegar-terreno">⎘ Pegar topografía</button></div></div>
+            <p class="muted small" style="margin:0" id="dm-ter-info"></p></div>
         </div>
         <div class="dm-der">
           <div class="mapa-toolbar card">
@@ -422,7 +424,23 @@ export function instalarGeo(C) {
       toast(limpias.length ? `Templetes de ${p.nombre} guardados.` : `${p.nombre} sin templetes.`, 'success');
     };
   }
+  const firmaTrazado = () => S.apoyos.map((a) => `${(+a.lat).toFixed(7)},${(+a.lon).toFixed(7)}`).join(';');
+  function pintarAvisos() {
+    const el = $('#dm-avisos'); if (!el) return;
+    const sinZ = S.apoyos.filter((a) => a.z == null).length, ter = S.meta.terreno;
+    const viejo = ter && S.terreno.length && ter.firma !== firmaTrazado();
+    const items = [];
+    if (S.apoyos.length >= 2 && sinZ) items.push(`<li>⚠ <span>${sinZ} estructura(s) sin cota Z. Pulse <b>⛰ Perfil del terreno</b> para sacar las cotas y el perfil desde las coordenadas.</span></li>`);
+    if (viejo) items.push(`<li>⚠ <span>Movió, agregó o quitó estructuras después de obtener el perfil del terreno. Vuelva a pulsar <b>⛰ Perfil del terreno</b> para actualizarlo.</span></li>`);
+    el.innerHTML = items.length ? `<ul class="adv-list" style="margin-top:12px">${items.join('')}</ul>` : '';
+    const nt = $('#dm-nter'); if (nt) nt.textContent = `${S.terreno.length} puntos`;
+    const info = $('#dm-ter-info');
+    if (info) info.innerHTML = S.terreno.length
+      ? (ter ? `Fuente: <b>${h(FUENTES[ter.fuente] || ter.fuente)}</b> · ${h((ter.fecha || '').replace('T', ' ').slice(0, 16))} · un punto cada ${nf(ter.paso, 1)} m. Las cotas son estimadas: reemplácelas por topografía para planos definitivos.` : 'Perfil de topografía pegado manualmente.')
+      : 'Sin perfil del terreno: se supondrá terreno recto entre las cotas de las estructuras. Use <b>⛰ Obtener del mapa</b> para sacarlo de las coordenadas.';
+  }
   function pintarTabla() {
+    pintarAvisos();
     const el = $('#dm-tabla'); if (!el) return;
     const act = document.activeElement, foco = el.contains(act) && act.dataset.k ? { i: act.closest('tr')?.dataset.i, k: act.dataset.k } : null;
     const n = S.apoyos.length;
@@ -545,6 +563,55 @@ export function instalarGeo(C) {
     };
   }
 
+  // ---- perfil del terreno desde latitud/longitud
+  function modalPerfil() {
+    const con = S.apoyos.filter((a) => a.lat != null);
+    if (con.length < 2 || con.length !== S.apoyos.length) return toast('Todas las estructuras (mínimo 2) deben tener latitud y longitud.', 'warn');
+    const clave = S.config?.google_maps_key;
+    const m = modal('Perfil del terreno desde las coordenadas', `<p class="small muted">La app traza la línea por sus estructuras, toma puntos a lo largo del recorrido y consulta la altura del terreno en cada uno. Con eso llena la <b>cota Z</b> de cada estructura (el poste queda parado sobre el terreno) y arma el <b>perfil del terreno</b> entre estructuras.</p>
+      <div class="form-grid">
+        <label class="field-group full"><span class="field-label">Fuente de las alturas</span><select class="select" id="pf-fuente">
+          <option value="google" ${clave ? 'selected' : 'disabled'}>${FUENTES.google}${clave ? '' : ' — falta la clave'}</option>
+          <option value="srtm" ${clave ? '' : 'selected'}>${FUENTES.srtm} (sin clave)</option></select>
+          <span class="field-help">${clave ? 'Google requiere tener habilitada «Elevation API» para su clave.' : 'Para usar Google, pegue su clave en Parámetros → Mapa satelital y habilite «Elevation API».'}</span></label>
+        <label class="field-group"><span class="field-label">Un punto cada (m)</span><input class="input" id="pf-paso" inputmode="decimal" value="${S.meta.terreno?.paso && S.meta.terreno.paso < 50 ? S.meta.terreno.paso : 10}"></label>
+        <label class="field-group" style="display:flex;gap:8px;align-items:center;margin-top:22px"><input type="checkbox" id="pf-reemp"> <span class="small">Reemplazar también las cotas de topografía o escritas a mano</span></label>
+      </div>
+      <p class="small muted">Son modelos de superficie (pueden medir sobre árboles o construcciones; error típico de 2 a 10 m). Sirven para prediseño; para planos definitivos use topografía.</p>`,
+      '<button class="btn" data-x>Cancelar</button><button class="btn btn-primary" data-ok>⛰ Obtener perfil</button>');
+    $('[data-x]', m.root).onclick = m.cerrar;
+    $('[data-ok]', m.root).onclick = async () => {
+      const fuente = $('#pf-fuente', m.root).value, paso = Math.max(2, num($('#pf-paso', m.root).value) || 10), reemp = $('#pf-reemp', m.root).checked;
+      m.cerrar();
+      try { await obtenerPerfil(fuente, paso, reemp); } catch (e) { cargando(''); toast(e.message, 'error'); }
+    };
+  }
+  async function obtenerPerfil(fuente, paso, reemplazar) {
+    cargando('Preparando los puntos del recorrido…');
+    const r = await rpc('perfil_muestras', { puntos: S.apoyos.map((a) => ({ lat: a.lat, lon: a.lon })), paso_m: paso });
+    const { cotas, fuente: usada } = await obtenerCotas(r.muestras, fuente, { clave: S.config?.google_maps_key, avance: cargando });
+    cargando('');
+    const etiqueta = usada === 'google' ? 'Google (estimada)' : usada === 'srtm' ? 'SRTM 30 m (estimada)' : 'Copernicus 90 m (estimada)';
+    const protegida = (a) => !reemplazar && a.z != null && /topograf|manual|archivo/i.test(a.z_fuente || '');
+    let n = 0, prot = 0;
+    cambiar(() => {
+      r.muestras.forEach((p, k) => {
+        if (p.apoyo == null) return;
+        const a = S.apoyos[p.apoyo];
+        if (protegida(a)) { prot++; return; }
+        a.z = cotas[k]; a.z_fuente = etiqueta; n++;
+      });
+      // el terreno pasa por la base de cada estructura (su cota Z final)
+      S.terreno = r.muestras.map((p, k) => ({ x: p.x, cota: p.apoyo != null ? S.apoyos[p.apoyo].z : cotas[k] }));
+      const ahora = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 19);
+      S.meta.terreno = { fuente: usada, fecha: ahora, paso: r.paso_m, firma: firmaTrazado(), puntos: r.muestras.length };
+    }, 'perfil del terreno');
+    toast(`Perfil listo: ${r.muestras.length} puntos (${FUENTES[usada]}). ${n} cota(s) Z actualizadas${prot ? `, ${prot} de topografía conservadas` : ''}.`, 'success');
+    const listos = S.apoyos.every((a) => a.poste_altura || a.altura != null);
+    if (listos) await C.calcular({ irA: 'perfil' });
+    else toast('Asigne el poste a cada estructura para calcular el plantillado.', 'warn');
+  }
+
   async function enlazarEstructuras(vc) {
     C.enlazarAcciones(vc);
     const cont = $('#mapa-cont', vc);
@@ -586,6 +653,7 @@ export function instalarGeo(C) {
     $('#m-kmz', vc).onclick = () => C.exportar('kmz');
     $('#m-html', vc).onclick = () => C.exportar('html');
     $('#dm-pegar', vc).onclick = pegarVarias;
+    $('#dm-perfil', vc).onclick = modalPerfil; $('#dm-perfil2', vc).onclick = modalPerfil;
     $('#btn-pegar-terreno', vc).onclick = () => C.pegarTerreno?.();
     pintarTabla();
     await Promise.all([prepararFormulario(vc), montar(preferido)]);
@@ -653,7 +721,7 @@ export function instalarGeo(C) {
       }
       if (['z', 'altura', 'poste_altura', 'poste_rotura', 'poste_peso'].includes(k)) {
         const n = num(v); if (Number.isNaN(n)) throw new Error(`Valor no numérico: «${v}»`);
-        return cambiar(() => { S.apoyos[i][k] = n; if (k === 'z' && n != null && !S.apoyos[i].z_fuente) S.apoyos[i].z_fuente = 'manual'; if (k === 'z' && n == null) S.apoyos[i].z_fuente = null; }, k);
+        return cambiar(() => { S.apoyos[i][k] = n; if (k === 'z' && n != null) S.apoyos[i].z_fuente = 'manual'; if (k === 'z' && n == null) S.apoyos[i].z_fuente = null; }, k);
       }
       cambiar(() => { S.apoyos[i][k] = v === '' ? null : v; }, k);
     } catch (e) { toast(e.message, 'error'); pintarTabla(); }

@@ -1,7 +1,7 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
-import { detectarMotor } from './motor.js?v=8';
-import { dibujarPerfil, paginas, abscisaK } from './perfil.js?v=8';
-import { instalarGeo } from './geo-ui.js?v=8';
+import { detectarMotor } from './motor.js?v=9';
+import { dibujarPerfil, paginas, abscisaK } from './perfil.js?v=9';
+import { instalarGeo } from './geo-ui.js?v=9';
 
 const CLAVE = 'cm-proyecto-v2';
 const $ = (s, el = document) => el.querySelector(s);
@@ -570,7 +570,7 @@ function modalPegar(tipo) {
     }
     if (!nuevos.length) return toast('No se reconocieron filas válidas.', 'warn');
     const reemplazar = $('#chk-reemplazar').checked;
-    if (esTer) S.terreno = reemplazar ? nuevos : S.terreno.concat(nuevos).sort((a, b) => a.x - b.x);
+    if (esTer) { S.terreno = reemplazar ? nuevos : S.terreno.concat(nuevos).sort((a, b) => a.x - b.x); S.meta.terreno = null; }
     else S.apoyos = reemplazar ? nuevos : S.apoyos.concat(nuevos);
     m.cerrar(); marcarCambio(); ir('datos', true); toast(`${nuevos.length} filas importadas.`, 'success');
   };

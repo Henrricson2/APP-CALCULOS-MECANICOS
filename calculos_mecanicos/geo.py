@@ -475,3 +475,31 @@ def abscisas(puntos: list[tuple[float, float]]) -> list[float]:
         acc += distancia_geodesica(la1, lo1, la2, lo2)
         out.append(acc)
     return out
+
+
+def muestras_perfil(puntos: list[tuple[float, float]], paso_m: float = 10.0,
+                    max_muestras: int = 2000) -> dict:
+    """Puntos a lo largo del trazado para consultar el modelo de elevación.
+
+    Incluye cada estructura (con su índice) y puntos intermedios cada `paso_m` metros
+    (se agranda el paso si se superaría `max_muestras`). La abscisa x coincide con la
+    usada en el cálculo (distancia geodésica acumulada desde la primera estructura).
+    """
+    if len(puntos) < 2:
+        raise ErrorGeo("Se necesitan al menos 2 estructuras con coordenadas.")
+    xs = abscisas(puntos)
+    total = xs[-1]
+    paso = max(float(paso_m), total / max(max_muestras - len(puntos), 1))
+    out = []
+    for i, ((la1, lo1), (la2, lo2)) in enumerate(zip(puntos[:-1], puntos[1:])):
+        out.append({"lat": la1, "lon": lo1, "x": round(xs[i], 3), "apoyo": i})
+        largo = xs[i + 1] - xs[i]
+        n = int(largo // paso)
+        for k in range(1, n + 1):
+            t = k * paso / largo
+            if largo - k * paso < paso * 0.3:   # no dejar un punto pegado a la siguiente estructura
+                break
+            out.append({"lat": la1 + t * (la2 - la1), "lon": lo1 + t * (lo2 - lo1),
+                        "x": round(xs[i] + k * paso, 3), "apoyo": None})
+    out.append({"lat": puntos[-1][0], "lon": puntos[-1][1], "x": round(total, 3), "apoyo": len(puntos) - 1})
+    return {"muestras": out, "longitud_m": round(total, 3), "paso_m": round(paso, 2)}

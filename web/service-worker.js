@@ -1,7 +1,7 @@
 // Igual que la app de APUs: network-first para el código propio, cache-first para
 // recursos estáticos y para Python en el navegador (Pyodide, ~40 MB, se descarga una vez).
-const CACHE = 'calculos-mt-v8';
-const APP = ['./', './index.html', './styles.css?v=8', './js/app.js?v=8', './js/motor.js?v=8', './js/perfil.js?v=8', './js/geo-ui.js?v=8', './js/mapa.js?v=8',
+const CACHE = 'calculos-mt-v9';
+const APP = ['./', './index.html', './styles.css?v=9', './js/app.js?v=9', './js/motor.js?v=9', './js/perfil.js?v=9', './js/geo-ui.js?v=9', './js/mapa.js?v=9', './js/elevacion.js',
   './manifest.webmanifest', './icon.svg', './icon-192.png', './defaults.json', './ejemplo.json'];
 
 self.addEventListener('install', (e) => {

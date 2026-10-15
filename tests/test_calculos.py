@@ -438,3 +438,36 @@ def test_importacion_reconoce_columnas_de_poste():
     m = I.sugerir_mapeo(["Poste", "Latitud", "Longitud", "Cota", "Altura poste", "Carga rotura", "Peso", "Tipo"])
     assert m["poste_altura"] == "Altura poste" and m["poste_rotura"] == "Carga rotura" and m["poste_peso"] == "Peso"
     assert "altura" not in m
+
+
+# ------------------------------------------------------------- perfil del terreno desde lat/lon
+def test_muestras_perfil_abscisas_y_estructuras():
+    from calculos_mecanicos import geo
+    pts = [(2.9273, -75.2819), (2.9281, -75.2812), (2.9290, -75.2805)]
+    r = geo.muestras_perfil(pts, 10)
+    m = r["muestras"]
+    xs = [p["x"] for p in m]
+    assert all(b > a for a, b in zip(xs, xs[1:])) and xs[0] == 0
+    assert [p["apoyo"] for p in m if p["apoyo"] is not None] == [0, 1, 2]
+    assert r["longitud_m"] == pytest.approx(geo.abscisas(pts)[-1], abs=1e-3)
+    assert max(b - a for a, b in zip(xs, xs[1:])) <= 10.0 + 1e-6
+    r2 = geo.muestras_perfil(pts, 1, max_muestras=50)
+    assert len(r2["muestras"]) <= 50
+
+
+def test_perfil_con_terreno_de_modelo_y_poste_sobre_el_terreno():
+    from calculos_mecanicos import geo, motor
+    pts = [(2.9273, -75.2819), (2.9281, -75.2812), (2.9290, -75.2805)]
+    m = geo.muestras_perfil(pts, 10)["muestras"]
+    # terreno con una loma a mitad del primer vano
+    terreno = [{"x": p["x"], "cota": 440 + (8 if 50 < p["x"] < 70 else 0)} for p in m]
+    ap = [{"nombre": f"E{i+1}", "lat": la, "lon": lo, "z": 440 + (3 if i == 1 else 0), "tipo": "R" if i != 1 else "S",
+           "poste_altura": 12, "poste_rotura": 750} for i, (la, lo) in enumerate(pts)]
+    r = motor.calcular({"proyecto": {}, "apoyos": ap, "terreno": terreno})
+    assert r["ok"], r.get("errores")
+    t = r["perfil"]["terreno"]
+    x1 = r["perfil"]["apoyos"][1]["x"]
+    k = min(range(len(t["x"])), key=lambda j: abs(t["x"][j] - x1))
+    assert t["y"][k] == pytest.approx(443)           # el terreno pasa por la base del poste (Z corregida)
+    v = dict(zip(r["vanos"]["columnas"], r["vanos"]["filas"][0]))
+    assert 50 < v["X dist. mín."] < 70               # la loma intermedia gobierna la distancia
