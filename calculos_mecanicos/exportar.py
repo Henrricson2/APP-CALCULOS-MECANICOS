@@ -15,6 +15,8 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
+import math
+
 import numpy as np
 import pandas as pd
 
@@ -306,7 +308,8 @@ def exportar_pdf(res: ResultadoPlantillado, ruta: str | Path) -> Path:
 # DXF
 # ===========================================================================
 _CAPAS = {"TERRENO": 30, "DIST_SEGURIDAD": 1, "CONDUCTOR": 5, "CONDUCTOR_FRIO": 4,
-          "POSTES": 7, "APOYOS": 1, "TEXTOS_APOYOS": 2, "ABSCISAS": 3, "FLECHAS": 6}
+          "POSTES": 7, "APOYOS": 1, "TEXTOS_APOYOS": 2, "ABSCISAS": 3, "FLECHAS": 6,
+          "EJES": 7, "CUADRICULA": 8, "ROTULO": 7}
 
 
 class _DXFR12:
@@ -385,13 +388,39 @@ def exportar_dxf(res: ResultadoPlantillado, ruta: str | Path, forzar_r12: bool =
         d = _DXFR12()
 
     s = res.proyecto.salida
-    ev = s.exageracion_vertical_dxf
+    # Escala del dibujo: X 1:1 (1 unidad = 1 m) y Y ev:1 (alturas ×ev; por defecto 5, igual que el
+    # perfil en pantalla/PDF). Las cotas rotuladas en el eje son las reales.
+    ev = float(getattr(s, "exageracion_vertical_perfil", 0) or 0) or float(s.exageracion_vertical_dxf or 1)
     h = s.altura_texto_dxf
     ap = res.apoyos
     x0 = ap["X (m)"].iloc[0]
+    xf = ap["X (m)"].iloc[-1]
     yref = float(ap["Cota amarre (m)"].min())
-    Y = lambda y: yref + (y - yref) * ev       # exageración vertical (1 = escala 1:1)
+    Y = lambda y: yref + (y - yref) * ev       # exageración vertical (1 = escala natural)
     P = lambda x, y: (float(x), float(Y(y)))
+
+    # eje vertical con cotas reales, cuadrícula y rótulo de escala
+    paso = float(getattr(s, "intervalo_cotas_m", 5) or 5)
+    ys_dib = [float(v) for v in ap["Cota amarre (m)"]] + [float(v) for v in ap["Cota Y (m)"]]
+    for c in res.catenarias:
+        ys_dib.append(float(c.y(c.x_flecha_maxima)))
+    if res.datos.terreno is not None:
+        ys_dib += [float(v) for v in res.datos.terreno["cota"]]
+    y_lo = math.floor((min(ys_dib) - 2) / paso) * paso
+    y_hi = math.ceil((max(ys_dib) + res.proyecto.criterios.distancia_minima_terreno_m + 2) / paso) * paso
+    xe = x0 - 3 * h                                  # eje a la izquierda del primer apoyo
+    d.linea(P(xe, y_lo), P(xe, y_hi), "EJES")
+    d.linea(P(xe, y_lo), P(xf, y_lo), "EJES")
+    yv = y_lo
+    while yv <= y_hi + 1e-9:
+        d.linea(P(xe - h * 0.6, yv), P(xe, yv), "EJES")
+        d.linea(P(xe, yv), P(xf, yv), "CUADRICULA")
+        etq = f"{yv:g}"
+        d.texto(etq, (xe - h * (0.9 + 0.75 * len(etq)), Y(yv) - h * 0.4), h * 0.8, "EJES", centrado=False)
+        yv += paso
+    d.texto("Cota (m)", (xe, Y(y_hi) + 1.5 * h), h, "EJES")
+    d.texto(f"PERFIL {res.proyecto.nombre} - ESCALA X 1:1 / Y {ev:g}:1 (alturas x{ev:g}) - cotas cada {paso:g} m",
+            (x0, Y(y_hi) + 4 * h), h * 1.2, "ROTULO", centrado=False)
 
     # terreno y línea de seguridad
     if res.datos.terreno is not None or res.datos.y_es_terreno:
@@ -423,8 +452,8 @@ def exportar_dxf(res: ResultadoPlantillado, ruta: str | Path, forzar_r12: bool =
         d.circulo(P(xs, ya), 0.3, "APOYOS")
         d.texto(str(r["Apoyo"]), (xs, Y(ya) + 1.5 * h), h, "TEXTOS_APOYOS")
         ab = xs - x0
-        base = Y(min(yt, ya)) - 2.5 * h
-        d.texto(abscisa_k(ab), (xs, base), h * 0.8, "ABSCISAS")
+        d.linea(P(xs, y_lo), (float(xs), Y(y_lo) - 0.6 * h), "EJES")
+        d.texto(abscisa_k(ab), (xs, Y(y_lo) - 2.2 * h), h * 0.8, "ABSCISAS")
     d.guardar(ruta)
     return ruta
 

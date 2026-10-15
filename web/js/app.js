@@ -340,9 +340,9 @@ const VISTAS = {
         ${campo('criterios.fluencia_delta_t_c', 'Fluencia: Δt equivalente (°C)', cr.fluencia_delta_t_c)}
         ${campo('criterios.n_fases', 'Número de fases', cr.n_fases, '', 'numeric')}
         ${campo('criterios.desperdicio_conductor', 'Desperdicio de conductor (fracción)', cr.desperdicio_conductor, '0.03 = 3 %')}
-        ${campo('salida.exageracion_vertical_perfil', 'Escala vertical del perfil (Y n:1)', p.salida.exageracion_vertical_perfil ?? 5, 'X 1:1 · Y 5:1 (alturas ×5). Si no cabe, se parte en tramos. 0 = sin escala')}
+        ${campo('salida.exageracion_vertical_perfil', 'Escala vertical del perfil (Y n:1)', p.salida.exageracion_vertical_perfil ?? 5, 'X 1:1 · Y 5:1 (alturas ×5) en pantalla, PDF y DXF. En pantalla/PDF, si no cabe se parte en tramos')}
         ${campo('salida.intervalo_cotas_m', 'Intervalo de cotas del perfil (m)', p.salida.intervalo_cotas_m ?? 5, 'Líneas del eje Y cada 5 m (pantalla y PDF)')}
-        ${campo('salida.exageracion_vertical_dxf', 'Exageración vertical DXF', p.salida.exageracion_vertical_dxf, '1 = escala 1:1')}
+
       </div></div>
       <div class="card"><div class="section-head"><h2>Postes y templetes</h2><span class="muted small">Verifíquelos contra RETIE y la norma del operador de red</span></div><div class="form-grid cols-3">
         <label class="field-group"><span class="field-label">Hipótesis de cargas</span><select class="select" data-path="criterios.hipotesis_estructuras" data-texto="1">${Object.keys(p.hipotesis).map((k) => `<option ${k === (cr.hipotesis_estructuras || 'TMAX') ? 'selected' : ''}>${k}</option>`).join('')}</select><span class="field-help">Viento máximo y tensión de esa hipótesis</span></label>
