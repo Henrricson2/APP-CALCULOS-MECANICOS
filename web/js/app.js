@@ -1,7 +1,7 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
-import { detectarMotor } from './motor.js?v=11';
-import { dibujarPerfil, paginas, paginasEscala, abscisaK } from './perfil.js?v=11';
-import { instalarGeo } from './geo-ui.js?v=11';
+import { detectarMotor } from './motor.js?v=12';
+import { dibujarPerfil, paginas, paginasEscala, perfilInteractivo, abscisaK } from './perfil.js?v=12';
+import { instalarGeo } from './geo-ui.js?v=12';
 
 const CLAVE = 'cm-proyecto-v2';
 const $ = (s, el = document) => el.querySelector(s);
@@ -294,7 +294,10 @@ const VISTAS = {
       <div class="card stat"><span class="stat-label">Advertencias</span><span class="stat-value">${r.advertencias.length}</span><span class="stat-note"><a href="#advertencias">Ver detalle →</a></span></div>
       <div class="card stat"><span class="stat-label">Motor de cálculo</span><span class="stat-value" style="font-size:16px">${h(S.motor.etiqueta)}</span><span class="stat-note">Python v${h(S.motor.version || '')}</span></div>
     </div>
-    <div class="card" style="margin-top:18px"><div class="section-head"><h2>Perfil completo</h2><div class="actions">${botonColocar()}<button class="btn btn-small btn-soft" data-act="ir-perfil">Ver por páginas →</button></div></div>${avisoColocar()}<div class="perfil-wrap" id="perfil-mini"></div></div>`;
+    <div class="card" style="margin-top:18px"><div class="section-head"><h2>Perfil completo</h2><div class="actions">${botonColocar()}<button class="btn btn-small btn-soft" data-act="ir-perfil">Ver por páginas →</button></div></div>${avisoColocar()}
+    <div class="zoom-bar"><div class="zoom-ctl"><button class="btn btn-small" id="zm-mas" title="Acercar">＋</button><button class="btn btn-small" id="zm-menos" title="Alejar">－</button><button class="btn btn-small" id="zm-todo" title="Ver toda la línea">⤢ Ver todo</button></div>
+      <span class="small muted" id="zm-info"></span><span class="small muted zoom-ayuda">Rueda del ratón o pellizco: zoom · Arrastrar: mover · Doble clic: acercar</span></div>
+    <div class="perfil-wrap" id="perfil-mini"></div></div>`;
   },
 
   datos() {
@@ -461,8 +464,13 @@ const ENLACES = {
     $$('[data-tabres]', vc).forEach((l) => l.addEventListener('click', () => { S.tabRes = l.dataset.tabres; }));
     const mini = $('#perfil-mini', vc);
     if (mini && S.resultado) {
-      const n = S.resultado.perfil.vanos.length;
-      dibujarPerfil(mini, S.resultado.perfil, 0, n, { tipApoyo, tipVano, pasoY: S.proyecto.salida?.intervalo_cotas_m ?? 5, ...(S.colocando ? { onColocar: colocarEnPerfil } : {}) });
+      S.zoomResumen = S.zoomResumen || {};
+      const info = $('#zm-info', vc);
+      const ctl = perfilInteractivo(mini, S.resultado.perfil, {
+        tipApoyo, tipVano, pasoY: S.proyecto.salida?.intervalo_cotas_m ?? 5, ...(S.colocando ? { onColocar: colocarEnPerfil } : {}),
+        onVentana: (v, X0, X1) => { info.textContent = v ? `Mostrando ${abscisaK(v[0] - X0)} – ${abscisaK(v[1] - X0)} de ${abscisaK(X1 - X0)} (${nf(v[1] - v[0], 0)} m)` : `Toda la línea · ${abscisaK(X1 - X0)}`; },
+      }, S.zoomResumen);
+      $('#zm-mas', vc).onclick = ctl.acercar; $('#zm-menos', vc).onclick = ctl.alejar; $('#zm-todo', vc).onclick = ctl.todo;
     }
   },
   datos(vc) {

@@ -325,3 +325,12 @@ tr.row-actual td { background: var(--soft-teal); }
 /* registro masivo desde Excel */
 .dm-masiva { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; background: var(--soft-teal); border: 1px solid rgba(33,140,132,.25); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
 .dm-masiva .actions { gap: 6px; }
+
+/* zoom del perfil (Resumen) */
+.zoom-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 8px; }
+.zoom-ctl { display: flex; gap: 4px; }
+.zoom-ctl .btn { min-width: 34px; justify-content: center; }
+.zoom-ayuda { margin-left: auto; }
+.perfil-zoom { cursor: grab; user-select: none; }
+.perfil-zoom.arrastrando { cursor: grabbing; }
+@media (max-width: 640px) { .zoom-ayuda { display: none; } }
