@@ -37,8 +37,8 @@ export function dibujarPerfil(contenedor, perfil, inicio, fin, opciones = {}) {
   const anchoPx = Math.max(320, contenedor.clientWidth || 900);
   const movil = anchoPx < 640;
   const W = Math.min(Math.max(anchoPx, 340), 1500);
-  let H = Math.round(movil ? W * 0.9 : Math.max(380, W * 0.42));
-  const exV = +opciones.exageracion > 0 ? +opciones.exageracion : 0; // 0 = libre (llenar el recuadro)
+  const H = Math.round(movil ? W * 0.9 : Math.max(380, W * 0.42));
+  const pasoY = +opciones.pasoY > 0 ? +opciones.pasoY : 5; // intervalo de cotas del eje Y (m)
   const M = { l: movil ? 46 : 60, r: movil ? 30 : 44, t: 30, b: movil ? 58 : 46 };
   const fs = movil ? 10.5 : 11.5;
 
@@ -63,29 +63,24 @@ export function dibujarPerfil(contenedor, perfil, inicio, fin, opciones = {}) {
   const marg = Math.max(2, 0.1 * (yMax - yMin));
   yMin -= marg; yMax += marg * 1.6;
 
-  // Escala: X 1:1 con Y ampliada exV veces (relación fija). La altura del dibujo se ajusta;
-  // si quedaría demasiado alto, se reduce todo (también el ancho) para conservar la relación.
-  let kx = (W - M.l - M.r) / (x1 - x0 || 1), ky = (H - M.t - M.b) / (yMax - yMin || 1);
-  if (exV) {
-    const minH = movil ? 220 : 280, maxH = movil ? W * 1.3 : Math.max(420, Math.min(760, window.innerHeight * 0.75));
-    ky = kx * exV;
-    let alto = (yMax - yMin) * ky;
-    if (alto > maxH) { ky = maxH / (yMax - yMin); kx = ky / exV; alto = maxH; }
-    if (alto < minH) { const extra = (minH / ky - (yMax - yMin)) / 2; yMin -= extra; yMax += extra; alto = minH; }
-    H = Math.round(alto + M.t + M.b);
-  }
-  const sx = (x) => M.l + (x - x0) * kx;
-  const sy = (y) => H - M.b - (y - yMin) * ky;
+  const sx = (x) => M.l + (x - x0) / (x1 - x0 || 1) * (W - M.l - M.r);
+  const sy = (y) => H - M.b - (y - yMin) / (yMax - yMin || 1) * (H - M.t - M.b);
   const xDer = sx(x1);
   const pts = (xs, yv) => xs.map((x, i) => `${sx(x).toFixed(1)},${sy(yv[i]).toFixed(1)}`).join(' ');
 
   const p = [];
   p.push(`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Perfil de la línea, vanos ${inicio + 1} a ${fin}" font-family="Inter, system-ui, Segoe UI, sans-serif">`);
   // rejilla Y
-  const paso = pasoBonito(yMax - yMin, movil ? 5 : 7);
-  for (let y = Math.ceil(yMin / paso) * paso; y <= yMax; y += paso) {
-    p.push(`<line x1="${M.l}" x2="${xDer}" y1="${sy(y)}" y2="${sy(y)}" stroke="${C.grid}"/>`);
-    p.push(`<text x="${M.l - 6}" y="${sy(y) + 4}" text-anchor="end" font-size="${fs - 1}" fill="${C.muted}">${+y.toFixed(2)}</text>`);
+  // rejilla Y cada `pasoY` m (5 m por defecto); si las líneas quedan muy juntas se rotula una de cada n
+  yMin = Math.floor(yMin / pasoY) * pasoY; yMax = Math.ceil(yMax / pasoY) * pasoY;
+  const pxPaso = (H - M.t - M.b) * pasoY / (yMax - yMin || 1);
+  const cadaRotulo = Math.max(1, Math.ceil((fs + 4) / Math.max(pxPaso, 0.1)));
+  if (pxPaso >= 3) {
+    for (let k = 0, y = yMin; y <= yMax + 1e-9; y += pasoY, k++) {
+      const fuerte = k % cadaRotulo === 0;
+      p.push(`<line x1="${M.l}" x2="${xDer}" y1="${sy(y)}" y2="${sy(y)}" stroke="${C.grid}" ${fuerte ? '' : 'stroke-opacity="0.55"'}/>`);
+      if (fuerte) p.push(`<text x="${M.l - 6}" y="${sy(y) + 4}" text-anchor="end" font-size="${fs - 1}" fill="${C.muted}">${+y.toFixed(2)}</text>`);
+    }
   }
   // terreno
   if (ter) {
@@ -144,7 +139,7 @@ export function dibujarPerfil(contenedor, perfil, inicio, fin, opciones = {}) {
   });
   p.push(`<line x1="${M.l}" x2="${xDer}" y1="${H - M.b}" y2="${H - M.b}" stroke="${C.muted}"/>`);
   p.push(`<text x="${M.l}" y="${M.t - 12}" font-size="${fs}" font-weight="700" fill="${C.texto}">Cota (m)</text>`);
-  if (exV) p.push(`<text x="${xDer}" y="${M.t - 12}" text-anchor="end" font-size="${fs - 1}" fill="${C.muted}">Escala X 1:1 · Y 1:${+exV.toFixed(2)} (alturas ×${+exV.toFixed(2)})</text>`);
+  p.push(`<text x="${xDer}" y="${M.t - 12}" text-anchor="end" font-size="${fs - 1}" fill="${C.muted}">Cotas cada ${+pasoY.toFixed(2)} m</text>`);
   p.push('</svg>');
 
   contenedor.innerHTML = p.join('') + '<div class="tip" hidden></div>';

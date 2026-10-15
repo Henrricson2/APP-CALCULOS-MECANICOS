@@ -92,14 +92,18 @@ def dibujar_perfil(ax, res: ResultadoPlantillado, inicio: int, fin: int) -> None
     marg = max(3.0, 0.15 * (hi - lo))
     ax.set_ylim(lo - marg, hi + marg)
     ax.set_xlim(xa - 0.01 * (xb - xa), xb + 0.01 * (xb - xa))
-    ex = float(getattr(res.proyecto.salida, "exageracion_vertical_perfil", 0) or 0)
-    if ex > 0:  # relación fija de escalas: 1 m vertical se dibuja `ex` veces más largo que 1 m horizontal
-        ax.set_aspect(ex, adjustable="datalim")
+    paso_y = float(getattr(res.proyecto.salida, "intervalo_cotas_m", 0) or 0)
+    if paso_y > 0:  # cotas cada `paso_y` m (5 m por defecto); rótulos espaciados si quedan muy juntos
+        from matplotlib.ticker import MultipleLocator
+        lo_y, hi_y = ax.get_ylim()
+        n = max(1, int(-(-((hi_y - lo_y) / paso_y) // 40)))   # máx. ~40 rótulos
+        ax.yaxis.set_major_locator(MultipleLocator(paso_y * n))
+        ax.yaxis.set_minor_locator(MultipleLocator(paso_y))
+        ax.grid(True, which="minor", axis="y", alpha=0.15)
     ax.grid(True, alpha=0.35)
     ax.set_xlabel("Abscisa (K + m)")
     ax.set_ylabel("Cota (m)")
-    ax.set_title(f"Plantillado – vanos {inicio + 1} a {fin}"
-                 + (f"   ·   Escala X 1:1 · Y 1:{ex:g}" if ex > 0 else ""), fontsize=11)
+    ax.set_title(f"Plantillado – vanos {inicio + 1} a {fin}", fontsize=11)
     ax.legend(loc="upper right", fontsize=7, framealpha=0.85)
 
 

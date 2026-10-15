@@ -340,7 +340,7 @@ const VISTAS = {
         ${campo('criterios.fluencia_delta_t_c', 'Fluencia: Δt equivalente (°C)', cr.fluencia_delta_t_c)}
         ${campo('criterios.n_fases', 'Número de fases', cr.n_fases, '', 'numeric')}
         ${campo('criterios.desperdicio_conductor', 'Desperdicio de conductor (fracción)', cr.desperdicio_conductor, '0.03 = 3 %')}
-        ${campo('salida.exageracion_vertical_perfil', 'Escala vertical del perfil (Y 1:n)', p.salida.exageracion_vertical_perfil ?? 5, 'X 1:1 · Y 1:5 = alturas ×5 (pantalla y PDF). 0 = libre')}
+        ${campo('salida.intervalo_cotas_m', 'Intervalo de cotas del perfil (m)', p.salida.intervalo_cotas_m ?? 5, 'Líneas del eje Y cada 5 m (pantalla y PDF)')}
         ${campo('salida.exageracion_vertical_dxf', 'Exageración vertical DXF', p.salida.exageracion_vertical_dxf, '1 = escala 1:1')}
       </div></div>
       <div class="card"><div class="section-head"><h2>Postes y templetes</h2><span class="muted small">Verifíquelos contra RETIE y la norma del operador de red</span></div><div class="form-grid cols-3">
@@ -439,7 +439,7 @@ const ENLACES = {
     const mini = $('#perfil-mini', vc);
     if (mini && S.resultado) {
       const n = S.resultado.perfil.vanos.length;
-      dibujarPerfil(mini, S.resultado.perfil, 0, n, { tipApoyo, tipVano, exageracion: S.proyecto.salida?.exageracion_vertical_perfil ?? 5 });
+      dibujarPerfil(mini, S.resultado.perfil, 0, n, { tipApoyo, tipVano, pasoY: S.proyecto.salida?.intervalo_cotas_m ?? 5 });
     }
   },
   datos(vc) {
@@ -502,7 +502,7 @@ const ENLACES = {
     const pags = paginas(S.resultado.perfil, porPagina());
     const pintar = () => {
       const [a, b] = S.pagina === -1 ? [0, S.resultado.perfil.vanos.length] : pags[S.pagina];
-      dibujarPerfil(cont, S.resultado.perfil, a, b, { tipApoyo, tipVano, exageracion: S.proyecto.salida?.exageracion_vertical_perfil ?? 5 });
+      dibujarPerfil(cont, S.resultado.perfil, a, b, { tipApoyo, tipVano, pasoY: S.proyecto.salida?.intervalo_cotas_m ?? 5 });
       $('#pag-sel', vc).value = String(S.pagina);
     };
     $('#pag-ant', vc).onclick = () => { S.pagina = S.pagina <= 0 ? pags.length - 1 : S.pagina - 1; pintar(); };
