@@ -523,3 +523,84 @@ def test_advertencia_estructura_mal_ubicada():
     res.advertencias = []
     motor._advertir_geometria(datos, res)
     assert res.advertencias == []
+
+
+# ------------------------------------------------------------- varios circuitos en la misma estructura
+def _linea_multi(circuitos, n=5, poste=14):
+    from calculos_mecanicos import motor
+    ap = [{"nombre": f"E{i+1}", "lat": 2.9273 + 0.0008 * i, "lon": -75.2819 + (0.0004 if i == 2 else 0), "z": 440 + i,
+           "tipo": "R" if i in (0, n - 1) else "S", "poste_altura": poste, "poste_rotura": 1050} for i in range(n)]
+    r = motor.calcular({"proyecto": {"circuitos": circuitos}, "apoyos": ap})
+    assert r["ok"], r.get("errores")
+    return r
+
+
+def _filas(t):
+    return [dict(zip(t["columnas"], f)) for f in t["filas"]]
+
+
+def test_circuito_identico_duplica_cargas_del_poste():
+    from dataclasses import asdict
+    from calculos_mecanicos.config import Conductor
+    base = _linea_multi([])
+    # mismo conductor, mismo tramo y misma altura (bajo_cima = 0.20) que el principal
+    dup = _linea_multi([{"nombre": "C2", "tension_kv": 13.2, "conductor": asdict(Conductor()), "bajo_cima_m": 0.2}])
+    p0, p1 = _filas(base["postes"]), _filas(dup["postes"])
+    for a, b in zip(p0, p1):
+        assert b["Tiro conductores TMAX (kgf)"] == pytest.approx(2 * a["Tiro conductores TMAX (kgf)"], rel=1e-3, abs=0.2)
+        assert b["Viento conductores (kgf)"] == pytest.approx(2 * a["Viento conductores (kgf)"], rel=1e-3)
+        assert b["Circuitos"] == "Circuito 1, C2"
+    # separación nula: circuitos superpuestos → no cumple
+    sep = _filas(dup["separaciones"])
+    assert len(sep) == 4 and all(s["Cumple separación"] == "NO" for s in sep)
+    assert dup["resumen"]["Circuitos"] == 2
+
+
+def test_circuito_por_tramo_y_altura_de_montaje():
+    from dataclasses import asdict
+    from calculos_mecanicos.config import BIBLIOTECA_CONDUCTORES
+    rv = asdict(BIBLIOTECA_CONDUCTORES["1/0 ACSR RAVEN 6/1"])
+    r = _linea_multi([{"nombre": "C2 13,8", "tension_kv": 13.8, "conductor": rv, "desde": "E2", "hasta": "E4", "bajo_cima_m": 1.6}])
+    c = r["perfil"]["circuitos"][0]
+    assert (c["i0"], c["i1"]) == (1, 3) and len(c["vanos"]) == 2 and c["vanos"][0]["i"] == 1
+    # amarre: 14 − (0.1·14 + 0.6) − 1.6 = 10.4 m sobre el terreno (E2 en cota 441)
+    assert c["ya"][0] == pytest.approx(441 + 10.4, abs=1e-3)
+    cargas = _filas(r["cargas_circuitos"])
+    e2 = [f for f in cargas if f["Apoyo"] == "E2"]
+    assert {f["Circuito"] for f in e2} == {"Circuito 1", "C2 13,8"}
+    c2 = next(f for f in e2 if f["Circuito"] == "C2 13,8")
+    assert c2["Función"] == "Terminal" and c2["Altura amarre (m)"] == pytest.approx(10.4)
+    assert c2["Tiro (kgf)"] == pytest.approx(3 * c2["H der. TMAX (kgf)"], rel=1e-3)   # terminal: n·H
+    # E1 y E5 solo llevan el principal
+    assert not any(f["Apoyo"] in ("E1", "E5") and f["Circuito"] != "Circuito 1" for f in cargas)
+    # el momento del poste es la suma de los momentos de cada circuito
+    p = {f["Apoyo"]: f for f in _filas(r["postes"])}
+    suma = sum(f["Momento en la base (kgf·m)"] for f in e2)
+    assert p["E2"]["Momento conductores (kgf·m)"] == pytest.approx(suma, abs=0.5)
+    sep = _filas(r["separaciones"])
+    assert [s["Vano"] for s in sep] == [2, 3]
+    assert all(s["Circuito superior"] == "Circuito 1" for s in sep)
+    assert sep[0]["Separación en apoyos (m)"] == pytest.approx(1.4, abs=1e-3)
+
+
+def test_circuito_con_estructura_inexistente_da_error_claro():
+    from calculos_mecanicos import motor
+    ap = [{"nombre": f"E{i+1}", "lat": 2.9273 + 0.0008 * i, "lon": -75.2819, "z": 440, "poste_altura": 12} for i in range(3)]
+    r = motor.calcular({"proyecto": {"circuitos": [{"nombre": "C2", "desde": "X9"}]}, "apoyos": ap})
+    assert not r["ok"] and "X9" in r["errores"][0]
+
+
+def test_exportaciones_con_varios_circuitos():
+    from dataclasses import asdict
+    import io
+    import openpyxl
+    from calculos_mecanicos import motor
+    from calculos_mecanicos.config import BIBLIOTECA_CONDUCTORES
+    ap = [{"nombre": f"E{i+1}", "lat": 2.9273 + 0.0008 * i, "lon": -75.2819, "z": 440 + i, "poste_altura": 14, "poste_rotura": 1050} for i in range(4)]
+    pl = {"proyecto": {"circuitos": [{"nombre": "C2/34,5", "tension_kv": 34.5, "bajo_cima_m": 1.4,
+                                      "conductor": asdict(BIBLIOTECA_CONDUCTORES["4/0 ACSR PENGUIN 6/1"])}]}, "apoyos": ap}
+    b, _, _ = motor.exportar(pl, "xlsx")
+    hojas = openpyxl.load_workbook(io.BytesIO(b)).sheetnames
+    assert {"Circuitos", "Separación circuitos", "Cargas por circuito", "Vanos C234,5"} <= set(hojas)
+    d, _, _ = motor.exportar(pl, "dxf")
+    assert b"CIRCUITOS" in d

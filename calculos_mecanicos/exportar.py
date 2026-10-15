@@ -38,6 +38,17 @@ def paginas(res: ResultadoPlantillado) -> list[tuple[int, int]]:
     return [(i, min(i + paso, n)) for i in range(0, n, paso)]
 
 
+# Colores de los circuitos adicionales (el principal es azul)
+COLORES_CIRCUITOS = ["#d35400", "#8e44ad", "#16a085", "#b03a2e", "#7d6608", "#2e4053"]
+
+
+def _vanos_circuitos(res, i: int, j: int):
+    """(número de circuito, ResultadoCircuito, índice local, catenaria) de los vanos [i, j)."""
+    for n, c in enumerate(getattr(res, "circuitos", None) or []):
+        for g in range(max(i, c.i0), min(j, c.i1)):
+            yield n, c, g - c.i0, c.res.catenarias[g - c.i0]
+
+
 # Escalas normalizadas de plano (1:N)
 _ESCALAS = [100, 125, 200, 250, 500, 750, 1000, 1250, 1500, 2000, 2500, 5000, 7500, 10000, 20000, 25000, 50000]
 
@@ -47,6 +58,8 @@ def _rango_y(res: ResultadoPlantillado, i: int, j: int) -> tuple[float, float]:
     ys = []
     for c, cf in zip(res.catenarias[i:j], res.catenarias_frias[i:j]):
         ys += [float(c.y1), float(c.y2), float(c.y(c.x_flecha_maxima)), float(cf.y(cf.x_flecha_maxima))]
+    for _, _, _, c in _vanos_circuitos(res, i, j):
+        ys += [float(c.y1), float(c.y2), float(c.y(c.x_flecha_maxima))]
     ap = res.apoyos
     ys += list(ap["Cota Y (m)"].iloc[i:j + 1]) + list(ap["Cota amarre (m)"].iloc[i:j + 1])
     if res.datos.terreno is not None or res.datos.y_es_terreno:
@@ -125,6 +138,18 @@ def dibujar_perfil(ax, res: ResultadoPlantillado, inicio: int, fin: int, escala=
                     fontsize=7, color="#1f5aa6")
         if fila.get("Cumple distancia") == "NO":
             ax.plot(fila["X dist. mín."], c.y(fila["X dist. mín."]), "x", color="red", ms=10, mew=2)
+
+    vistos = set()
+    for n, cr, k, c in _vanos_circuitos(res, inicio, fin):
+        col = COLORES_CIRCUITOS[n % len(COLORES_CIRCUITOS)]
+        x, y = c.muestrear(npts)
+        ax.plot(x, y, color=col, lw=1.6, label=None if n in vistos else f"{cr.nombre} ({cr.circuito.tension_kv:g} kV)")
+        ax.plot([c.x1, c.x2], [c.y1, c.y2], "o", color=col, ms=3.5, zorder=5)
+        vistos.add(n)
+        ys_all += [y.min(), y.max()]
+        fila = cr.res.vanos.iloc[k]
+        if fila.get("Cumple distancia") == "NO":
+            ax.plot(fila["X dist. mín."], c.y(fila["X dist. mín."]), "x", color="red", ms=9, mew=2)
 
     for j in range(inicio, fin + 1):
         r = ap.iloc[j]
@@ -205,6 +230,20 @@ def exportar_excel(res: ResultadoPlantillado, ruta: str | Path) -> Path:
     }
     if getattr(res, "postes", None) is not None:
         hojas["Postes y templetes"] = res.postes
+    if getattr(res, "tabla_circuitos", None) is not None:
+        hojas["Circuitos"] = res.tabla_circuitos
+        if res.separaciones is not None:
+            hojas["Separación circuitos"] = res.separaciones
+        if res.cargas_circuitos is not None:
+            hojas["Cargas por circuito"] = res.cargas_circuitos
+        usados = set(hojas)
+        for c in res.circuitos:
+            base = "Vanos " + "".join(ch for ch in c.nombre if ch not in '[]:*?/\\')
+            nom, k = base[:31], 2
+            while nom in usados:
+                nom = f"{base[:28]} {k}"; k += 1
+            usados.add(nom)
+            hojas[nom] = c.res.vanos
     if p.modo_flecha == "cambio_estado":
         hojas["Tabla de tendido"] = tabla_tendido(p.conductor, p.hipotesis,
                                                   list(range(20, 405, 5)),
@@ -226,7 +265,7 @@ def exportar_excel(res: ResultadoPlantillado, ruta: str | Path) -> Path:
                 ws.column_dimensions[get_column_letter(j)].width = min(max(10, largo + 2), 90)
             rojo = PatternFill("solid", fgColor="F8D7DA")
             enc = {c.value: c.column for c in ws[1]}
-            alertas = [(enc[k], v) for k, v in (("Cumple distancia", "NO"), ("Arrancamiento", "SÍ"),
+            alertas = [(enc[k], v) for k, v in (("Cumple distancia", "NO"), ("Arrancamiento", "SÍ"), ("Cumple separación", "NO"),
                                                          ("Estado", "REQUIERE TEMPLETE"), ("Estado", "TEMPLETE INSUFICIENTE"))
                        if k in enc]
             for fila in ws.iter_rows(min_row=2):
@@ -309,7 +348,7 @@ def exportar_pdf(res: ResultadoPlantillado, ruta: str | Path) -> Path:
 # ===========================================================================
 _CAPAS = {"TERRENO": 30, "DIST_SEGURIDAD": 1, "CONDUCTOR": 5, "CONDUCTOR_FRIO": 4,
           "POSTES": 7, "APOYOS": 1, "TEXTOS_APOYOS": 2, "ABSCISAS": 3, "FLECHAS": 6,
-          "EJES": 7, "CUADRICULA": 8, "ROTULO": 7}
+          "EJES": 7, "CUADRICULA": 8, "ROTULO": 7, "CIRCUITOS": 30, "TEXTOS_CIRCUITOS": 30}
 
 
 class _DXFR12:
@@ -404,6 +443,8 @@ def exportar_dxf(res: ResultadoPlantillado, ruta: str | Path, forzar_r12: bool =
     ys_dib = [float(v) for v in ap["Cota amarre (m)"]] + [float(v) for v in ap["Cota Y (m)"]]
     for c in res.catenarias:
         ys_dib.append(float(c.y(c.x_flecha_maxima)))
+    for c in getattr(res, "circuitos", None) or []:
+        ys_dib += [float(cc.y(cc.x_flecha_maxima)) for cc in c.res.catenarias]
     if res.datos.terreno is not None:
         ys_dib += [float(v) for v in res.datos.terreno["cota"]]
     y_lo = math.floor((min(ys_dib) - 2) / paso) * paso
@@ -443,6 +484,18 @@ def exportar_dxf(res: ResultadoPlantillado, ruta: str | Path, forzar_r12: bool =
         d.linea(P(xm, c.cuerda(xm)), P(xm, c.y(xm)), "FLECHAS")
         d.texto(f"a={c.vano:.2f} f={c.flecha:.2f}", P((c.x1 + c.x2) / 2, c.y(xm) - 2.5 * h / ev),
                 h * 0.7, "FLECHAS")
+
+    # circuitos adicionales (capa CIRCUITOS)
+    for c in getattr(res, "circuitos", None) or []:
+        for cc in c.res.catenarias:
+            x, y = cc.muestrear(s.puntos_por_vano)
+            d.polilinea([P(a, b) for a, b in zip(x, y)], "CIRCUITOS")
+            d.circulo(P(cc.x1, cc.y1), 0.25, "CIRCUITOS")
+        ult = c.res.catenarias[-1]
+        d.circulo(P(ult.x2, ult.y2), 0.25, "CIRCUITOS")
+        pri = c.res.catenarias[0]
+        d.texto(f"{c.nombre} {c.circuito.tension_kv:g} kV - {c.circuito.conductor.nombre}",
+                (float(pri.x1) + h, Y(pri.y1) - 1.5 * h), h * 0.8, "TEXTOS_CIRCUITOS", centrado=False)
 
     # apoyos, postes, textos, abscisas
     for _, r in ap.iterrows():

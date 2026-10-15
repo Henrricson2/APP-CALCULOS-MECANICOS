@@ -1,7 +1,7 @@
 // Etapa 1: proyectos persistentes, asistente de importación con sistemas de coordenadas,
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
 import { obtenerCotas, FUENTES, muestrasRecorrido, vincenty } from './elevacion.js';
-import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=14';
+import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=15';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
@@ -466,6 +466,15 @@ export function instalarGeo(C) {
       el.innerHTML = '<div class="empty" style="padding:22px"><div class="big">📍</div><h3>Aún no hay estructuras</h3><p>Escriba las coordenadas de la primera estructura arriba, importe un archivo (Excel, CSV, KML/KMZ) o active <b>＋ Nueva</b> y toque el mapa.</p></div>';
       return;
     }
+    // circuitos presentes en cada estructura (por tramos desde–hasta)
+    const nombres = S.apoyos.map((a) => String(a.nombre));
+    const circs = (S.proyecto.circuitos || []).filter((c) => c.activo !== false).map((c) => {
+      let i0 = c.desde ? nombres.indexOf(String(c.desde)) : 0, i1 = c.hasta ? nombres.indexOf(String(c.hasta)) : n - 1;
+      if (i0 > i1) [i0, i1] = [i1, i0];
+      return { nombre: c.nombre, i0, i1 };
+    }).filter((c) => c.i0 >= 0 && c.i1 >= 0);
+    const ppal = S.proyecto.criterios.nombre_circuito_principal || 'Circuito 1';
+    const celdaCirc = (i) => { const en = [ppal, ...circs.filter((c) => i >= c.i0 && i <= c.i1).map((c) => c.nombre)]; return `<td class="num small" title="${h(en.join(' · '))}"><span class="badge">${en.length}</span></td>`; };
     const filas = S.apoyos.map((a, i) => {
       const prev = S.apoyos[i - 1];
       const vano = prev && prev.E != null && a.E != null ? nf(Math.hypot(a.E - prev.E, a.N - prev.N), 1) : '—';
@@ -482,10 +491,10 @@ export function instalarGeo(C) {
         <td class="num muted small" title="Altura de amarre = poste − empotramiento − ${S.proyecto.criterios.amarre_bajo_cima_m ?? 0.2} m">${a.poste_altura ? nf(amarreDePoste(+a.poste_altura), 2) : (a.altura != null ? `<i>${nf(a.altura, 2)}</i>` : '—')}</td>
         <td><select data-k="tipo"><option value="S" ${a.tipo !== 'R' ? 'selected' : ''}>Susp.</option><option value="R" ${a.tipo === 'R' ? 'selected' : ''}>Ret.</option></select></td>
         <td><button class="tpl ${(a.templetes || []).length ? 'con' : ''}" data-a="tpl" title="Templetes de esta estructura">${(a.templetes || []).reduce((s, t) => s + (+t.cantidad || 0), 0) ? `⚓ ${(a.templetes || []).reduce((s, t) => s + (+t.cantidad || 0), 0)}` : '＋'}</button></td>
-        <td class="num muted small">${vano}</td>
+        ${circs.length ? celdaCirc(i) : ''}<td class="num muted small">${vano}</td>
         <td class="dm-acc"><button class="del" data-a="sube" title="Mover antes" ${i === 0 ? 'disabled' : ''}>↑</button><button class="del" data-a="baja" title="Mover después" ${i === n - 1 ? 'disabled' : ''}>↓</button><button class="del" data-a="bloq" title="${a.bloqueado ? 'Desbloquear' : 'Bloquear coordenadas'}">${a.bloqueado ? '🔒' : '🔓'}</button><button class="del" data-a="del" title="Eliminar" ${bl}>✕</button>${a.pos_original ? '<button class="del" data-a="rest" title="Volver a la posición original (antes de moverla en el mapa)">↺</button>' : ''}</td></tr>`;
     }).join('');
-    el.innerHTML = `<div class="table-wrap dm-tabla-wrap"><table class="grid-edit"><thead><tr><th>#</th><th>Estructura</th><th>Latitud</th><th>Longitud</th><th>Cota Z (m)</th><th title="Altura total del poste">Poste (m)</th><th title="Carga de rotura del poste">Rotura (kgf)</th><th>Peso (kg)</th><th title="Calculada desde el poste">Amarre (m)</th><th>Tipo</th><th>Templetes</th><th>Vano (m)</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`;
+    el.innerHTML = `<div class="table-wrap dm-tabla-wrap"><table class="grid-edit"><thead><tr><th>#</th><th>Estructura</th><th>Latitud</th><th>Longitud</th><th>Cota Z (m)</th><th title="Altura total del poste">Poste (m)</th><th title="Carga de rotura del poste">Rotura (kgf)</th><th>Peso (kg)</th><th title="Calculada desde el poste">Amarre (m)</th><th>Tipo</th><th>Templetes</th>${circs.length ? '<th title="Circuitos que lleva la estructura (Parámetros → Circuitos)">Circ.</th>' : ''}<th>Vano (m)</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`;
     $$('input[data-k], select[data-k]', el).forEach((inp) => inp.addEventListener('change', () => editarCampo(+inp.closest('tr').dataset.i, inp.dataset.k, inp.value)));
     $$('tbody tr', el).forEach((tr) => tr.addEventListener('focusin', () => seleccionar(+tr.dataset.i, true, false)));
     $$('[data-a]', el).forEach((b) => b.onclick = () => {

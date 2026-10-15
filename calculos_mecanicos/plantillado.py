@@ -52,6 +52,10 @@ class ResultadoPlantillado:
     resumen: dict
     advertencias: list[str] = field(default_factory=list)
     postes: pd.DataFrame | None = None     # verificación de postes y templetes
+    circuitos: list = field(default_factory=list)          # circuitos adicionales (multicircuito)
+    separaciones: pd.DataFrame | None = None               # separación vertical entre circuitos
+    tabla_circuitos: pd.DataFrame | None = None            # resumen por circuito
+    cargas_circuitos: pd.DataFrame | None = None           # aporte de cada circuito a cada poste
 
     def terreno(self, x):
         return _funcion_terreno(self.datos)(x)
@@ -219,6 +223,29 @@ def calcular_plantillado(datos: DatosLinea, proyecto: Proyecto) -> ResultadoPlan
         "Apoyos con arrancamiento": int((df_ap["Arrancamiento"] == "SÍ").sum()),
     }
     res = ResultadoPlantillado(proyecto, datos, secciones, cats, frias, df_vanos, df_ap, resumen, adv)
+    # ---------------------------------------------- varios circuitos en las mismas estructuras
+    if any(c.activo for c in proyecto.circuitos):
+        from .multicircuito import calcular_circuitos, separaciones, tabla_circuitos
+        res.circuitos = calcular_circuitos(datos, proyecto)
+        for c in res.circuitos:
+            res.advertencias.extend(c.advertencias)
+        res.separaciones = separaciones(res, res.circuitos)
+        res.tabla_circuitos = tabla_circuitos(res, res.circuitos)
+        n_sep = 0
+        if res.separaciones is not None:
+            malas = res.separaciones[res.separaciones["Cumple separación"] == "NO"]
+            n_sep = len(malas)
+            for _, f in malas.iterrows():
+                res.advertencias.append(
+                    f"Vano {f['Vano']} ({f['Apoyo inicial']}→{f['Apoyo final']}): separación entre "
+                    f"{f['Circuito superior']} y {f['Circuito inferior']} de {f['Separación mínima en el vano (m)']:.2f} m "
+                    f"(en apoyos {f['Separación en apoyos (m)']:.2f} m; se exige {f['Requerida en el vano (m)']:.2f} m en el vano "
+                    f"y {f['Requerida en apoyos (m)']:.2f} m en apoyos; superior con flecha máxima, inferior a temperatura media). "
+                    "Aumente la distancia entre crucetas o la tensión del circuito superior.")
+        tc = res.tabla_circuitos
+        res.resumen["Circuitos"] = 1 + len(res.circuitos)
+        res.resumen["Vanos sin distancia a terreno (otros circuitos)"] = int(tc["Vanos sin distancia a terreno"].iloc[1:].sum())
+        res.resumen["Separaciones entre circuitos que no cumplen"] = n_sep
     # ---------------------------------------------- postes y templetes
     from .estructuras import verificar_estructuras
     estructuras = getattr(datos, "estructuras", None)

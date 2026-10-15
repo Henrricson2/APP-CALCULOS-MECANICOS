@@ -1,7 +1,7 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
-import { detectarMotor } from './motor.js?v=14';
-import { dibujarPerfil, paginas, paginasEscala, perfilInteractivo, abscisaK } from './perfil.js?v=14';
-import { instalarGeo } from './geo-ui.js?v=14';
+import { detectarMotor } from './motor.js?v=15';
+import { dibujarPerfil, paginas, paginasEscala, perfilInteractivo, abscisaK, COLORES_CIRCUITOS } from './perfil.js?v=15';
+import { instalarGeo } from './geo-ui.js?v=15';
 
 const CLAVE = 'cm-proyecto-v2';
 const $ = (s, el = document) => el.querySelector(s);
@@ -265,6 +265,73 @@ const ACCIONES = {
 };
 
 // ================================================================== VISTAS
+// ------------------------------------------------- varios circuitos en las mismas estructuras
+const CAMPOS_CONDUCTOR = [['nombre', 'Nombre / calibre', 1], ['seccion_mm2', 'Sección (mm²)'], ['carga_rotura_kgf', 'Carga de rotura (kgf)'], ['peso_kgf_m', 'Peso (kgf/m)'], ['modulo_elasticidad', 'Módulo E (kgf/mm²)'], ['coef_dilatacion', 'Coef. dilatación α (1/°C)'], ['diametro_mm', 'Diámetro exterior (mm)']];
+function tarjetaCircuitos() {
+  const p = S.proyecto, cr = p.criterios, cs = p.circuitos || [];
+  const nombres = S.apoyos.map((a) => String(a.nombre));
+  const opAp = (sel, vacio) => `<option value="">${vacio}</option>${nombres.map((n) => `<option ${n === String(sel) ? 'selected' : ''}>${h(n)}</option>`).join('')}${sel && !nombres.includes(String(sel)) ? `<option selected>${h(sel)} (no existe)</option>` : ''}`;
+  const opCond = (c) => `<option value="">${h(c.nombre)}${Object.values(S.conductores).some((x) => x.nombre === c.nombre) ? '' : ' (propio)'}</option>${Object.keys(S.conductores).map((k) => `<option value="${h(k)}">${h(k)}</option>`).join('')}`;
+  const filas = cs.map((c, i) => `<tr data-c="${i}" class="${c.activo === false ? 'muted' : ''}">
+    <td><input type="checkbox" data-ck="activo" ${c.activo === false ? '' : 'checked'} title="Incluir en el cálculo"></td>
+    <td><span class="circ-color" style="background:${COLORES_CIRCUITOS[i % COLORES_CIRCUITOS.length]}"></span><input class="input" data-ck="nombre" data-texto="1" value="${h(c.nombre)}" style="min-width:120px"></td>
+    <td><input class="input" data-ck="tension_kv" inputmode="decimal" value="${h(c.tension_kv)}" style="width:70px"></td>
+    <td><div style="display:flex;gap:4px"><select class="select" data-ck="conductor" style="min-width:160px">${opCond(c.conductor || {})}</select><button class="btn btn-small" data-cedit="${i}" title="Ver o editar las propiedades del conductor">✎</button></div></td>
+    <td><input class="input" data-ck="n_fases" inputmode="numeric" value="${h(c.n_fases)}" style="width:52px"></td>
+    <td><select class="select" data-ck="desde" data-texto="1">${opAp(c.desde, 'Inicio de la línea')}</select></td>
+    <td><select class="select" data-ck="hasta" data-texto="1">${opAp(c.hasta, 'Fin de la línea')}</select></td>
+    <td><input class="input" data-ck="bajo_cima_m" inputmode="decimal" value="${h(c.bajo_cima_m)}" style="width:70px"></td>
+    <td><input class="input" data-ck="peso_herrajes_kgf" inputmode="decimal" value="${h(c.peso_herrajes_kgf ?? 40)}" style="width:70px"></td>
+    <td><button class="del" data-cdel="${i}" title="Quitar circuito">✕</button></td></tr>`).join('');
+  return `<div class="card"><div class="section-head"><h2>Circuitos en las mismas estructuras <span class="badge">${1 + cs.length}</span></h2><button class="btn btn-small btn-soft" id="circ-add">＋ Agregar circuito</button></div>
+    <p class="small muted" style="margin-top:0">Una misma estructura puede llevar varios circuitos (p. ej. un poste de 14 m con dos de 34,5 kV y dos de 13,8 kV). El <b>circuito principal</b> usa el conductor y los criterios de esta página y recorre toda la línea. Cada circuito adicional ocupa un <b>tramo</b> (desde–hasta) con su propio conductor, tensión, fases y altura de montaje. Se plantilla cada circuito, se verifica su distancia al terreno y la <b>separación entre circuitos</b>, y sus cargas se <b>suman</b> en la verificación de postes y templetes.</p>
+    <div class="table-wrap" style="max-height:none"><table class="tabla-circ"><thead><tr><th></th><th>Circuito</th><th>kV</th><th>Conductor</th><th>Fases</th><th>Desde</th><th>Hasta</th><th title="Distancia del punto de amarre bajo la cima del poste">Amarre bajo cima (m)</th><th title="Crucetas, aisladores y herrajes de este circuito">Herrajes (kgf)</th><th></th></tr></thead>
+    <tbody><tr class="fila-principal"><td></td><td><span class="circ-color" style="background:#1f6fb2"></span><input class="input" data-path="criterios.nombre_circuito_principal" data-texto="1" value="${h(cr.nombre_circuito_principal ?? 'Circuito 1')}" style="min-width:120px"></td>
+      <td class="num">${nf(cr.tension_kv)}</td><td>${h(p.conductor.nombre)} <span class="small muted">(tarjeta Conductor)</span></td><td class="num">${h(cr.n_fases)}</td><td class="small muted">Inicio</td><td class="small muted">Fin</td><td class="num">${nf(cr.amarre_bajo_cima_m ?? 0.2)}</td><td class="num">${nf(cr.peso_herrajes_kgf ?? 40)}</td><td></td></tr>${filas}</tbody></table></div>
+    ${cs.length ? '' : '<p class="small muted">Sin circuitos adicionales: la línea se calcula con un solo circuito, como hasta ahora.</p>'}
+    <div class="form-grid cols-3" style="margin-top:12px">
+      <label class="field-group"><span class="field-label">Separación vertical mínima entre circuitos (m)</span><input class="input" data-path="criterios.separacion_min_circuitos_m" inputmode="decimal" value="${h(cr.separacion_min_circuitos_m ?? 1.2)}"><span class="field-help">Exigida en los apoyos. Verifíquela contra RETIE y la norma del operador de red.</span></label>
+      <label class="field-group"><span class="field-label">Factor en el vano</span><input class="input" data-path="criterios.separacion_vano_factor" inputmode="decimal" value="${h(cr.separacion_vano_factor ?? 0.75)}"><span class="field-help">En el vano se admite factor × mínima (0.75, NESC 235C2b). Superior con flecha máxima, inferior a 20 °C (EDS).</span></label>
+    </div></div>`;
+}
+function nuevoCircuito() {
+  const cs = S.proyecto.circuitos || [];
+  const ult = cs[cs.length - 1];
+  const bajo = +((ult ? +ult.bajo_cima_m : +(S.proyecto.criterios.amarre_bajo_cima_m ?? 0.2)) + 1.2).toFixed(2);
+  return { nombre: `Circuito ${cs.length + 2}`, tension_kv: 13.8, conductor: clon(S.proyecto.conductor), n_fases: 3, desde: '', hasta: '', bajo_cima_m: bajo, peso_herrajes_kgf: 40, long_cadena_aisladores_m: 0, activo: true };
+}
+function modalConductorCircuito(i) {
+  const c = S.proyecto.circuitos[i];
+  const m = modal(`Conductor · ${c.nombre}`, `<div class="form-grid cols-2">${CAMPOS_CONDUCTOR.map(([k, etq, txt]) => `<label class="field-group"><span class="field-label">${etq}</span><input class="input" data-k="${k}" ${txt ? '' : 'inputmode="decimal"'} value="${h(c.conductor?.[k] ?? '')}"></label>`).join('')}</div><p class="small muted">Datos de catálogo: confírmelos con la ficha técnica del fabricante.</p>`,
+    '<button class="btn" data-x>Cancelar</button><button class="btn btn-primary" data-ok>Guardar</button>');
+  $('[data-x]', m.root).onclick = m.cerrar;
+  $('[data-ok]', m.root).onclick = () => {
+    const nuevo = { ...(c.conductor || {}) };
+    for (const [k, etq, txt] of CAMPOS_CONDUCTOR) {
+      const v = $(`[data-k="${k}"]`, m.root).value.trim();
+      if (txt) { nuevo[k] = v || 'Conductor'; continue; }
+      const n = num(v); if (n == null || Number.isNaN(n) || n <= 0) return toast(`${etq}: valor inválido.`, 'warn');
+      nuevo[k] = n;
+    }
+    c.conductor = nuevo; m.cerrar(); marcarCambio(); ir('parametros', true); toast('Conductor del circuito actualizado.', 'success');
+  };
+}
+function enlazarCircuitos(vc) {
+  const add = $('#circ-add', vc); if (!add) return;
+  add.onclick = () => { S.proyecto.circuitos = S.proyecto.circuitos || []; S.proyecto.circuitos.push(nuevoCircuito()); marcarCambio(); ir('parametros', true); toast('Circuito agregado: elija su conductor, tramo y altura de montaje.', 'success'); };
+  $$('[data-cdel]', vc).forEach((b) => b.onclick = () => { S.proyecto.circuitos.splice(+b.dataset.cdel, 1); marcarCambio(); ir('parametros', true); });
+  $$('[data-cedit]', vc).forEach((b) => b.onclick = () => modalConductorCircuito(+b.dataset.cedit));
+  $$('[data-ck]', vc).forEach((el) => el.addEventListener('change', () => {
+    const c = S.proyecto.circuitos[+el.closest('tr').dataset.c], k = el.dataset.ck;
+    if (k === 'activo') { c.activo = el.checked; marcarCambio(); return ir('parametros', true); }
+    if (k === 'conductor') { const cc = S.conductores[el.value]; if (cc) { c.conductor = clon(cc); marcarCambio(); ir('parametros', true); } return; }
+    if (['nombre', 'desde', 'hasta'].includes(k)) { c[k] = el.value.replace(/ \(no existe\)$/, '').trim(); if (k === 'nombre' && !c[k]) c[k] = 'Circuito'; marcarCambio(); return; }
+    const n = num(el.value);
+    if (n == null || Number.isNaN(n) || n < 0 || (k !== 'bajo_cima_m' && k !== 'peso_herrajes_kgf' && n === 0)) { el.classList.add('bad'); return toast(`Valor inválido: «${el.value}»`, 'warn'); }
+    el.classList.remove('bad'); c[k] = k === 'n_fases' ? Math.round(n) : n; marcarCambio();
+  }));
+}
+
 const VISTAS = {
   resumen() {
     const r = S.resultado;
@@ -291,6 +358,7 @@ const VISTAS = {
       <div class="card stat ${nNo ? 'alert' : 'good'}"><span class="stat-label">Vanos sin distancia mínima</span><span class="stat-value">${nNo}</span><span class="stat-note ${nNo ? 'note-warn' : 'note-good'}">${nNo ? 'Requieren ajuste de apoyos' : (r.perfil.terreno ? 'Todos cumplen' : 'Sin terreno: no verificado')}</span></div>
       <div class="card stat ${nAr ? 'alert' : 'good'}"><span class="stat-label">Apoyos con arrancamiento</span><span class="stat-value">${nAr}</span><span class="stat-note ${nAr ? 'note-warn' : 'note-good'}">${nAr ? 'Gravivano negativo en frío' : 'Ninguno'}</span></div>
       ${s['Postes que requieren templete'] != null ? `<div class="card stat ${s['Postes que requieren templete'] || s['Templetes insuficientes'] ? 'alert' : 'good'}"><span class="stat-label">Postes y templetes</span><span class="stat-value">${s['Postes que requieren templete']} / ${s['Templetes insuficientes']}</span><span class="stat-note ${s['Postes que requieren templete'] || s['Templetes insuficientes'] ? 'note-warn' : 'note-good'}">requieren templete / templetes insuficientes · <a href="#resultados" data-tabres="postes">ver</a></span></div>` : ''}
+      ${s['Circuitos'] ? (() => { const ns = s['Separaciones entre circuitos que no cumplen'] || 0, nt = s['Vanos sin distancia a terreno (otros circuitos)'] || 0; return `<div class="card stat ${ns || nt ? 'alert' : 'good'}"><span class="stat-label">Circuitos en las estructuras</span><span class="stat-value">${s['Circuitos']}</span><span class="stat-note ${ns || nt ? 'note-warn' : 'note-good'}">${ns} separación(es) sin cumplir · ${nt} vano(s) de otros circuitos sin distancia · <a href="#resultados" data-tabres="circuitos">ver</a></span></div>`; })() : ''}
       <div class="card stat"><span class="stat-label">Advertencias</span><span class="stat-value">${r.advertencias.length}</span><span class="stat-note"><a href="#advertencias">Ver detalle →</a></span></div>
       <div class="card stat"><span class="stat-label">Motor de cálculo</span><span class="stat-value" style="font-size:16px">${h(S.motor.etiqueta)}</span><span class="stat-note">Python v${h(S.motor.version || '')}</span></div>
     </div>
@@ -356,6 +424,7 @@ const VISTAS = {
           ${campo('conductor.coef_dilatacion', 'Coef. dilatación α (1/°C)', c.coef_dilatacion)}
           ${campo('conductor.diametro_mm', 'Diámetro exterior (mm)', c.diametro_mm)}
         </div></div>
+      ${tarjetaCircuitos()}
       <div class="card"><div class="section-head"><h2>Hipótesis de cálculo</h2><span class="muted small">Límite vacío = solo verificación</span></div>
         <div class="table-wrap" style="max-height:none"><table><thead><tr><th>Hipótesis</th><th>T (°C)</th><th>Viento (km/h)</th><th>Hielo (kgf/m)</th><th>Límite (% rotura)</th></tr></thead><tbody>${hip}</tbody></table></div></div>
       <div class="card"><div class="section-head"><h2>Criterios de diseño</h2></div><div class="form-grid cols-3">
@@ -387,23 +456,29 @@ const VISTAS = {
   perfil() {
     const r = S.resultado;
     if (!r) return sinResultado();
+    const leyCirc = (r.perfil.circuitos || []).map((c, n) => `<span><i style="border-color:${COLORES_CIRCUITOS[n % COLORES_CIRCUITOS.length]}"></i>${h(c.nombre)} (${nf(c.tension_kv)} kV · ${h(c.conductor)})</span>`).join('');
     const opts = '';
     return `${avisoDesactualizado()}<div class="page-head"><div><h1>Perfil / plantillado</h1><p>Toque un apoyo o un vano para ver sus datos. ▲ = arrancamiento · ✕ = no cumple distancia mínima.</p></div></div>
     <div class="card"><div class="perfil-bar"><div class="perfil-nav"><button class="btn btn-small" id="pag-ant">◀</button><select class="select" id="pag-sel" style="width:auto">${opts}</select><button class="btn btn-small" id="pag-sig">▶</button></div>
       <div class="actions">${botonColocar()}<span class="muted small" id="pag-info"></span></div></div>${avisoColocar()}
       <div class="perfil-wrap" id="perfil-svg"></div>
-      <div class="perfil-legend"><span><i style="border-color:#1f6fb2"></i>Conductor caliente (${h(S.proyecto.hipotesis_plantillado)})</span>${r.perfil.modo === 'cambio_estado' ? `<span><i style="border-color:#7fb6df;border-top-style:dashed"></i>Conductor frío (${h(S.proyecto.hipotesis_arrancamiento)})</span>` : ''}${r.perfil.terreno ? `<span><i style="border-color:#a07c4a"></i>Terreno</span><span><i style="border-color:#c84c4c;border-top-style:dashed"></i>Distancia mínima ${nf(r.perfil.dmin)} m</span>` : ''}<span>■ Retención · ● Suspensión</span></div></div>`;
+      <div class="perfil-legend"><span><i style="border-color:#1f6fb2"></i>${(r.perfil.circuitos || []).length ? `${h(r.perfil.circuito_principal || 'Circuito 1')} · ` : ''}Conductor caliente (${h(S.proyecto.hipotesis_plantillado)})</span>${r.perfil.modo === 'cambio_estado' ? `<span><i style="border-color:#7fb6df;border-top-style:dashed"></i>Conductor frío (${h(S.proyecto.hipotesis_arrancamiento)})</span>` : ''}${r.perfil.terreno ? `<span><i style="border-color:#a07c4a"></i>Terreno</span><span><i style="border-color:#c84c4c;border-top-style:dashed"></i>Distancia mínima ${nf(r.perfil.dmin)} m</span>` : ''}${leyCirc}<span>■ Retención · ● Suspensión</span></div></div>`;
   },
 
   resultados() {
     const r = S.resultado;
     if (!r) return sinResultado();
-    const tabs = [['vanos', 'Vanos'], ['apoyos', 'Apoyos'], ...(r.postes ? [['postes', 'Postes y templetes']] : []), ['secciones', 'Secciones de tendido']];
-    if (!r[S.tabRes]) S.tabRes = 'vanos';
-    const t = r[S.tabRes];
-    const alerta = (fila) => t.columnas.some((c, i) => (c === 'Cumple distancia' && fila[i] === 'NO') || (c === 'Arrancamiento' && fila[i] === 'SÍ') || (c === 'Estado' && /REQUIERE|INSUFICIENTE/.test(fila[i] || '')));
+    const pc = r.perfil.circuitos || [];
+    const tabs = [['vanos', pc.length ? `Vanos ${r.perfil.circuito_principal || 'Circuito 1'}` : 'Vanos'], ...pc.map((c, n) => [`cv${n}`, `Vanos ${c.nombre}`]),
+      ['apoyos', 'Apoyos'], ...(r.postes ? [['postes', 'Postes y templetes']] : []),
+      ...(r.circuitos ? [['circuitos', 'Circuitos'], ...(r.separaciones ? [['separaciones', 'Separación entre circuitos']] : []), ...(r.cargas_circuitos ? [['cargas_circuitos', 'Cargas por circuito']] : [])] : []),
+      ['secciones', 'Secciones de tendido']];
+    const tabla = (k) => (/^cv\d+$/.test(k) ? pc[+k.slice(2)]?.vanos_tabla : r[k]);
+    if (!tabla(S.tabRes)) S.tabRes = 'vanos';
+    const t = tabla(S.tabRes);
+    const alerta = (fila) => t.columnas.some((c, i) => (c === 'Cumple distancia' && fila[i] === 'NO') || (c === 'Cumple separación' && fila[i] === 'NO') || (c === 'Arrancamiento' && fila[i] === 'SÍ') || (c === 'Estado' && /REQUIERE|INSUFICIENTE/.test(fila[i] || '')));
     const celda = (v) => typeof v === 'number' ? `<td class="num">${nf(v, 3)}</td>` : `<td>${h(v ?? '')}</td>`;
-    return `${avisoDesactualizado()}<div class="page-head"><div><h1>Resultados</h1><p>Filas en rojo: no cumple distancia, tiene arrancamiento, el poste requiere templete o el templete es insuficiente.</p></div><div class="actions"><button class="btn btn-navy" data-act="xlsx">⇩ Exportar Excel</button></div></div>
+    return `${avisoDesactualizado()}<div class="page-head"><div><h1>Resultados</h1><p>Filas en rojo: no cumple distancia${pc.length ? ' o separación entre circuitos' : ''}, tiene arrancamiento, el poste requiere templete o el templete es insuficiente.</p></div><div class="actions"><button class="btn btn-navy" data-act="xlsx">⇩ Exportar Excel</button></div></div>
     <div class="tabs" role="tablist">${tabs.map(([k, n]) => `<button class="tab ${S.tabRes === k ? 'active' : ''}" data-tab="${k}">${n}</button>`).join('')}</div>
     <div class="card" style="padding:0"><div class="table-wrap" style="border:0"><table><thead><tr>${t.columnas.map((c) => `<th>${h(c)}</th>`).join('')}</tr></thead>
     <tbody>${t.filas.map((f) => `<tr class="${alerta(f) ? 'row-alert' : ''}">${f.map(celda).join('')}</tr>`).join('')}</tbody></table></div></div>`;
@@ -444,7 +519,8 @@ const VISTAS = {
         <li><span>Secciones de tendido entre retenciones y <b>vano regulador</b> a<sub>r</sub> = √(Σa³/Σa).</span></li>
         <li><span><b>Ecuación de cambio de estado</b> con la hipótesis gobernante elegida automáticamente.</span></li>
         <li><span><b>Catenaria exacta</b> por vano con C = H/w; flecha medida desde la cuerda.</span></li>
-        <li><span>Distancia al terreno, separación de fases e = k·√(F+L) + kV/150, tensiones en apoyos, eolovano, <b>gravivano</b> y arrancamiento.</span></li></ol></div>
+        <li><span>Distancia al terreno, separación de fases e = k·√(F+L) + kV/150, tensiones en apoyos, eolovano, <b>gravivano</b> y arrancamiento.</span></li>
+        <li><span><b>Varios circuitos</b> en la misma estructura: cada uno se plantilla en su tramo con su conductor; separación vertical entre circuitos (superior con flecha máxima, inferior a 20 °C) y suma de momentos M = Σ F<sub>c</sub>·h<sub>c</sub> en postes y templetes.</span></li></ol></div>
       <div class="card"><div class="section-head"><h2>EH-RAA-004 (Electrohuila)</h2></div><dl class="kv">
         <dt>Temperaturas</dt><dd>0 °C mín. · 20 °C media · 50 °C máx.</dd>
         <dt>Viento</dt><dd>100 km/h · q = 0.0042·V² = 42 kgf/m²</dd>
@@ -520,12 +596,13 @@ const ENLACES = {
       const c = S.conductores[e.target.value]; if (!c) return;
       S.proyecto.conductor = clon(c); marcarCambio(); ir('parametros', true); toast(`Conductor ${c.nombre} cargado.`, 'success');
     };
+    enlazarCircuitos(vc);
     $('#gm-ver', vc).onclick = () => { const k = $('#gm-key', vc); k.type = k.type === 'password' ? 'text' : 'password'; };
     $('#gm-guardar', vc).onclick = async () => {
       S.config = { ...(S.config || {}), google_maps_key: $('#gm-key', vc).value.trim() };
       await S.motor.guardarConfig(S.config); toast('Clave guardada. Abra «Mapa / planta» para ver el satélite.', 'success');
     };
-    $('#btn-restablecer', vc).onclick = () => { const n = S.proyecto.nombre; S.proyecto = clon(S.defaults); S.proyecto.nombre = n; marcarCambio(); ir('parametros', true); toast('Parámetros restablecidos (EH-RAA-004).'); };
+    $('#btn-restablecer', vc).onclick = () => { const n = S.proyecto.nombre, circ = S.proyecto.circuitos || []; S.proyecto = clon(S.defaults); S.proyecto.nombre = n; S.proyecto.circuitos = circ; marcarCambio(); ir('parametros', true); toast('Parámetros restablecidos (EH-RAA-004).'); };
   },
   perfil(vc) {
     enlazarAcciones(vc); enlazarColocar(vc);

@@ -25,6 +25,12 @@ Para cada estructura, con la hipótesis de cargas de diseño (por defecto TMAX: 
 
   Carga vertical (cimentación): peso del poste + n·w·gravivano(+) + herrajes + V templetes.
 
+  Varios circuitos en la misma estructura: cada circuito aporta su tiro R y su viento Fv,
+    calculados con SU conductor, SU tensión H y SU número de fases, aplicados a SU altura de
+    amarre; el momento en la base es la suma  M = Σ F_c·h_c + Fp·h_libre/2  (F_eq = M/(h_libre−0.20)).
+    En el extremo del tramo de un circuito la estructura es terminal para ese circuito.
+    La carga vertical suma el peso de conductores y los herrajes de cada circuito.
+
 Los factores de seguridad, el empotramiento y los catálogos son parámetros editables:
 verifíquelos contra RETIE y la norma del operador de red (EH-RAA-004) antes de emitir planos.
 """
@@ -107,22 +113,36 @@ def verificar_estructuras(res, estructuras: list[dict], deflexiones=None):
         next((k for k, h in p.hipotesis.items() if h.viento_kmh), p.hipotesis_plantillado)
     hip = p.hipotesis[hk]
     q = hip.presion_viento_kgf_m2()
-    nf = crit.n_fases
     x = ap["x"].to_numpy()
-    a = [x[i + 1] - x[i] for i in range(n_ap - 1)]
-    seccion = {}
-    for s in res.secciones:
-        for i in range(s.i_ini, s.i_fin):
-            seccion[i] = s
 
-    def H_vano(i):  # tensión horizontal del vano i en la hipótesis de cargas
-        s = seccion.get(i)
-        if s is not None and s.estado is not None and hk in s.estado.tensiones:
-            return float(s.estado.tensiones[hk])
-        c = res.catenarias[i]
-        return float(c.C * p.hipotesis[p.hipotesis_plantillado].peso_aparente(cond))
+    # Un «aporte» por circuito: el principal recorre toda la línea; los adicionales, su tramo.
+    def aporte(nombre, r, cond, nf, i0, alturas, herrajes):
+        seccion = {}
+        for s_ in r.secciones:
+            for k in range(s_.i_ini, s_.i_fin):
+                seccion[k] = s_
+        n_loc = len(r.catenarias)
 
-    filas, adv = [], []
+        def H(k):  # tensión horizontal del vano local k en la hipótesis de cargas
+            s_ = seccion.get(k)
+            if s_ is not None and s_.estado is not None and hk in s_.estado.tensiones:
+                return float(s_.estado.tensiones[hk])
+            return float(r.catenarias[k].C * p.hipotesis[p.hipotesis_plantillado].peso_aparente(cond))
+        return {"nombre": nombre, "r": r, "cond": cond, "nf": nf, "i0": i0, "i1": i0 + n_loc,
+                "alturas": alturas, "herrajes": herrajes, "H": H, "n": n_loc}
+
+    alt_ppal = []
+    for i in range(n_ap):  # sin altura de amarre (Y = amarre) se toma la del poste
+        h0, L0 = float(ap["altura"][i]), _f((estructuras[i] or {}).get("poste_altura"))
+        alt_ppal.append(h0 if h0 > 0 or not L0 else altura_amarre_desde_poste(L0, crit))
+    aportes = [aporte(crit.nombre_circuito_principal or "Circuito 1", res, cond, crit.n_fases, 0, alt_ppal,
+                      crit.peso_herrajes_kgf)]
+    for c in getattr(res, "circuitos", None) or []:
+        aportes.append(aporte(c.nombre, c.res, c.circuito.conductor, int(c.circuito.n_fases), c.i0,
+                              c.alturas, float(c.circuito.peso_herrajes_kgf or 0)))
+    multi = len(aportes) > 1
+
+    filas, adv, cargas = [], [], []
     sin_poste, req, insuf = [], 0, 0
     for i in range(n_ap):
         e = estructuras[i] or {}
@@ -132,13 +152,35 @@ def verificar_estructuras(res, estructuras: list[dict], deflexiones=None):
             peso = peso_catalogo(L, rot)
             peso_est = peso is not None
         alfa = abs(float(deflexiones[i])) if deflexiones and deflexiones[i] is not None else 0.0
-        H1 = H_vano(i - 1) if i > 0 else 0.0
-        H2 = H_vano(i) if i < n_ap - 1 else 0.0
-        terminal = i == 0 or i == n_ap - 1
-        R = nf * math.sqrt(max(H1 ** 2 + H2 ** 2 - 2 * H1 * H2 * math.cos(math.radians(alfa)), 0.0))
-        eolo = ((a[i - 1] if i > 0 else 0) + (a[i] if i < n_ap - 1 else 0)) / 2
-        Fv = nf * q * cond.diametro_m * eolo
-        F = math.hypot(R, Fv) if terminal else R + Fv
+        # cargas de cada circuito presente en la estructura
+        R_tot = Fv_tot = MF = V_cond = herr = 0.0
+        presentes = []
+        for A in aportes:
+            if not (A["i0"] <= i <= A["i1"]):
+                continue
+            k = i - A["i0"]
+            H1 = A["H"](k - 1) if k > 0 else 0.0
+            H2 = A["H"](k) if k < A["n"] else 0.0
+            terminal = k == 0 or k == A["n"]
+            nf_c = A["nf"]
+            R = nf_c * math.sqrt(max(H1 ** 2 + H2 ** 2 - 2 * H1 * H2 * math.cos(math.radians(alfa)), 0.0))
+            xl = A["r"].datos.apoyos["x"].to_numpy()
+            eolo = ((xl[k] - xl[k - 1] if k > 0 else 0) + (xl[k + 1] - xl[k] if k < A["n"] else 0)) / 2
+            Fv = nf_c * q * A["cond"].diametro_m * eolo
+            F = math.hypot(R, Fv) if terminal else R + Fv
+            h_c = float(A["alturas"][k])
+            izq = A["r"].catenarias[k - 1] if k > 0 else None
+            der = A["r"].catenarias[k] if k < A["n"] else None
+            g = (der.b if der else xl[k]) - (izq.b if izq else xl[k])
+            Vc = nf_c * A["cond"].peso_kgf_m * max(g, 0)
+            R_tot += R; Fv_tot += Fv; MF += F * h_c; V_cond += Vc; herr += A["herrajes"]
+            presentes.append(A["nombre"])
+            cargas.append({"Apoyo": ap["nombre"][i], "Circuito": A["nombre"], "Conductor": A["cond"].nombre,
+                           "Fases": nf_c, "Función": "Terminal" if terminal else ("Retención" if A["r"].datos.apoyos["retencion"][k] else "Suspensión"),
+                           "Altura amarre (m)": round(h_c, 2), f"H izq. {hk} (kgf)": round(H1, 1),
+                           f"H der. {hk} (kgf)": round(H2, 1), "Tiro (kgf)": round(R, 1),
+                           "Viento conductores (kgf)": round(Fv, 1), "Fuerza horizontal (kgf)": round(F, 1),
+                           "Momento en la base (kgf·m)": round(F * h_c, 1), "Peso conductores (kgf)": round(Vc, 1)})
         h_am = float(ap["altura"][i]) if float(ap["altura"][i]) > 0 else None
         fila = {"Apoyo": ap["nombre"][i], "Tipo": "Retención" if ap["retencion"][i] else "Suspensión",
                 "Deflexión (°)": round(alfa, 2),
@@ -146,7 +188,7 @@ def verificar_estructuras(res, estructuras: list[dict], deflexiones=None):
                 "Peso poste (kg)": None if peso is None else round(peso, 0),
                 "Peso estimado": "catálogo" if peso_est else "",
                 "Empotramiento (m)": None, "Altura libre (m)": None, "Altura amarre (m)": h_am,
-                f"Tiro conductores {hk} (kgf)": round(R, 1), "Viento conductores (kgf)": round(Fv, 1),
+                f"Tiro conductores {hk} (kgf)": round(R_tot, 1), "Viento conductores (kgf)": round(Fv_tot, 1),
                 "Viento poste (kgf)": None, "Carga equivalente cima (kgf)": None,
                 "Carga de trabajo (kgf)": None, "Utilización poste (%)": None,
                 "Templetes": 0, "Cable templete": "", "Tensión por templete (kgf)": None,
@@ -158,7 +200,7 @@ def verificar_estructuras(res, estructuras: list[dict], deflexiones=None):
             h_am = h_am if h_am is not None else hl - crit.amarre_bajo_cima_m
             Fp = q * crit.poste_diametro_medio_m * hl
             h_ref = max(hl - 0.20, 0.1)
-            momento = F * h_am + Fp * hl / 2
+            momento = MF + Fp * hl / 2
             Feq = momento / h_ref
             fila.update({"Empotramiento (m)": round(emp, 2), "Altura libre (m)": round(hl, 2),
                          "Altura amarre (m)": round(h_am, 2), "Viento poste (kgf)": round(Fp, 1),
@@ -178,8 +220,8 @@ def verificar_estructuras(res, estructuras: list[dict], deflexiones=None):
             rot_c = min(_f(t.get("rotura_kgf")) or 0 for t in tps) or None
             fila["Templetes"] = k
             fila["Cable templete"] = ", ".join(sorted({str(t.get("cable") or "sin especificar") for t in tps}))
-            if momento is None and h_am:
-                momento = F * h_am
+            if momento is None and MF:
+                momento = MF
             if momento is not None and ht and d:
                 sen = d / math.hypot(d, ht)
                 Ht = momento / ht
@@ -189,11 +231,7 @@ def verificar_estructuras(res, estructuras: list[dict], deflexiones=None):
                 if rot_c:
                     fila["Utilización templete (%)"] = round(100 * T / (rot_c / crit.fs_templete), 1)
         # carga vertical
-        g = 0.0
-        izq = res.catenarias[i - 1] if i > 0 else None
-        der = res.catenarias[i] if i < n_ap - 1 else None
-        g = (der.b if der else x[i]) - (izq.b if izq else x[i])
-        V = (peso or 0) + nf * cond.peso_kgf_m * max(g, 0) + crit.peso_herrajes_kgf + V_t
+        V = (peso or 0) + V_cond + herr + V_t
         fila["Carga vertical (kgf)"] = round(V, 1) if (peso is not None or V_t) else None
         # estado
         up, ut = fila["Utilización poste (%)"], fila["Utilización templete (%)"]
@@ -218,14 +256,18 @@ def verificar_estructuras(res, estructuras: list[dict], deflexiones=None):
         else:
             estado = "OK"
         fila["Estado"] = estado
+        if multi:
+            fila["Circuitos"] = ", ".join(presentes)
+            fila["Momento conductores (kgf·m)"] = round(MF, 1)
         filas.append(fila)
     if sin_poste and len(sin_poste) < n_ap:
         adv.append(f"{len(sin_poste)} estructura(s) sin poste o sin carga de rotura: no se verificó su "
                    f"flexión ({', '.join(sin_poste[:8])}{'…' if len(sin_poste) > 8 else ''}).")
     resumen = {"Postes que requieren templete": req, "Templetes insuficientes": insuf}
     df = pd.DataFrame(filas)
-    primero = ["Apoyo", "Tipo", "Estado", "Poste L (m)", "Carga rotura (kgf)", "Utilización poste (%)", "Templetes",
+    primero = ["Apoyo", "Tipo", "Estado"] + (["Circuitos"] if multi else []) + [ "Poste L (m)", "Carga rotura (kgf)", "Utilización poste (%)", "Templetes",
                "Cable templete", "Tensión por templete (kgf)", "Utilización templete (%)", "Carga vertical (kgf)",
                "Peso poste (kg)", "Peso estimado", "Altura amarre (m)"]
     df = df[primero + [c for c in df.columns if c not in primero]]
+    res.cargas_circuitos = pd.DataFrame(cargas) if multi else None
     return df, adv, resumen

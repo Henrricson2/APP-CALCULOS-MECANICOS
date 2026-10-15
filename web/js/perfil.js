@@ -6,6 +6,10 @@ const C = {
   dmin: '#c84c4c', poste: '#33475a', apoyo: '#c84c4c', grid: '#e3eaef', texto: '#263746', muted: '#657684',
 };
 
+// colores de los circuitos adicionales (los mismos del PDF/DXF)
+export const COLORES_CIRCUITOS = ['#d35400', '#8e44ad', '#16a085', '#b03a2e', '#7d6608', '#2e4053'];
+const vanosCircuitos = (perfil, a, b) => (perfil.circuitos || []).flatMap((c, n) => c.vanos.filter((v) => v.i >= a && v.i < b).map((v) => ({ v, n, c })));
+
 export const abscisaK = (m) => `K${Math.floor(m / 1000)}+${(m % 1000).toFixed(2).padStart(6, '0')}`;
 
 export function interp(xs, ys, x) {
@@ -46,6 +50,7 @@ function rangoY(perfil, inicio, fin) {
   const ap = perfil.apoyos.slice(inicio, fin + 1), ter = perfil.terreno;
   const x0 = ap[0].x, x1 = ap[ap.length - 1].x, ys = [];
   perfil.vanos.slice(inicio, fin).forEach((v) => { ys.push(...v.y); if (perfil.modo === 'cambio_estado') ys.push(...v.yf); });
+  vanosCircuitos(perfil, inicio, fin).forEach(({ v }) => ys.push(...v.y));
   ap.forEach((a) => { ys.push(a.ya); if (ter) ys.push(a.yt); });
   if (ter) {
     ys.push(interp(ter.x, ter.y, x0) + perfil.dmin, interp(ter.x, ter.y, x1));
@@ -123,6 +128,8 @@ export function dibujarPerfil(contenedor, perfil, inicio, fin, opciones = {}) {
     v.x.forEach((x, j) => { if (dentro(x)) { ys.push(v.y[j]); if (perfil.modo === 'cambio_estado') ys.push(v.yf[j]); } });
     [x0, x1].forEach((x) => { if (x > v.x[0] && x < v.x[v.x.length - 1]) ys.push(interp(v.x, v.y, x)); });
   });
+  const vc = vanosCircuitos(perfil, inicio, inicio + vanos.length);
+  vc.forEach(({ v }) => v.x.forEach((x, j) => { if (dentro(x)) ys.push(v.y[j]); }));
   apVis.forEach((a) => { ys.push(a.ya); if (ter) ys.push(a.yt); });
   if (!ter) ap.forEach((a) => ys.push(a.yt ?? a.ya));
   ty.forEach((y) => { ys.push(y); ys.push(y + perfil.dmin); });
@@ -186,6 +193,16 @@ export function dibujarPerfil(contenedor, perfil, inicio, fin, opciones = {}) {
     if (v.cumple === 'NO' && v.xmin != null) {
       const yx = interp(v.x, v.y, v.xmin); const cx = sx(v.xmin), cy = sy(yx);
       p.push(`<path d="M${cx - 6},${cy - 6}L${cx + 6},${cy + 6}M${cx - 6},${cy + 6}L${cx + 6},${cy - 6}" stroke="${C.dmin}" stroke-width="2.6"/>`);
+    }
+  });
+  // circuitos adicionales en la misma estructura
+  vc.forEach(({ v, n, c }) => {
+    const col = COLORES_CIRCUITOS[n % COLORES_CIRCUITOS.length];
+    p.push(`<polyline points="${pts(v.x, v.y)}" fill="none" stroke="${col}" stroke-width="1.9" stroke-linejoin="round"><title>${esc(c.nombre)} · ${esc(c.conductor)} · a=${v.a} m · f=${v.f} m</title></polyline>`);
+    [0, v.x.length - 1].forEach((j) => p.push(`<circle cx="${sx(v.x[j])}" cy="${sy(v.y[j])}" r="3.2" fill="${col}"/>`));
+    if (v.cumple === 'NO' && v.xmin != null) {
+      const yx = interp(v.x, v.y, v.xmin); const cx = sx(v.xmin), cy = sy(yx);
+      p.push(`<path d="M${cx - 5},${cy - 5}L${cx + 5},${cy + 5}M${cx - 5},${cy + 5}L${cx + 5},${cy - 5}" stroke="${C.dmin}" stroke-width="2.4"/>`);
     }
   });
   p.push('</g>');

@@ -56,6 +56,25 @@ BIBLIOTECA_CONDUCTORES: dict[str, Conductor] = {
         nombre="2/0 ACSR QUAIL", seccion_mm2=78.645, carga_rotura_kgf=2425.0,
         peso_kgf_m=0.2725, modulo_elasticidad=8086.0, coef_dilatacion=1.89e-5,
         diametro_mm=11.354),
+    # ACSR (ASTM B232), valores típicos de catálogo: confírmelos con la ficha del fabricante
+    "2 ACSR SPARROW 6/1": Conductor(
+        nombre="2 ACSR SPARROW", seccion_mm2=39.22, carga_rotura_kgf=1293.0,
+        peso_kgf_m=0.1356, modulo_elasticidad=8086.0, coef_dilatacion=1.89e-5, diametro_mm=8.01),
+    "1/0 ACSR RAVEN 6/1": Conductor(
+        nombre="1/0 ACSR RAVEN", seccion_mm2=62.38, carga_rotura_kgf=1987.0,
+        peso_kgf_m=0.2160, modulo_elasticidad=8086.0, coef_dilatacion=1.89e-5, diametro_mm=10.11),
+    "3/0 ACSR PIGEON 6/1": Conductor(
+        nombre="3/0 ACSR PIGEON", seccion_mm2=99.20, carga_rotura_kgf=3003.0,
+        peso_kgf_m=0.3436, modulo_elasticidad=8086.0, coef_dilatacion=1.89e-5, diametro_mm=12.75),
+    "4/0 ACSR PENGUIN 6/1": Conductor(
+        nombre="4/0 ACSR PENGUIN", seccion_mm2=125.10, carga_rotura_kgf=3787.0,
+        peso_kgf_m=0.4330, modulo_elasticidad=8086.0, coef_dilatacion=1.89e-5, diametro_mm=14.31),
+    "266.8 ACSR PARTRIDGE 26/7": Conductor(
+        nombre="266.8 ACSR PARTRIDGE", seccion_mm2=157.20, carga_rotura_kgf=5126.0,
+        peso_kgf_m=0.5460, modulo_elasticidad=7700.0, coef_dilatacion=1.89e-5, diametro_mm=16.31),
+    "336.4 ACSR LINNET 26/7": Conductor(
+        nombre="336.4 ACSR LINNET", seccion_mm2=198.20, carga_rotura_kgf=6396.0,
+        peso_kgf_m=0.6890, modulo_elasticidad=7700.0, coef_dilatacion=1.89e-5, diametro_mm=18.31),
 }
 
 
@@ -120,6 +139,37 @@ class Criterios:
     fs_poste: float = 2.5                         # factor de seguridad del poste
     fs_templete: float = 2.5                      # factor de seguridad del cable de templete
     peso_herrajes_kgf: float = 40.0               # crucetas, aisladores y herrajes por estructura
+    # --- varios circuitos en la misma estructura ---
+    nombre_circuito_principal: str = "Circuito 1"
+    separacion_min_circuitos_m: float = 1.20      # vertical mínima entre circuitos (verificar RETIE / OR)
+    separacion_vano_factor: float = 0.75          # en el vano se admite este factor × la mínima (NESC 235C2b)
+
+
+@dataclass
+class Circuito:
+    """Circuito adicional montado en las mismas estructuras, en un tramo de la línea.
+
+    El circuito principal es el de «Conductor» y «Criterios» (toda la línea, amarre a
+    `amarre_bajo_cima_m` bajo la cima). Cada circuito adicional tiene su propio conductor,
+    tensión y número de fases, y se amarra `bajo_cima_m` metros bajo la cima del poste.
+    """
+    nombre: str = "Circuito 2"
+    tension_kv: float = 13.2
+    conductor: Conductor = field(default_factory=Conductor)
+    n_fases: int = 3
+    desde: str = ""                     # estructura inicial ("" = la primera de la línea)
+    hasta: str = ""                     # estructura final ("" = la última)
+    bajo_cima_m: float = 1.40           # punto de amarre bajo la cima del poste
+    peso_herrajes_kgf: float = 40.0     # crucetas, aisladores y herrajes de ESTE circuito
+    long_cadena_aisladores_m: float = 0.0
+    activo: bool = True
+
+    @classmethod
+    def desde_dict(cls, d: dict) -> "Circuito":
+        base = asdict(cls())
+        cond = Conductor(**{**asdict(Conductor()), **(d.get("conductor") or {})})
+        datos = {k: d[k] for k in base if k in d and k != "conductor"}
+        return cls(**{**{k: v for k, v in base.items() if k != "conductor"}, **datos}, conductor=cond)
 
 
 @dataclass
@@ -143,6 +193,7 @@ class Proyecto:
     modo_flecha: str = "cambio_estado"
     hipotesis_plantillado: str = "FMAX"   # flecha usada para distancias a tierra
     hipotesis_arrancamiento: str = "FMIN" # gravivanos (tiro hacia arriba)
+    circuitos: list[Circuito] = field(default_factory=list)   # circuitos adicionales
 
     # ----------------------------- persistencia --------------------------
     def a_dict(self) -> dict:
@@ -178,10 +229,19 @@ class Proyecto:
         p.modo_flecha = d.get("modo_flecha", p.modo_flecha)
         p.hipotesis_plantillado = d.get("hipotesis_plantillado", p.hipotesis_plantillado)
         p.hipotesis_arrancamiento = d.get("hipotesis_arrancamiento", p.hipotesis_arrancamiento)
+        p.circuitos = [Circuito.desde_dict(c) for c in (d.get("circuitos") or []) if isinstance(c, dict)]
         return p
 
     def validar(self) -> list[str]:
         err = self.conductor.validar()
+        for c in self.circuitos:
+            if not c.activo:
+                continue
+            err += [f"{c.nombre}: {e}" for e in c.conductor.validar()]
+            if not c.n_fases or c.n_fases < 1:
+                err.append(f"{c.nombre}: el número de fases debe ser ≥ 1.")
+            if c.bajo_cima_m is None or c.bajo_cima_m < 0:
+                err.append(f"{c.nombre}: la distancia del amarre bajo la cima debe ser ≥ 0.")
         if self.modo_flecha not in ("cambio_estado", "excel"):
             err.append("modo_flecha debe ser 'cambio_estado' o 'excel'.")
         for k in (self.hipotesis_plantillado, self.hipotesis_arrancamiento):

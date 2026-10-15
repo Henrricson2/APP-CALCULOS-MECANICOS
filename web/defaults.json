@@ -1,5 +1,5 @@
 {
- "version": "2.8.4",
+ "version": "2.9.0",
  "proyecto_defecto": {
   "nombre": "Proyecto de línea de media tensión",
   "conductor": {
@@ -60,7 +60,10 @@
    "poste_diametro_medio_m": 0.25,
    "fs_poste": 2.5,
    "fs_templete": 2.5,
-   "peso_herrajes_kgf": 40.0
+   "peso_herrajes_kgf": 40.0,
+   "nombre_circuito_principal": "Circuito 1",
+   "separacion_min_circuitos_m": 1.2,
+   "separacion_vano_factor": 0.75
   },
   "salida": {
    "vanos_por_pagina": 5,
@@ -72,7 +75,8 @@
   },
   "modo_flecha": "cambio_estado",
   "hipotesis_plantillado": "FMAX",
-  "hipotesis_arrancamiento": "FMIN"
+  "hipotesis_arrancamiento": "FMIN",
+  "circuitos": []
  },
  "conductores": {
   "2/0 ECO": {
@@ -92,6 +96,60 @@
    "modulo_elasticidad": 8086.0,
    "coef_dilatacion": 1.89e-05,
    "diametro_mm": 11.354
+  },
+  "2 ACSR SPARROW 6/1": {
+   "nombre": "2 ACSR SPARROW",
+   "seccion_mm2": 39.22,
+   "carga_rotura_kgf": 1293.0,
+   "peso_kgf_m": 0.1356,
+   "modulo_elasticidad": 8086.0,
+   "coef_dilatacion": 1.89e-05,
+   "diametro_mm": 8.01
+  },
+  "1/0 ACSR RAVEN 6/1": {
+   "nombre": "1/0 ACSR RAVEN",
+   "seccion_mm2": 62.38,
+   "carga_rotura_kgf": 1987.0,
+   "peso_kgf_m": 0.216,
+   "modulo_elasticidad": 8086.0,
+   "coef_dilatacion": 1.89e-05,
+   "diametro_mm": 10.11
+  },
+  "3/0 ACSR PIGEON 6/1": {
+   "nombre": "3/0 ACSR PIGEON",
+   "seccion_mm2": 99.2,
+   "carga_rotura_kgf": 3003.0,
+   "peso_kgf_m": 0.3436,
+   "modulo_elasticidad": 8086.0,
+   "coef_dilatacion": 1.89e-05,
+   "diametro_mm": 12.75
+  },
+  "4/0 ACSR PENGUIN 6/1": {
+   "nombre": "4/0 ACSR PENGUIN",
+   "seccion_mm2": 125.1,
+   "carga_rotura_kgf": 3787.0,
+   "peso_kgf_m": 0.433,
+   "modulo_elasticidad": 8086.0,
+   "coef_dilatacion": 1.89e-05,
+   "diametro_mm": 14.31
+  },
+  "266.8 ACSR PARTRIDGE 26/7": {
+   "nombre": "266.8 ACSR PARTRIDGE",
+   "seccion_mm2": 157.2,
+   "carga_rotura_kgf": 5126.0,
+   "peso_kgf_m": 0.546,
+   "modulo_elasticidad": 7700.0,
+   "coef_dilatacion": 1.89e-05,
+   "diametro_mm": 16.31
+  },
+  "336.4 ACSR LINNET 26/7": {
+   "nombre": "336.4 ACSR LINNET",
+   "seccion_mm2": 198.2,
+   "carga_rotura_kgf": 6396.0,
+   "peso_kgf_m": 0.689,
+   "modulo_elasticidad": 7700.0,
+   "coef_dilatacion": 1.89e-05,
+   "diametro_mm": 18.31
   }
  },
  "postes": [

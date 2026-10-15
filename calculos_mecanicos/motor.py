@@ -258,8 +258,31 @@ def calcular(payload: dict) -> dict:
     elif datos.y_es_terreno:
         terreno = {"x": [_limpio(v) for v in datos.apoyos.x], "y": [_limpio(v) for v in datos.apoyos.y]}
 
+    circuitos = []
+    for c in res.circuitos:
+        vs = []
+        for k, (cc, cf) in enumerate(zip(c.res.catenarias, c.res.catenarias_frias)):
+            x, y = cc.muestrear(n)
+            _, yf = cf.muestrear(n)
+            fila = c.res.vanos.iloc[k]
+            vs.append({"i": c.i0 + k, "x": [round(float(v), 3) for v in x], "y": [round(float(v), 3) for v in y],
+                       "yf": [round(float(v), 3) for v in yf], "a": round(cc.vano, 2), "f": round(cc.flecha, 3),
+                       "cumple": fila.get("Cumple distancia", None),
+                       "xmin": _limpio(fila.get("X dist. mín.", None)), "dmin": _limpio(fila.get("Dist. mín. terreno (m)", None))})
+        ya = list(c.res.apoyos["Cota amarre (m)"])
+        circuitos.append({"nombre": c.nombre, "tension_kv": _limpio(c.circuito.tension_kv),
+                          "conductor": c.circuito.conductor.nombre, "i0": c.i0, "i1": c.i1,
+                          "vanos": vs, "ya": [_limpio(v) for v in ya], "vanos_tabla": _registros(c.res.vanos)})
+    extra = {}
+    if res.tabla_circuitos is not None:
+        extra["circuitos"] = _registros(res.tabla_circuitos)
+    if res.separaciones is not None:
+        extra["separaciones"] = _registros(res.separaciones)
+    if res.cargas_circuitos is not None:
+        extra["cargas_circuitos"] = _registros(res.cargas_circuitos)
     return {
         "ok": True,
+        **extra,
         "resumen": {k: _limpio(v) for k, v in res.resumen.items()},
         "vanos": _registros(res.vanos),
         "apoyos": _registros(res.apoyos),
@@ -269,7 +292,9 @@ def calcular(payload: dict) -> dict:
         "perfil": {"vanos": vanos_geo, "apoyos": apoyos_geo, "terreno": terreno,
                    "dmin": proyecto.criterios.distancia_minima_terreno_m,
                    "y_es_terreno": datos.y_es_terreno, "modo": proyecto.modo_flecha,
-                   "vanos_por_pagina": proyecto.salida.vanos_por_pagina},
+                   "vanos_por_pagina": proyecto.salida.vanos_por_pagina,
+                   "circuito_principal": proyecto.criterios.nombre_circuito_principal or "Circuito 1",
+                   "circuitos": circuitos},
     }
 
 
