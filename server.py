@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import os
 import shutil
 import socket
 import subprocess
@@ -154,6 +155,12 @@ class Manejador(BaseHTTPRequestHandler):
                 return self._json(motor.importar_excel(cuerpo))
             if ruta == "/api/calcular":
                 return self._json(motor.calcular(json.loads(cuerpo or b"{}")))
+            if ruta == "/api/apagar":  # solo desde este mismo PC: lo usa una versión nueva para reemplazarlo
+                if self.client_address[0] not in ("127.0.0.1", "::1"):
+                    return self._error(403, "No permitido.")
+                self._json({"ok": True, "version": __version__})
+                threading.Thread(target=self.server.shutdown, daemon=True).start()
+                return None
             if ruta.startswith("/api/rpc/"):
                 return self._json(motor.rpc(ruta.rsplit("/", 1)[1], json.loads(cuerpo or b"{}")))
             if ruta == "/api/config":
@@ -213,6 +220,51 @@ def abrir_navegador(url: str):
     webbrowser.open(url)
 
 
+def reemplazar_version_vieja(puerto: int) -> bool:
+    """Si en el puerto corre OTRA versión de esta app, la cierra para abrir la nueva.
+
+    Evita el problema de abrir la app actualizada y seguir hablando con el servidor viejo.
+    """
+    import time
+    import urllib.request
+    base = f"http://127.0.0.1:{puerto}"
+    try:
+        with urllib.request.urlopen(base + "/api/salud", timeout=3) as r:
+            salud = json.loads(r.read() or b"{}")
+    except Exception:
+        return False
+    if not (salud.get("ok") and salud.get("motor") == "servidor"):
+        return False                      # el puerto lo usa otro programa: no se toca
+    if salud.get("version") == __version__:
+        return False                      # es la misma versión: se reutiliza
+    print(f"Hay abierta una versión anterior de la app (v{salud.get('version')}). Cerrándola para abrir v{__version__}…")
+    try:
+        req = urllib.request.Request(base + "/api/apagar", data=b"{}", method="POST",
+                                     headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=3).read()
+    except Exception:
+        if sys.platform.startswith("win"):   # versiones viejas no tienen /api/apagar
+            try:
+                salida = subprocess.run(["netstat", "-ano", "-p", "TCP"], capture_output=True, text=True).stdout
+                pids = {ln.split()[-1] for ln in salida.splitlines()
+                        if f":{puerto} " in ln and "LISTENING" in ln.upper()}
+                for pid in pids:
+                    if pid.isdigit() and int(pid) != os.getpid():
+                        subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True)
+            except Exception:
+                return False
+        else:
+            return False
+    for _ in range(20):
+        time.sleep(0.3)
+        try:
+            with socket.create_connection(("127.0.0.1", puerto), timeout=0.5):
+                pass
+        except OSError:
+            return True
+    return False
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Servidor App Cálculos Mecánicos MT")
     ap.add_argument("--puerto", type=int, default=8766)
@@ -220,14 +272,19 @@ def main(argv=None):
     ap.add_argument("--no-abrir", action="store_true", help="no abrir el navegador")
     a = ap.parse_args(argv)
     host = "0.0.0.0" if a.red else "127.0.0.1"
-    try:
-        srv = ThreadingHTTPServer((host, a.puerto), Manejador)
-    except OSError:
-        print(f"El puerto {a.puerto} está ocupado. ¿La app ya está abierta? "
-              f"Abra http://127.0.0.1:{a.puerto}")
-        if not a.no_abrir:
-            abrir_navegador(f"http://127.0.0.1:{a.puerto}/")
-        return 1
+    srv = None
+    for intento in range(2):
+        try:
+            srv = ThreadingHTTPServer((host, a.puerto), Manejador)
+            break
+        except OSError:
+            if intento == 0 and reemplazar_version_vieja(a.puerto):
+                continue
+            print(f"El puerto {a.puerto} está ocupado. ¿La app ya está abierta? "
+                  f"Abra http://127.0.0.1:{a.puerto}")
+            if not a.no_abrir:
+                abrir_navegador(f"http://127.0.0.1:{a.puerto}/")
+            return 1
     url = f"http://127.0.0.1:{a.puerto}/"
     print("=" * 64)
     print(f" App Cálculos Mecánicos MT v{__version__}")

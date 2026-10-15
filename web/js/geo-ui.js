@@ -1,6 +1,6 @@
 // Etapa 1: proyectos persistentes, asistente de importación con sistemas de coordenadas,
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
-import { obtenerCotas, FUENTES } from './elevacion.js';
+import { obtenerCotas, FUENTES, muestrasRecorrido } from './elevacion.js';
 import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=9';
 
 export function instalarGeo(C) {
@@ -588,7 +588,10 @@ export function instalarGeo(C) {
   }
   async function obtenerPerfil(fuente, paso, reemplazar) {
     cargando('Preparando los puntos del recorrido…');
-    const r = await rpc('perfil_muestras', { puntos: S.apoyos.map((a) => ({ lat: a.lat, lon: a.lon })), paso_m: paso });
+    const pts = S.apoyos.map((a) => ({ lat: +a.lat, lon: +a.lon }));
+    let r;
+    try { r = await rpc('perfil_muestras', { puntos: pts, paso_m: paso }); }
+    catch { r = muestrasRecorrido(pts, paso); } // servidor viejo o sin esa función: se calcula aquí mismo
     const { cotas, fuente: usada } = await obtenerCotas(r.muestras, fuente, { clave: S.config?.google_maps_key, avance: cargando });
     cargando('');
     const etiqueta = usada === 'google' ? 'Google (estimada)' : usada === 'srtm' ? 'SRTM 30 m (estimada)' : 'Copernicus 90 m (estimada)';
