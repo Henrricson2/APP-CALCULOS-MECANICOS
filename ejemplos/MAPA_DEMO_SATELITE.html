@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DEMO – postes de prueba (Neiva)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>html,body,#mapa{height:100%;margin:0}body{font-family:system-ui,sans-serif}
+.titulo{position:absolute;z-index:1000;left:56px;top:10px;background:#17324d;color:#fff;padding:6px 12px;border-radius:8px;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,.3)}</style>
+</head><body><div class="titulo">DEMO – postes de prueba (Neiva)</div><div id="mapa"></div>
+<script>
+const POSTES = [{"lat": 2.9273, "lon": -75.2819, "tipo": "R", "nombre": "AP-1", "popup": "<b>AP-1<\/b><br>Tipo: Retención<br>Cota Z: 440 m<br>Altura amarre: 10 m<br>Lat/Lon: 2.927300, -75.281900"}, {"lat": 2.9279, "lon": -75.2814, "tipo": "S", "nombre": "AP-2", "popup": "<b>AP-2<\/b><br>Tipo: Suspensión<br>Cota Z: 441.2 m<br>Altura amarre: 10 m<br>Lat/Lon: 2.927900, -75.281400"}, {"lat": 2.929, "lon": -75.2804, "tipo": "S", "nombre": "AP-3", "popup": "<b>AP-3<\/b><br>Tipo: Suspensión<br>Cota Z: 442.4 m<br>Altura amarre: 10 m<br>Lat/Lon: 2.929000, -75.280400"}, {"lat": 2.9291, "lon": -75.2804, "tipo": "S", "nombre": "AP-4", "popup": "<b>AP-4<\/b><br>Tipo: Suspensión<br>Cota Z: 443.6 m<br>Altura amarre: 10 m<br>Lat/Lon: 2.929100, -75.280400"}, {"lat": 2.929525, "lon": -75.28015, "tipo": "S", "nombre": "AP-4A", "popup": "<b>AP-4A<\/b><br>Tipo: Suspensión<br>Cota Z: 444.2 m<br>Altura amarre: 10 m<br>Lat/Lon: 2.929525, -75.280150"}, {"lat": 2.92995, "lon": -75.2799, "tipo": "S", "nombre": "AP-5", "popup": "<b>AP-5<\/b><br>Tipo: Suspensión<br>Cota Z: 444.8 m<br>Altura amarre: 10 m<br>Lat/Lon: 2.929950, -75.279900"}, {"lat": 2.9303, "lon": -75.2794, "tipo": "S", "nombre": "AP-6", "popup": "<b>AP-6<\/b><br>Tipo: Suspensión<br>Cota Z: 449 m<br>Altura amarre: 10 m<br>Lat/Lon: 2.930300, -75.279400"}, {"lat": 2.9309, "lon": -75.2789, "tipo": "S", "nombre": "AP-7", "popup": "<b>AP-7<\/b><br>Tipo: Suspensión<br>Cota Z: 447.2 m<br>Altura amarre: 10 m<br>Lat/Lon: 2.930900, -75.278900"}, {"lat": 2.9315, "lon": -75.2784, "tipo": "R", "nombre": "AP-8", "popup": "<b>AP-8<\/b><br>Tipo: Retención<br>Cota Z: 448.4 m<br>Altura amarre: 10 m<br>Lat/Lon: 2.931500, -75.278400"}];
+const F = [{"nombre": "Satélite (Esri)", "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", "attr": "Imágenes &copy; Esri, Maxar, Earthstar Geographics y la comunidad de usuarios SIG", "max": 19}, {"nombre": "Calles (OpenStreetMap)", "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png", "attr": "&copy; colaboradores de OpenStreetMap", "max": 19}, {"nombre": "Topográfico (OpenTopoMap)", "url": "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", "attr": "&copy; OpenTopoMap (CC-BY-SA), datos &copy; OpenStreetMap", "max": 17}];
+const m = L.map('mapa');
+const capas = {};
+for (const f of F) capas[f.nombre] = L.tileLayer(f.url, {maxZoom: 20, maxNativeZoom: f.max, attribution: f.attr, subdomains: 'abc'});
+capas[F[0].nombre].addTo(m);
+L.control.layers(capas).addTo(m);
+L.control.scale({imperial: false}).addTo(m);
+const ll = POSTES.map(p => [p.lat, p.lon]);
+if (ll.length > 1) L.polyline(ll, {color: '#e9783f', weight: 4}).bindTooltip('Trazado').addTo(m);
+for (const p of POSTES) L.circleMarker([p.lat, p.lon], {radius: 7, color: '#fff', weight: 2, fillOpacity: 1,
+  fillColor: p.tipo === 'R' ? '#c84c4c' : '#1f6fb2'}).bindTooltip(p.nombre).bindPopup(p.popup).addTo(m);
+m.fitBounds(L.latLngBounds(ll), {padding: [40, 40], maxZoom: 18});
+</script></body></html>
