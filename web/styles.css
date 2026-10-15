@@ -322,3 +322,6 @@ tr.row-actual td { background: var(--soft-teal); }
 #dm-tabla .tpl:hover { border-color: var(--teal); color: var(--teal); }
 #dm-tabla [data-k=lat] { width: 80px; } #dm-tabla [data-k=lon] { width: 88px; }
 .modal select[data-c=cable] { min-width: 230px; }
+/* registro masivo desde Excel */
+.dm-masiva { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; background: var(--soft-teal); border: 1px solid rgba(33,140,132,.25); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+.dm-masiva .actions { gap: 6px; }

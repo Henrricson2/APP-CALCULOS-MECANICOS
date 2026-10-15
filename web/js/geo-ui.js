@@ -361,6 +361,9 @@ export function instalarGeo(C) {
       <div class="dm-layout">
         <div class="dm-izq">
           <div class="card dm-form-card">
+            <div class="dm-masiva"><div><b>📥 Registro masivo</b><span class="small muted"> · Excel con columnas <b>Name</b>, <b>Latitud</b>, <b>Longitud</b>. Se registran como poste de 14 m · 750 kgf.</span></div>
+              <div class="actions"><button type="button" class="btn btn-primary btn-small" id="f-excel-btn">📥 Cargar estructuras desde Excel</button><button type="button" class="btn btn-small btn-soft" id="f-excel-plantilla">⇩ Plantilla</button></div>
+              <input type="file" id="f-excel" accept=".xlsx,.xlsm,.xls,.csv" hidden></div>
             <div class="section-head"><h2>Registrar estructura</h2>
               <select class="select" id="f-sis" title="Sistema en que escribe las coordenadas" style="width:auto;max-width:100%"><option value="WGS84">Latitud / longitud (GPS)</option></select></div>
             <form id="f-nueva" class="dm-form" autocomplete="off">
@@ -625,6 +628,60 @@ export function instalarGeo(C) {
     else toast('Asigne el poste a cada estructura para calcular el plantillado.', 'warn');
   }
 
+  // ---- carga masiva desde Excel: Name, Latitud, Longitud (poste 14 m · 750 kgf por defecto)
+  async function cargarExcelEstructuras(archivo) {
+    let r;
+    try {
+      cargando('Leyendo el archivo…');
+      r = await rpc('estructuras_excel', { contenido: await aBase64(archivo), nombre: archivo.name, existentes: S.apoyos.map((a) => a.nombre) });
+      cargando('');
+    } catch (e) { cargando(''); return toast(e.message, 'error'); }
+    const cat = S.catPostes || [];
+    let kDef = cat.findIndex((p) => p.altura === 14 && p.rotura === 750);
+    const filasHtml = r.filas.map((f) => `<tr class="${f.errores.length ? 'row-alert' : f.avisos.length ? 'row-warn' : ''}">
+      <td class="num">${f.fila}</td><td><b>${h(f.nombre)}</b>${f.nombre_auto ? ' <span class="badge">auto</span>' : ''}</td>
+      <td class="num">${f.lat != null ? f.lat.toFixed(7) : '—'}</td><td class="num">${f.lon != null ? f.lon.toFixed(7) : '—'}</td>
+      <td class="small">${f.errores.length ? `<span style="color:var(--danger)">✖ ${h(f.errores.join(' · '))}</span>` : f.avisos.length ? `⚠ ${h(f.avisos.join(' · '))}` : '<span style="color:var(--teal)">✓</span>'}</td></tr>`).join('');
+    const m = modal(`Cargar estructuras: ${archivo.name}`, `
+      <div class="grid grid-3" style="gap:10px;margin-bottom:12px">
+        <div class="card stat"><span class="stat-label">Filas leídas</span><span class="stat-value">${r.filas.length}</span></div>
+        <div class="card stat good"><span class="stat-label">Listas para registrar</span><span class="stat-value">${r.validas}</span></div>
+        <div class="card stat ${r.con_error ? 'alert' : ''}"><span class="stat-label">Con error</span><span class="stat-value">${r.con_error}</span></div></div>
+      ${r.con_error ? `<ul class="adv-list" style="margin-bottom:10px"><li class="err">✖ <span>Corrija en el Excel las filas <b>${r.filas_con_error.join(', ')}</b> (en rojo). Si continúa, esas filas no se registran.</span></li></ul>` : ''}
+      <p class="small muted" style="margin:0 0 8px">Columnas usadas: Name = «${h(r.columnas_usadas.nombre)}», Latitud = «${h(r.columnas_usadas.lat)}», Longitud = «${h(r.columnas_usadas.lon)}».</p>
+      <div class="table-wrap" style="max-height:300px"><table><thead><tr><th>Fila</th><th>Name</th><th>Latitud</th><th>Longitud</th><th>Revisión</th></tr></thead><tbody>${filasHtml}</tbody></table></div>
+      <div class="form-grid" style="margin-top:12px">
+        <label class="field-group"><span class="field-label">Poste para todas (valor por defecto)</span><select class="select" id="cx-poste">${cat.map((p, k) => `<option value="${k}" ${k === kDef ? 'selected' : ''}>${h(p.nombre)}</option>`).join('')}</select><span class="field-help">Altura 14 m · resistencia 750 kgf. Se puede cambiar luego por estructura en la tabla.</span></label>
+        <label class="field-group"><span class="field-label">¿Qué hacer con las ${S.apoyos.length} estructura(s) actuales?</span><select class="select" id="cx-modo"><option value="agregar">Agregar al final</option><option value="reemplazar" ${S.apoyos.length ? '' : 'selected'}>Reemplazarlas</option></select></label>
+      </div>`,
+      `<button class="btn" data-x>Cancelar</button><button class="btn btn-primary" data-ok ${r.validas ? '' : 'disabled'}>Registrar ${r.validas} estructura(s)</button>`);
+    $('[data-x]', m.root).onclick = m.cerrar;
+    $('[data-ok]', m.root).onclick = async () => {
+      const p = cat[+$('#cx-poste', m.root).value] || { altura: 14, rotura: 750, peso: null };
+      const reemplazar = $('#cx-modo', m.root).value === 'reemplazar';
+      const validas = r.filas.filter((f) => !f.errores.length);
+      try {
+        cargando('Registrando estructuras…');
+        const t = await rpc('geo_transformar', { sistema: 'WGS84', puntos: validas.map((f) => ({ u: f.lat, v: f.lon })) });
+        cargando('');
+        const nuevos = validas.map((f, k) => {
+          const q = t.puntos[k];
+          return { id: nuevoId(), nombre: f.nombre, lat: +q.lat.toFixed(9), lon: +q.lon.toFixed(9), E: +q.E.toFixed(4), N: +q.N.toFixed(4),
+            z: null, z_fuente: null, altura: null, poste_altura: p.altura, poste_rotura: p.rotura, poste_peso: null, templetes: [],
+            tipo: 'S', estructura: 'poste', bloqueado: false, orig: { sistema: 'WGS84', u: String(f.lat), v: String(f.lon), nota: `Excel ${archivo.name}, fila ${f.fila}` } };
+        });
+        m.cerrar();
+        cambiar(() => {
+          if (reemplazar) { S.apoyos = nuevos; S.terreno = []; S.meta.terreno = null; S.resultado = null; } else S.apoyos.push(...nuevos);
+          if (S.apoyos.length) { S.apoyos[0].tipo = 'R'; S.apoyos[S.apoyos.length - 1].tipo = 'R'; } // los extremos de la línea son retención
+          S.sel = -1;
+        }, 'carga desde Excel');
+        planta?.ajustar();
+        toast(`${nuevos.length} estructuras registradas (poste ${p.altura} m · ${p.rotura} kgf)${r.con_error ? `; ${r.con_error} fila(s) con error no se cargaron` : ''}. Ahora pulse ⛰ Perfil del terreno para sacar las cotas.`, r.con_error ? 'warn' : 'success');
+      } catch (e) { cargando(''); toast(e.message, 'error'); }
+    };
+  }
+
   async function enlazarEstructuras(vc) {
     C.enlazarAcciones(vc);
     const cont = $('#mapa-cont', vc);
@@ -666,6 +723,12 @@ export function instalarGeo(C) {
     $('#m-kmz', vc).onclick = () => C.exportar('kmz');
     $('#m-html', vc).onclick = () => C.exportar('html');
     $('#dm-pegar', vc).onclick = pegarVarias;
+    $('#f-excel-btn', vc).onclick = () => $('#f-excel', vc).click();
+    $('#f-excel', vc).onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) cargarExcelEstructuras(f); };
+    $('#f-excel-plantilla', vc).onclick = async () => {
+      try { const r = await rpc('plantilla_estructuras'); C.descargar(new Blob([Uint8Array.from(atob(r.contenido), (c) => c.charCodeAt(0))]), r.nombre); }
+      catch (e) { toast(e.message, 'error'); }
+    };
     $('#dm-perfil', vc).onclick = modalPerfil; $('#dm-perfil2', vc).onclick = modalPerfil;
     $('#btn-pegar-terreno', vc).onclick = () => C.pegarTerreno?.();
     pintarTabla();

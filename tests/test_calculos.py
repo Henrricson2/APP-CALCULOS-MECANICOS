@@ -471,3 +471,40 @@ def test_perfil_con_terreno_de_modelo_y_poste_sobre_el_terreno():
     assert t["y"][k] == pytest.approx(443)           # el terreno pasa por la base del poste (Z corregida)
     v = dict(zip(r["vanos"]["columnas"], r["vanos"]["filas"][0]))
     assert 50 < v["X dist. mín."] < 70               # la loma intermedia gobierna la distancia
+
+
+# ------------------------------------------------------------- carga masiva Name/Latitud/Longitud
+def _xlsx(filas):
+    import io as _io
+    from openpyxl import Workbook
+    wb = Workbook(); ws = wb.active
+    for f in filas:
+        ws.append(f)
+    b = _io.BytesIO(); wb.save(b); return b.getvalue()
+
+
+def test_carga_estructuras_excel_valida_y_nombra():
+    from calculos_mecanicos.carga_estructuras import leer_estructuras
+    r = leer_estructuras(_xlsx([["Name", "Latitud", "Longitud"],
+                                ["P1", 2.9273, -75.2819],
+                                [None, "2,9281", "-75,2812"],          # sin nombre, coma decimal
+                                ["P3", "abc", -75.28],                 # latitud no numérica
+                                ["P4", -75.2805, 2.9290],              # invertidas -> se corrigen
+                                ["P5", 40.0, -3.7],                    # fuera de Colombia
+                                ["P1", 2.93, -75.27]]),                # nombre repetido
+                         "e.xlsx", ["AP-001"])
+    f = {x["fila"]: x for x in r["filas"]}
+    assert r["validas"] == 3 and r["con_error"] == 3 and r["filas_con_error"] == [4, 6, 7]
+    assert f[3]["nombre"] == "AP-002" and f[3]["nombre_auto"] and f[3]["lat"] == pytest.approx(2.9281)
+    assert f[5]["lat"] == pytest.approx(2.9290) and f[5]["lon"] == pytest.approx(-75.2805) and f[5]["avisos"]
+    assert "Colombia" in f[6]["errores"][0] and "ya existe" in f[7]["errores"][0]
+
+
+def test_carga_estructuras_respeta_encabezado_y_exige_tres_columnas():
+    from calculos_mecanicos.carga_estructuras import leer_estructuras
+    r = leer_estructuras(_xlsx([["Name", "Longitud", "Latitud"], ["A", -75.2819, 2.9273]]), "e.xlsx")
+    assert r["filas"][0]["lat"] == pytest.approx(2.9273) and r["filas"][0]["lon"] == pytest.approx(-75.2819)
+    r2 = leer_estructuras(_xlsx([["X1", 2.9273, -75.2819]]), "e.xlsx")     # sin encabezado
+    assert r2["validas"] == 1 and r2["filas"][0]["nombre"] == "X1"
+    with pytest.raises(ValueError):
+        leer_estructuras(_xlsx([["Name", "Latitud"], ["A", 2.9]]), "e.xlsx")

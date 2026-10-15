@@ -370,6 +370,19 @@ def rpc(nombre: str, datos: dict) -> dict:
                 return {"ok": True, **_elevacion_web(d.get("fuente") or "srtm", d.get("puntos") or [])}
             except Exception as e:  # sin internet, proxy, certificado, servicio caído…
                 return {"ok": False, "errores": [f"No se pudo consultar la elevación: {e}"]}
+        if nombre == "estructuras_excel":
+            from .carga_estructuras import leer_estructuras
+            try:
+                return {"ok": True, **leer_estructuras(base64.b64decode(d["contenido"]), d.get("nombre", "archivo.xlsx"),
+                                                       d.get("existentes") or [])}
+            except ValueError as e:
+                return {"ok": False, "errores": [str(e)]}
+            except Exception as e:  # archivo dañado o que no es Excel
+                return {"ok": False, "errores": [f"No se pudo leer el archivo: {e}"]}
+        if nombre == "plantilla_estructuras":
+            from .carga_estructuras import plantilla_xlsx
+            return {"ok": True, "contenido": base64.b64encode(plantilla_xlsx()).decode(),
+                    "nombre": "PLANTILLA_ESTRUCTURAS.xlsx"}
         if nombre == "perfil_muestras":
             pts = [(float(p["lat"]), float(p["lon"])) for p in d.get("puntos", [])]
             return {"ok": True, **geo.muestras_perfil(pts, float(d.get("paso_m") or 10), int(d.get("max_muestras") or 2000))}

@@ -1,2 +1,2 @@
 """Cálculos mecánicos y plantillado de catenarias para líneas de media tensión."""
-__version__ = "2.8.0"
+__version__ = "2.8.1"
