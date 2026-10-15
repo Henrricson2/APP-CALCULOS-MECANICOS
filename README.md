@@ -31,7 +31,11 @@ Un solo motor Python (`calculos_mecanicos/`) para todas las plataformas:
   (lat/lon decimal o GMS, MAGNA-SIRGAS Origen Nacional, Gauss-Krüger, UTM, coordenadas locales con
   puntos de control Helmert/afín), candidatos detectados automáticamente que el usuario confirma,
   validación (fuera de Colombia, duplicados, cotas vacías ≠ 0), vista previa del trazado.
-- **Mapa / planta** con tres motores:
+- **Estructuras y mapa** (una sola pestaña): tabla tipo CRUD donde se registra cada estructura con sus
+  coordenadas (lat/lon decimal o GMS, Origen Nacional, Gauss-Krüger o UTM) y se dibuja de inmediato en el
+  mapa. Editar en la celda, reordenar (↑ ↓), bloquear, eliminar, deshacer (Ctrl+Z), pegar varias filas
+  desde Excel o importar un archivo completo. Lo que se mueve en el mapa se actualiza en la tabla.
+- **Mapa** con tres motores:
   - **Satélite gratis (predeterminado)**: [Leaflet](https://leafletjs.com) — la librería que usa Folium —
     con imágenes Esri World Imagery, OpenStreetMap y OpenTopoMap. Sin clave ni costo; requiere internet.
   - Google Maps satelital (opcional, clave en *Parámetros → Mapa satelital*).

@@ -40,12 +40,14 @@ export class PlantaSVG {
 
   setPostes(postes, sel = -1, ajustar = false) {
     this.postes = postes; this.sel = sel;
-    if (ajustar || !this._ajustado) { this.ajustar(); this._ajustado = true; } else this.dibujar();
+    if (ajustar || !this._ajustado) { this.ajustar(); this._ajustado = postes.some((p) => p.lat != null || p.E != null); } else this.dibujar();
   }
   setModo(m) { this.modo = m; this.medida = null; this.cont.dataset.modo = m; this.dibujar(); }
   setCapas({ etiquetas, coords }) { if (etiquetas != null) this.etiquetas = etiquetas; if (coords != null) this.coords = coords; this.dibujar(); }
-  enfocar(i) {
+  enfocar(i) { // centra solo si la estructura quedó fuera de la vista
     const p = this.postes[i]; if (!p || p.E == null) return;
+    const [x, y] = this.aPant(p.E, p.N);
+    if (x > 15 && y > 15 && x < this.W - 15 && y < this.H - 15) return;
     this.cE = p.E; this.cN = p.N; this.dibujar();
   }
   ajustar() {
@@ -223,14 +225,14 @@ export class PlantaGoogle {
   setPostes(postes, sel = -1, ajustar = false) {
     this.postes = postes; this.sel = sel; this._marcas();
     this.linea.setPath(postes.filter((p) => p.lat != null).map((p) => ({ lat: p.lat, lng: p.lon })));
-    if (ajustar || !this._ajustado) { this.ajustar(); this._ajustado = true; }
+    if (ajustar || !this._ajustado) { this.ajustar(); this._ajustado = postes.some((p) => p.lat != null || p.E != null); }
   }
   ajustar() {
     const v = this.postes.filter((p) => p.lat != null); if (!v.length) return;
     const b = new window.google.maps.LatLngBounds(); v.forEach((p) => b.extend({ lat: p.lat, lng: p.lon }));
     this.mapa.fitBounds(b, 40);
   }
-  enfocar(i) { const p = this.postes[i]; if (p?.lat != null) this.mapa.panTo({ lat: p.lat, lng: p.lon }); }
+  enfocar(i) { const p = this.postes[i]; const b = this.mapa.getBounds(); if (p?.lat != null && !(b && b.contains({ lat: p.lat, lng: p.lon }))) this.mapa.panTo({ lat: p.lat, lng: p.lon }); }
   dibujar() { this._marcas(); }
   _marcas() {
     const g = window.google.maps;
@@ -336,13 +338,13 @@ export class PlantaLeaflet {
   setPostes(postes, sel = -1, ajustar = false) {
     this.postes = postes; this.sel = sel; this._marcas();
     this.linea.setLatLngs(postes.filter((p) => p.lat != null).map((p) => [p.lat, p.lon]));
-    if (ajustar || !this._ajustado) { this.ajustar(); this._ajustado = true; }
+    if (ajustar || !this._ajustado) { this.ajustar(); this._ajustado = postes.some((p) => p.lat != null || p.E != null); }
   }
   ajustar() {
     const v = this.postes.filter((p) => p.lat != null); if (!v.length) return;
     this.mapa.fitBounds(window.L.latLngBounds(v.map((p) => [p.lat, p.lon])), { padding: [40, 40], maxZoom: 18 });
   }
-  enfocar(i) { const p = this.postes[i]; if (p?.lat != null) this.mapa.panTo([p.lat, p.lon]); }
+  enfocar(i) { const p = this.postes[i]; if (p?.lat != null && !this.mapa.getBounds().pad(-0.02).contains([p.lat, p.lon])) this.mapa.panTo([p.lat, p.lon]); }
   dibujar() { this._marcas(); }
   _marcas() {
     const L = window.L;

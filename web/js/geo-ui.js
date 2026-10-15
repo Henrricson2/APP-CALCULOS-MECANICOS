@@ -1,6 +1,6 @@
 // Etapa 1: proyectos persistentes, asistente de importación con sistemas de coordenadas,
-// vista en planta (Google Maps o planta propia), panel de propiedades y deshacer/rehacer.
-import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=5';
+// pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
+import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=6';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
@@ -52,7 +52,7 @@ export function instalarGeo(C) {
     C.marcarCambio(); programarGuardado('rehacer'); refrescar();
   }
   function refrescar() {
-    if (S.vista === 'mapa') { pintarPlanta(); pintarPanel(); }
+    if (S.vista === 'datos' && $('#dm-tabla')) { pintarPlanta(); pintarTabla(); }
     else if (S.vista === 'datos') C.ir('datos', true);
     pintarEstadoProyecto();
   }
@@ -114,7 +114,7 @@ export function instalarGeo(C) {
       el.className = '';
       el.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Proyecto</th><th>Municipio</th><th>Postes</th><th>Versiones</th><th>Actualizado</th><th></th></tr></thead><tbody>${lista.map((p) => `<tr class="${p.id === S.meta.id ? 'row-actual' : ''}"><td><b>${h(p.nombre)}</b></td><td>${h(p.municipio || '')}</td><td class="num">${p.n_postes ?? 0}</td><td class="num">${p.n_versiones}</td><td>${h((p.actualizado || '').replace('T', ' '))}</td>
         <td><button class="btn btn-small btn-soft" data-abrir="${p.id}">Abrir</button> <button class="btn btn-small" data-vers="${p.id}">Versiones</button> <button class="btn btn-small" data-arch="${p.id}" title="Archivar">Archivar</button></td></tr>`).join('')}</tbody></table></div>`;
-      $$('[data-abrir]', el).forEach((b) => b.onclick = async () => { const p = await S.motor.proyectos.obtener(b.dataset.abrir); cargarProyecto(p); toast(`Proyecto «${p.nombre}» abierto.`, 'success'); C.ir(hayGeo() ? 'mapa' : 'datos'); });
+      $$('[data-abrir]', el).forEach((b) => b.onclick = async () => { const p = await S.motor.proyectos.obtener(b.dataset.abrir); cargarProyecto(p); toast(`Proyecto «${p.nombre}» abierto.`, 'success'); C.ir('datos'); });
       $$('[data-vers]', el).forEach((b) => b.onclick = () => modalVersiones(b.dataset.vers));
       $$('[data-arch]', el).forEach((b) => b.onclick = async () => { if (!confirm('¿Archivar el proyecto? Deja de aparecer en la lista (no se borra).')) return; await S.motor.proyectos.archivar(b.dataset.arch); if (b.dataset.arch === S.meta.id) S.meta.id = null; C.ir('proyectos', true); });
     } catch (e) { const el = $('#lista-proy', vc); if (el) el.textContent = 'No se pudo cargar la lista: ' + e.message; }
@@ -278,29 +278,180 @@ export function instalarGeo(C) {
       S.meta.sistema = st.sistema; S.meta.sistemaNombre = s?.nombre; S.meta.georref = r.georref || null;
       S.archivo = archivo.name; S.resultado = null; C.guardar(); programarGuardado();
       m.cerrar(); toast(`${nuevos.length} postes importados y ubicados.`, 'success');
-      C.ir('mapa');
+      C.ir('datos', true); planta?.ajustar();
     };
     pintar(); revisar();
   }
 
-  // ===================================================================== MAPA / PLANTA
-  function vistaMapa() {
-    const herr = [['mover', '✥ Mover / seleccionar'], ['insertar', '⊕ Insertar en vano'], ['agregar', '＋ Agregar al final'], ['medir', '📏 Medir']];
-    return `<div class="page-head" style="margin-bottom:12px"><div><h1>Mapa y vista en planta</h1><p>Arrastre postes para moverlos, inserte apoyos sobre un vano o mida distancias. Los cambios recalculan vanos y perfil.</p></div>
-      <div class="actions"><button class="btn" data-act="importar">⇪ Importar coordenadas</button><button class="btn" id="m-kmz">⇩ KMZ Google Earth</button><button class="btn" id="m-html" title="Mapa satelital interactivo en un solo archivo HTML (Folium/Leaflet, gratis)">⇩ Mapa web HTML</button></div></div>
-      <div class="mapa-toolbar card">
-        <div class="tool-grupo">${herr.map(([k, t]) => `<button class="tool ${S.mapaModo === k ? 'active' : ''}" data-modo="${k}">${t}</button>`).join('')}</div>
-        <div class="tool-grupo"><button class="tool" id="m-undo" title="Deshacer (Ctrl+Z)">↶</button><button class="tool" id="m-redo" title="Rehacer (Ctrl+Y)">↷</button><button class="tool" id="m-fit" title="Ajustar vista">⤢</button>
-          <label class="tool chk"><input type="checkbox" id="m-etq" ${S.capas.etiquetas ? 'checked' : ''}> Etiquetas</label><label class="tool chk"><input type="checkbox" id="m-coord" ${S.capas.coords ? 'checked' : ''}> Coordenadas</label></div>
-        <div class="tool-grupo"><select class="select" id="m-motor" style="width:auto"><option value="leaflet">Satélite gratis (Leaflet + Esri/OSM)</option><option value="google">Satélite (Google Maps, con clave)</option><option value="planta">Planta sin fondo</option></select></div>
-      </div>
-      <div class="mapa-layout"><div class="card mapa-card"><div class="mapa-cont" id="mapa-cont"></div></div><aside class="card mapa-panel" id="mapa-panel"></aside></div>`;
+  // ===================================================================== ESTRUCTURAS Y MAPA (una sola pestaña)
+  // Tabla CRUD de estructuras (crear, leer, editar, eliminar, reordenar) enlazada al mapa:
+  // cada fila registrada se dibuja de inmediato y lo que se haga en el mapa se ve en la tabla.
+  const SIS_DEF = 'WGS84';
+  const sisEntrada = () => S.meta.sisEntrada || SIS_DEF;
+  function siguienteNombre() {
+    const ult = S.apoyos[S.apoyos.length - 1];
+    if (!ult) return 'AP-001';
+    const m = String(ult.nombre).match(/^(.*?)(\d+)(\D*)$/);
+    if (!m) return nombreUnico(`AP-${String(S.apoyos.length + 1).padStart(3, '0')}`);
+    return nombreUnico(`${m[1]}${String(+m[2] + 1).padStart(m[2].length, '0')}${m[3]}`);
   }
-  async function enlazarMapa(vc) {
+  function vistaEstructuras() {
+    const herr = [['mover', '✥ Mover', 'Arrastrar y seleccionar estructuras'], ['insertar', '⊕ Insertar', 'Clic sobre un vano para insertar una estructura'], ['agregar', '＋ Nueva', 'Clic en el mapa para agregar una estructura al final'], ['medir', '📏 Medir', 'Medir distancia geodésica']];
+    return `<div class="page-head" style="margin-bottom:12px"><div><h1>Estructuras y mapa</h1><p>Registre cada estructura con sus coordenadas: se agrega a la tabla y se dibuja en el mapa al instante. Edite en la tabla o arrastre en el mapa; todo queda sincronizado.</p></div>
+      <div class="actions"><button class="btn" data-act="importar">⇪ Importar archivo</button><button class="btn" id="dm-pegar">⎘ Pegar varias</button><button class="btn" id="m-kmz">⇩ KMZ</button><button class="btn" id="m-html" title="Mapa satelital en un solo archivo HTML (Folium/Leaflet, gratis)">⇩ Mapa HTML</button></div></div>
+      <div class="dm-layout">
+        <div class="dm-izq">
+          <div class="card dm-form-card">
+            <div class="section-head"><h2>Registrar estructura</h2>
+              <select class="select" id="f-sis" title="Sistema en que escribe las coordenadas" style="width:auto;max-width:100%"><option value="WGS84">Latitud / longitud (GPS)</option></select></div>
+            <form id="f-nueva" class="dm-form" autocomplete="off">
+              <label class="field-group"><span class="field-label">Estructura</span><input class="input" name="nombre" value="${h(siguienteNombre())}" required></label>
+              <label class="field-group"><span class="field-label" id="f-e1">Latitud</span><input class="input" name="u" placeholder="2.927222 o 2°55'38&quot;N" required></label>
+              <label class="field-group"><span class="field-label" id="f-e2">Longitud</span><input class="input" name="v" placeholder="-75.281944 o 75°16'55&quot;W" required></label>
+              <label class="field-group"><span class="field-label">Cota Z (m)</span><input class="input" name="z" inputmode="decimal" placeholder="opcional"></label>
+              <label class="field-group"><span class="field-label">Altura amarre (m)</span><input class="input" name="altura" inputmode="decimal" placeholder="opcional" value="${h(S.apoyos[S.apoyos.length - 1]?.altura ?? '')}"></label>
+              <label class="field-group"><span class="field-label">Tipo</span><select class="select" name="tipo"><option value="S">Suspensión</option><option value="R" ${S.apoyos.length ? '' : 'selected'}>Retención</option></select></label>
+              <button class="btn btn-primary dm-agregar" type="submit">＋ Agregar</button>
+            </form>
+            <p class="small muted" style="margin:6px 0 0">Enter = agregar y seguir con la siguiente. Las coordenadas aceptan decimal o grados-minutos-segundos.</p>
+          </div>
+          <div class="card" style="margin-top:12px"><div class="section-head"><h2>Estructuras <span class="badge" id="dm-n">${S.apoyos.length}</span></h2>
+            <span class="small muted" id="dm-resumen"></span></div>
+            <div id="dm-tabla"></div></div>
+          <div class="card" style="margin-top:12px"><div class="section-head"><h3>Perfil del terreno <span class="badge">${S.terreno.length} puntos</span></h3>
+            <button class="btn btn-small btn-soft" id="btn-pegar-terreno">⎘ Pegar terreno</button></div>
+            <p class="muted small" style="margin:0">Opcional: pares (abscisa, cota) de topografía entre estructuras.</p></div>
+        </div>
+        <div class="dm-der">
+          <div class="mapa-toolbar card">
+            <div class="tool-grupo">${herr.map(([k, t, ay]) => `<button class="tool ${S.mapaModo === k ? 'active' : ''}" data-modo="${k}" title="${ay}">${t}</button>`).join('')}</div>
+            <div class="tool-grupo"><button class="tool" id="m-undo" title="Deshacer (Ctrl+Z)">↶</button><button class="tool" id="m-redo" title="Rehacer (Ctrl+Y)">↷</button><button class="tool" id="m-fit" title="Ajustar vista">⤢</button>
+              <label class="tool chk" title="Etiquetas"><input type="checkbox" id="m-etq" ${S.capas.etiquetas ? 'checked' : ''}> Nombres</label><label class="tool chk" title="Coordenadas"><input type="checkbox" id="m-coord" ${S.capas.coords ? 'checked' : ''}> Coord.</label>
+              <select class="select" id="m-motor" style="width:auto"><option value="leaflet">Satélite gratis</option><option value="google">Google Maps</option><option value="planta">Planta sin fondo</option></select></div>
+          </div>
+          <div class="card mapa-card"><div class="mapa-cont dm-mapa" id="mapa-cont"></div></div>
+        </div>
+      </div>`;
+  }
+
+  function pintarTabla() {
+    const el = $('#dm-tabla'); if (!el) return;
+    const act = document.activeElement, foco = el.contains(act) && act.dataset.k ? { i: act.closest('tr')?.dataset.i, k: act.dataset.k } : null;
+    const n = S.apoyos.length;
+    $('#dm-n').textContent = n;
+    const sinZ = S.apoyos.filter((a) => a.z == null).length;
+    let total = 0; for (let k = 1; k < n; k++) { const a = S.apoyos[k - 1], b = S.apoyos[k]; if (a.E != null && b.E != null) total += Math.hypot(b.E - a.E, b.N - a.N); }
+    $('#dm-resumen').innerHTML = n ? `${nf(total, 1)} m en planta${sinZ ? ` · <span style="color:var(--danger)">${sinZ} sin cota Z</span>` : ''}` : '';
+    if (!n) {
+      el.innerHTML = '<div class="empty" style="padding:22px"><div class="big">📍</div><h3>Aún no hay estructuras</h3><p>Escriba las coordenadas de la primera estructura arriba, importe un archivo (Excel, CSV, KML/KMZ) o active <b>＋ Nueva</b> y toque el mapa.</p></div>';
+      return;
+    }
+    const filas = S.apoyos.map((a, i) => {
+      const prev = S.apoyos[i - 1];
+      const vano = prev && prev.E != null && a.E != null ? nf(Math.hypot(a.E - prev.E, a.N - prev.N), 1) : '—';
+      const bl = a.bloqueado ? 'disabled' : '';
+      return `<tr data-i="${i}" class="${i === S.sel ? 'row-actual' : ''} ${a.z == null ? 'row-warn' : ''}">
+        <td class="idx">${i + 1}</td>
+        <td><input class="name" data-k="nombre" value="${h(a.nombre)}"></td>
+        <td><input data-k="lat" value="${h(a.lat != null ? (+a.lat).toFixed(7) : '')}" ${bl}></td>
+        <td><input data-k="lon" value="${h(a.lon != null ? (+a.lon).toFixed(7) : '')}" ${bl}></td>
+        <td><input data-k="z" inputmode="decimal" placeholder="sin dato" value="${h(a.z ?? '')}" title="${h(a.z_fuente || '')}"></td>
+        <td><input data-k="altura" inputmode="decimal" placeholder="—" value="${h(a.altura ?? '')}"></td>
+        <td><select data-k="tipo"><option value="S" ${a.tipo !== 'R' ? 'selected' : ''}>Susp.</option><option value="R" ${a.tipo === 'R' ? 'selected' : ''}>Ret.</option></select></td>
+        <td class="num muted small">${vano}</td>
+        <td class="dm-acc"><button class="del" data-a="sube" title="Mover antes" ${i === 0 ? 'disabled' : ''}>↑</button><button class="del" data-a="baja" title="Mover después" ${i === n - 1 ? 'disabled' : ''}>↓</button><button class="del" data-a="bloq" title="${a.bloqueado ? 'Desbloquear' : 'Bloquear coordenadas'}">${a.bloqueado ? '🔒' : '🔓'}</button><button class="del" data-a="del" title="Eliminar" ${bl}>✕</button></td></tr>`;
+    }).join('');
+    el.innerHTML = `<div class="table-wrap dm-tabla-wrap"><table class="grid-edit"><thead><tr><th>#</th><th>Estructura</th><th>Latitud</th><th>Longitud</th><th>Cota Z (m)</th><th>Altura (m)</th><th>Tipo</th><th>Vano (m)</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`;
+    $$('input[data-k], select[data-k]', el).forEach((inp) => inp.addEventListener('change', () => editarCampo(+inp.closest('tr').dataset.i, inp.dataset.k, inp.value)));
+    $$('tbody tr', el).forEach((tr) => tr.addEventListener('focusin', () => seleccionar(+tr.dataset.i, true, false)));
+    $$('[data-a]', el).forEach((b) => b.onclick = () => {
+      const i = +b.closest('tr').dataset.i;
+      if (b.dataset.a === 'del') return eliminar(i);
+      if (b.dataset.a === 'bloq') return cambiar(() => { S.apoyos[i].bloqueado = !S.apoyos[i].bloqueado; }, 'bloqueo');
+      const j = b.dataset.a === 'sube' ? i - 1 : i + 1;
+      cambiar(() => { [S.apoyos[j], S.apoyos[i]] = [S.apoyos[i], S.apoyos[j]]; S.sel = j; }, 'reordenar');
+    });
+    if (foco) { const x = el.querySelector(`tr[data-i="${foco.i}"] [data-k="${foco.k}"]`); if (x) x.focus(); }
+  }
+  function seleccionar(i, enMapa = true, enTabla = true) {
+    if (S.sel === i) return;
+    S.sel = i;
+    if (enMapa) { planta?.setPostes(S.apoyos, S.sel); if (i >= 0) planta?.enfocar?.(i); }
+    $$('#dm-tabla tbody tr').forEach((tr) => tr.classList.toggle('row-actual', +tr.dataset.i === i));
+    if (enTabla && i >= 0) $(`#dm-tabla tr[data-i="${i}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  async function prepararFormulario(vc) {
+    const sel = $('#f-sis', vc), f = $('#f-nueva', vc);
+    try {
+      const lista = (await listaSistemas()).sistemas.filter((s) => s.tipo !== 'local');
+      sel.innerHTML = lista.map((s) => `<option value="${s.codigo}">${h(s.nombre)}</option>`).join('');
+    } catch { /* sin motor: solo lat/lon */ }
+    sel.value = sisEntrada(); if (!sel.value) sel.value = SIS_DEF;
+    const ejes = () => {
+      const geo = ['WGS84', 'MAGNA_GEO'].includes(sel.value);
+      $('#f-e1', vc).textContent = geo ? 'Latitud' : 'Este (m)'; $('#f-e2', vc).textContent = geo ? 'Longitud' : 'Norte (m)';
+      f.u.placeholder = geo ? "2.927222 o 2°55'38\"N" : 'p. ej. 4746440.15'; f.v.placeholder = geo ? "-75.281944 o 75°16'55\"W" : 'p. ej. 1881726.85';
+    };
+    sel.onchange = () => { S.meta.sisEntrada = sel.value; C.guardar(); ejes(); };
+    ejes();
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      const d = Object.fromEntries(new FormData(f));
+      try {
+        const nuevo = await crearEstructura(d, sel.value);
+        cambiar(() => { S.apoyos.push(nuevo); S.sel = S.apoyos.length - 1; }, 'agregar');
+        planta?.enfocar?.(S.sel);
+        f.nombre.value = siguienteNombre(); f.u.value = ''; f.v.value = ''; f.z.value = ''; f.tipo.value = 'S';
+        f.u.focus();
+        toast(`${nuevo.nombre} registrada y dibujada en el mapa.`, 'success');
+      } catch (err) { toast(err.message, 'error'); }
+    };
+  }
+  async function crearEstructura(d, sistema, base = null) {
+    if (!String(d.u ?? '').trim() || !String(d.v ?? '').trim()) throw new Error('Escriba las dos coordenadas.');
+    const r = await rpc('geo_transformar', { sistema, puntos: [{ u: String(d.u).trim(), v: String(d.v).trim() }] });
+    const q = r.puntos[0]; if (!q.ok) throw new Error(`${d.nombre || 'Estructura'}: ${q.error}`);
+    const z = num(d.z ?? ''), alt = num(d.altura ?? '');
+    if (Number.isNaN(z)) throw new Error(`Cota Z no numérica: «${d.z}»`);
+    if (Number.isNaN(alt)) throw new Error(`Altura no numérica: «${d.altura}»`);
+    const nombre = String(d.nombre || '').trim() || siguienteNombre();
+    if (S.apoyos.some((a) => String(a.nombre) === nombre) || base?.has(nombre)) throw new Error(`Ya existe la estructura «${nombre}».`);
+    return { id: nuevoId(), nombre, lat: +q.lat.toFixed(9), lon: +q.lon.toFixed(9), E: +q.E.toFixed(4), N: +q.N.toFixed(4),
+      z: z ?? null, z_fuente: z != null ? 'manual' : null, altura: alt ?? null, tipo: String(d.tipo || 'S').toUpperCase().startsWith('R') ? 'R' : 'S',
+      bloqueado: false, orig: { sistema, u: String(d.u).trim(), v: String(d.v).trim(), nota: 'registrada en la tabla' } };
+  }
+  function pegarVarias() {
+    const sis = sisEntrada();
+    const m = modal('Pegar varias estructuras',
+      `<p class="muted small">Copie las filas desde Excel y péguelas. Columnas: <b>Estructura, ${['WGS84', 'MAGNA_GEO'].includes(sis) ? 'Latitud, Longitud' : 'Este, Norte'}</b> [, Cota Z] [, Altura] [, Tipo R/S]. Sistema: el elegido en «Registrar estructura». Se agregan al final.</p>
+       <textarea class="textarea" id="dm-txt" placeholder="AP-001\t2.927222\t-75.281944\t440.2\t10.5\tR\nAP-002\t2.928100\t-75.281000\t441.0\t10.5\tS"></textarea>`,
+      '<button class="btn" data-x>Cancelar</button><button class="btn btn-primary" data-ok>Agregar</button>');
+    $('[data-x]', m.root).onclick = m.cerrar;
+    setTimeout(() => $('#dm-txt').focus(), 50);
+    $('[data-ok]', m.root).onclick = async () => {
+      const lineas = $('#dm-txt').value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      const sep = (l) => (l.includes('\t') ? l.split('\t') : l.split(';')).map((x) => x.trim());
+      const nuevos = [], errores = [], usados = new Set();
+      for (const [k, l] of lineas.entries()) {
+        const c = sep(l);
+        if (k === 0 && /estructura|poste|nombre|apoyo/i.test(c[0]) && Number.isNaN(num(c[1]))) continue; // encabezado
+        try { const p = await crearEstructura({ nombre: c[0], u: c[1], v: c[2], z: c[3] ?? '', altura: c[4] ?? '', tipo: c[5] || 'S' }, sis, usados); usados.add(p.nombre); nuevos.push(p); }
+        catch (e) { errores.push(`Fila ${k + 1}: ${e.message}`); }
+      }
+      if (!nuevos.length) return toast(errores[0] || 'No se reconocieron filas.', 'warn');
+      m.cerrar();
+      cambiar(() => { S.apoyos.push(...nuevos); }, 'pegar');
+      planta?.ajustar();
+      toast(`${nuevos.length} estructuras agregadas${errores.length ? `; ${errores.length} con error: ${errores.slice(0, 3).join(' · ')}` : ''}.`, errores.length ? 'warn' : 'success');
+    };
+  }
+
+  async function enlazarEstructuras(vc) {
     C.enlazarAcciones(vc);
     const cont = $('#mapa-cont', vc);
     const op = {
-      onSelect: (i) => { S.sel = i; planta?.setPostes(S.apoyos, S.sel); pintarPanel(); },
+      onSelect: (i) => seleccionar(i, true, true),
       onMove: (i, pt) => moverPoste(i, pt),
       onInsert: (i, pt) => insertarPoste(i, pt),
       onAdd: (pt) => agregarPoste(pt),
@@ -308,14 +459,14 @@ export function instalarGeo(C) {
       onAviso: (t) => toast(t, 'warn'),
     };
     const sel = $('#m-motor', vc);
-    let clave = S.config?.google_maps_key;
+    const clave = S.config?.google_maps_key;
     let preferido = 'leaflet'; try { preferido = localStorage.getItem('cm-mapa') || 'leaflet'; } catch { /* */ }
     sel.value = preferido;
     async function montar(tipo) {
       planta?.destruir?.(); planta = null;
       if (tipo === 'google') {
         if (!clave) {
-          cont.innerHTML = `<div class="empty"><div class="big">🛰</div><h3>Falta la clave de Google Maps</h3><p>Configure la clave en <b>Parámetros → Mapa satelital</b>, o use el satélite gratuito (Leaflet + Esri), que no requiere clave.</p><button class="btn btn-soft" id="m-a-planta">Usar satélite gratis</button></div>`;
+          cont.innerHTML = `<div class="empty"><div class="big">🛰</div><h3>Falta la clave de Google Maps</h3><p>Configúrela en <b>Parámetros → Mapa satelital</b>, o use el satélite gratuito, que no requiere clave.</p><button class="btn btn-soft" id="m-a-planta">Usar satélite gratis</button></div>`;
           $('#m-a-planta', cont).onclick = () => { sel.value = 'leaflet'; sel.onchange(); };
           return;
         }
@@ -336,13 +487,12 @@ export function instalarGeo(C) {
     $('#m-coord', vc).onchange = (e) => { S.capas.coords = e.target.checked; planta?.setCapas(S.capas); };
     $('#m-kmz', vc).onclick = () => C.exportar('kmz');
     $('#m-html', vc).onclick = () => C.exportar('html');
-    if (!hayGeo()) {
-      cont.innerHTML = `<div class="empty"><div class="big">🗺</div><h3>Los postes no tienen coordenadas geográficas</h3><p>Importe un archivo con latitud/longitud, Este/Norte (MAGNA-SIRGAS, UTM) o coordenadas locales con puntos de control.</p><button class="btn btn-primary" data-act="importar">⇪ Importar coordenadas</button></div>`;
-      C.enlazarAcciones(cont); pintarPanel(); return;
-    }
-    await montar(preferido);
-    pintarPanel();
+    $('#dm-pegar', vc).onclick = pegarVarias;
+    $('#btn-pegar-terreno', vc).onclick = () => C.pegarTerreno?.();
+    pintarTabla();
+    await Promise.all([prepararFormulario(vc), montar(preferido)]);
   }
+
   function pintarPlanta() { planta?.setPostes(S.apoyos, S.sel); }
 
   async function ubicar(pt) { // completa lat/lon/E/N desde lo que venga
@@ -360,7 +510,7 @@ export function instalarGeo(C) {
         Object.assign(S.apoyos[i], u, { orig: { sistema: 'ORIGEN_NACIONAL', u: String(u.E), v: String(u.N), nota: 'movido en el mapa' } });
         if (S.apoyos[i].z != null) S.apoyos[i].z_fuente = 'por verificar (poste movido)';
       }, 'mover');
-      S.sel = i; toast(`${p.nombre} movido. Verifique su cota Z en el nuevo sitio.`, 'warn');
+      S.sel = i; pintarTabla(); toast(`${p.nombre} movido. Verifique su cota Z en el nuevo sitio.`, 'warn');
     } catch (e) { toast(e.message, 'error'); pintarPlanta(); }
   }
   async function insertarPoste(i, pt) {
@@ -373,7 +523,7 @@ export function instalarGeo(C) {
       const nuevo = { id: nuevoId(), nombre: nombreUnico(`${a.nombre}A`), ...u, z, z_fuente: z != null ? 'interpolada (verificar)' : null,
         altura: a.altura ?? b.altura ?? null, tipo: 'S', bloqueado: false, conductor: a.conductor ?? null, orig: { sistema: 'ORIGEN_NACIONAL', u: String(u.E), v: String(u.N), nota: 'insertado en el mapa' } };
       cambiar(() => { S.apoyos.splice(i + 1, 0, nuevo); }, 'insertar');
-      S.sel = i + 1; pintarPlanta(); pintarPanel(); toast(`Poste ${nuevo.nombre} insertado entre ${a.nombre} y ${b.nombre}.`, 'success');
+      S.sel = i + 1; pintarPlanta(); pintarTabla(); toast(`Poste ${nuevo.nombre} insertado entre ${a.nombre} y ${b.nombre}.`, 'success');
     } catch (e) { toast(e.message, 'error'); }
   }
   async function agregarPoste(pt) {
@@ -382,7 +532,7 @@ export function instalarGeo(C) {
       const nuevo = { id: nuevoId(), nombre: nombreUnico(`AP-${String(S.apoyos.length + 1).padStart(3, '0')}`), ...u, z: null, z_fuente: null,
         altura: ult?.altura ?? null, tipo: 'S', bloqueado: false, orig: { sistema: 'ORIGEN_NACIONAL', u: String(u.E), v: String(u.N), nota: 'agregado en el mapa' } };
       cambiar(() => { S.apoyos.push(nuevo); }, 'agregar');
-      S.sel = S.apoyos.length - 1; pintarPlanta(); pintarPanel(); toast(`Poste ${nuevo.nombre} agregado. Ingrese su cota Z.`, 'success');
+      S.sel = S.apoyos.length - 1; pintarPlanta(); pintarTabla(); toast(`Poste ${nuevo.nombre} agregado. Ingrese su cota Z.`, 'success');
     } catch (e) { toast(e.message, 'error'); }
   }
   async function medir(a, b) {
@@ -391,50 +541,6 @@ export function instalarGeo(C) {
     return r.ok ? r.distancia_m : null;
   }
 
-  // ------------------------------------------------------------- panel de propiedades
-  function pintarPanel() {
-    const el = $('#mapa-panel'); if (!el) return;
-    const i = S.sel, p = S.apoyos[i];
-    if (!p) {
-      const n = S.apoyos.length, sinZ = S.apoyos.filter((a) => a.z == null).length, bloq = S.apoyos.filter((a) => a.bloqueado).length;
-      el.innerHTML = `<div class="section-head"><h3>Propiedades</h3></div><p class="muted small">Seleccione un poste en el mapa para ver y editar sus propiedades.</p>
-        <dl class="kv"><dt>Postes</dt><dd>${n}</dd><dt>Sin cota Z</dt><dd>${sinZ ? `<span class="badge badge-red">${sinZ}</span>` : '0'}</dd><dt>Bloqueados</dt><dd>${bloq}</dd><dt>Sistema de origen</dt><dd>${h(S.meta.sistemaNombre || '—')}</dd></dl>
-        <p class="small muted" style="margin-top:12px">Atajos: Ctrl+Z deshacer · Ctrl+Y rehacer · Supr eliminar seleccionado.</p>`;
-      return;
-    }
-    const prev = S.apoyos[i - 1], next = S.apoyos[i + 1];
-    const vano = (q) => q && q.E != null && p.E != null ? Math.hypot(q.E - p.E, q.N - p.N) : null;
-    const campo = (k, etq, val, extra = '') => `<label class="field-group"><span class="field-label">${etq}</span><input class="input" data-p="${k}" value="${h(val ?? '')}" ${p.bloqueado && ['lat', 'lon', 'E', 'N'].includes(k) ? 'disabled' : ''} ${extra}></label>`;
-    el.innerHTML = `<div class="section-head"><h3>Poste ${h(p.nombre)}</h3><span class="badge ${p.tipo === 'R' ? 'badge-red' : ''}">${p.tipo === 'R' ? 'Retención' : 'Suspensión'}</span></div>
-      <div class="form-grid">
-        ${campo('nombre', 'Número / nombre', p.nombre)}
-        <label class="field-group"><span class="field-label">Identificador permanente</span><input class="input" value="${h(p.id || '')}" disabled></label>
-        ${campo('lat', 'Latitud (decimal o GMS)', p.lat != null ? p.lat.toFixed(8) : '')}
-        ${campo('lon', 'Longitud (decimal o GMS)', p.lon != null ? p.lon.toFixed(8) : '')}
-        ${campo('E', 'Este Origen Nacional (m)', p.E != null ? p.E.toFixed(3) : '')}
-        ${campo('N', 'Norte Origen Nacional (m)', p.N != null ? p.N.toFixed(3) : '')}
-        ${campo('z', 'Cota Z del terreno (m)', p.z, 'placeholder="sin dato"')}
-        <label class="field-group"><span class="field-label">Fuente de la cota</span><select class="select" data-p="z_fuente">${['', 'topografía (verificada)', 'archivo', 'manual', 'interpolada (verificar)', 'por verificar (poste movido)', 'modelo de elevación (estimada)'].map((o) => `<option ${o === (p.z_fuente || '') ? 'selected' : ''} value="${h(o)}">${h(o || '— sin dato —')}</option>`).join('')}</select></label>
-        ${campo('altura', 'Altura de amarre (m)', p.altura, 'placeholder="sin dato"')}
-        <label class="field-group"><span class="field-label">Tipo</span><select class="select" data-p="tipo"><option value="S" ${p.tipo !== 'R' ? 'selected' : ''}>Suspensión</option><option value="R" ${p.tipo === 'R' ? 'selected' : ''}>Retención</option></select></label>
-        ${campo('conductor', 'Conductor asignado', p.conductor, 'placeholder="el del proyecto"')}
-        ${campo('obs', 'Observaciones', p.obs)}
-      </div>
-      <dl class="kv" style="margin-top:12px"><dt>Vano anterior</dt><dd>${prev ? `${h(prev.nombre)}: ${nf(vano(prev), 2)} m (plano)` : '—'}</dd><dt>Vano siguiente</dt><dd>${next ? `${h(next.nombre)}: ${nf(vano(next), 2)} m (plano)` : '—'}</dd>
-      <dt>Coordenada original</dt><dd class="small">${h(p.orig ? `${p.orig.sistema}: ${p.orig.u}, ${p.orig.v}${p.orig.nota ? ' · ' + p.orig.nota : ''}` : '—')}</dd></dl>
-      <div class="actions" style="margin-top:12px">
-        <button class="btn btn-small" id="pp-bloq">${p.bloqueado ? '🔓 Desbloquear' : '🔒 Bloquear'}</button>
-        <button class="btn btn-small" id="pp-dup">⧉ Duplicar</button>
-        <button class="btn btn-small" id="pp-sube" ${i === 0 ? 'disabled' : ''}>↑ Antes</button>
-        <button class="btn btn-small" id="pp-baja" ${i === S.apoyos.length - 1 ? 'disabled' : ''}>↓ Después</button>
-        <button class="btn btn-small btn-danger" id="pp-del" ${p.bloqueado ? 'disabled' : ''}>✕ Eliminar</button></div>`;
-    $$('[data-p]', el).forEach((inp) => inp.onchange = () => editarCampo(i, inp.dataset.p, inp.value));
-    $('#pp-bloq', el).onclick = () => cambiar(() => { S.apoyos[i].bloqueado = !S.apoyos[i].bloqueado; }, 'bloqueo');
-    $('#pp-dup', el).onclick = () => duplicar(i);
-    $('#pp-sube', el).onclick = () => cambiar(() => { [S.apoyos[i - 1], S.apoyos[i]] = [S.apoyos[i], S.apoyos[i - 1]]; S.sel = i - 1; }, 'reordenar');
-    $('#pp-baja', el).onclick = () => cambiar(() => { [S.apoyos[i + 1], S.apoyos[i]] = [S.apoyos[i], S.apoyos[i + 1]]; S.sel = i + 1; }, 'reordenar');
-    $('#pp-del', el).onclick = () => eliminar(i);
-  }
   async function editarCampo(i, k, v) {
     const p = S.apoyos[i];
     try {
@@ -452,7 +558,7 @@ export function instalarGeo(C) {
         return cambiar(() => { S.apoyos[i][k] = n; if (k === 'z' && n != null && !S.apoyos[i].z_fuente) S.apoyos[i].z_fuente = 'manual'; if (k === 'z' && n == null) S.apoyos[i].z_fuente = null; }, k);
       }
       cambiar(() => { S.apoyos[i][k] = v === '' ? null : v; }, k);
-    } catch (e) { toast(e.message, 'error'); pintarPanel(); }
+    } catch (e) { toast(e.message, 'error'); pintarTabla(); }
   }
   async function duplicar(i) {
     const p = S.apoyos[i];
@@ -473,13 +579,14 @@ export function instalarGeo(C) {
     if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); deshacer(); }
     if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); rehacer(); }
     if (e.ctrlKey && e.key.toLowerCase() === 's') { e.preventDefault(); guardarServidor(false); }
-    if (e.key === 'Delete' && S.vista === 'mapa' && S.sel >= 0) eliminar(S.sel);
+    if (e.key === 'Delete' && S.vista === 'datos' && S.sel >= 0) eliminar(S.sel);
   });
 
   return {
-    titulos: { proyectos: 'Proyectos', mapa: 'Mapa / planta' },
-    vistas: { proyectos: vistaProyectos, mapa: vistaMapa },
-    enlaces: { proyectos: enlazarProyectos, mapa: enlazarMapa },
+    titulos: { proyectos: 'Proyectos' },
+    vistas: { proyectos: vistaProyectos },
+    enlaces: { proyectos: enlazarProyectos },
+    vistaEstructuras, enlazarEstructuras,
     asistente, cambiar, deshacer, rehacer, guardarServidor, editar: editarCampo, eliminar, programarGuardado, hayGeo, rpc, listaSistemas,
   };
 }

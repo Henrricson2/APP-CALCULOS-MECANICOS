@@ -1,7 +1,7 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
-import { detectarMotor } from './motor.js?v=5';
-import { dibujarPerfil, paginas, abscisaK } from './perfil.js?v=5';
-import { instalarGeo } from './geo-ui.js?v=5';
+import { detectarMotor } from './motor.js?v=6';
+import { dibujarPerfil, paginas, abscisaK } from './perfil.js?v=6';
+import { instalarGeo } from './geo-ui.js?v=6';
 
 const CLAVE = 'cm-proyecto-v2';
 const $ = (s, el = document) => el.querySelector(s);
@@ -10,7 +10,7 @@ const h = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<'
 const nf = (v, d = 2) => (v == null || v === '' || Number.isNaN(+v)) ? '—' : (+v).toLocaleString('es-CO', { maximumFractionDigits: d, minimumFractionDigits: 0 });
 const num = (v) => { if (v == null) return null; const s = String(v).trim().replace(',', '.'); if (s === '') return null; const n = Number(s); return Number.isFinite(n) ? n : NaN; };
 
-const TITULOS = { resumen: 'Resumen', datos: 'Datos de la línea', parametros: 'Parámetros', perfil: 'Perfil / plantillado', resultados: 'Resultados', advertencias: 'Advertencias', exportar: 'Exportar', acerca: 'Normas y ayuda' };
+const TITULOS = { resumen: 'Resumen', datos: 'Estructuras y mapa', parametros: 'Parámetros', perfil: 'Perfil / plantillado', resultados: 'Resultados', advertencias: 'Advertencias', exportar: 'Exportar', acerca: 'Normas y ayuda' };
 
 const S = {
   vista: 'resumen', defaults: null, proyecto: null, apoyos: [], terreno: [], conductores: {},
@@ -164,6 +164,8 @@ function fusionar(base, extra) {
 
 // ------------------------------------------------------------- navegación
 function ir(vista, forzar = false) {
+  if (!S.proyecto) return; // aún iniciando
+  if (vista === 'mapa') vista = 'datos'; // la planta ahora está en la misma pestaña que la tabla
   if (!TITULOS[vista]) vista = 'resumen';
   if (S.vista === vista && !forzar && $('#view-container').childElementCount) return;
   S.vista = vista;
@@ -246,7 +248,7 @@ const VISTAS = {
   },
 
   datos() {
-    if (GEO.hayGeo()) return vistaDatosGeo();
+    if (!S.apoyos.length || GEO.hayGeo()) return GEO.vistaEstructuras();
     const conFlecha = S.proyecto.modo_flecha === 'excel' || S.apoyos.some((a) => a.flecha != null && a.flecha !== '');
     const filas = S.apoyos.map((a, i) => `<tr data-i="${i}">
       <td class="idx">${i + 1}</td>
@@ -257,7 +259,7 @@ const VISTAS = {
       <td><select data-k="tipo"><option value="S" ${a.tipo !== 'R' ? 'selected' : ''}>Suspensión</option><option value="R" ${a.tipo === 'R' ? 'selected' : ''}>Retención</option></select></td>
       ${conFlecha ? `<td><input data-k="flecha" inputmode="decimal" placeholder="—" value="${h(i === 0 ? '' : (a.flecha ?? ''))}" ${i === 0 ? 'disabled' : ''}></td>` : ''}
       <td><button class="del" title="Eliminar apoyo" data-del="${i}">✕</button></td></tr>`).join('');
-    return `<div class="page-head"><div><h1>Datos de la línea</h1><p>Un apoyo por fila con abscisa X creciente. Si escribe la <b>altura de amarre</b>, la cota Y se toma como <b>terreno</b> y se verifican las distancias de seguridad. Retención = inicio/fin de sección de tendido.</p></div>
+    return `<div class="page-head"><div><h1>Estructuras (abscisa / cota)</h1><p>Proyecto sin coordenadas geográficas: un apoyo por fila con abscisa X creciente. Para verlas en el mapa, importe un archivo con coordenadas. Si escribe la <b>altura de amarre</b>, la cota Y se toma como <b>terreno</b> y se verifican las distancias de seguridad. Retención = inicio/fin de sección de tendido.</p></div>
       <div class="actions"><button class="btn btn-primary" data-act="importar">⇪ Importar Excel</button><button class="btn" id="btn-pegar">⎘ Pegar desde Excel</button><button class="btn" data-act="plantilla">⇩ Plantilla</button><button class="btn" data-act="ejemplo">Ejemplo</button></div></div>
     <div class="card"><div class="section-head"><h2>Apoyos <span class="badge">${S.apoyos.length}</span></h2>
       <div class="actions"><button class="btn btn-small btn-soft" id="btn-agregar">＋ Agregar apoyo</button><button class="btn btn-small" id="btn-limpiar">Vaciar</button></div></div>
@@ -402,7 +404,7 @@ const ENLACES = {
     }
   },
   datos(vc) {
-    if (GEO.hayGeo()) return enlazarDatosGeo(vc);
+    if (vc.querySelector('#dm-tabla')) return GEO.enlazarEstructuras(vc);
     enlazarAcciones(vc);
     $$('.grid-edit input, .grid-edit select', vc).forEach((el) => el.addEventListener('change', () => {
       const i = +el.closest('tr').dataset.i, k = el.dataset.k;
@@ -488,41 +490,10 @@ const ENLACES = {
 // ================================================================== ETAPA 1 (geo)
 const GEO = instalarGeo({
   S, $, $$, h, nf, num, toast, modal, cargando, descargar, clon, fusionar,
+  pegarTerreno: () => modalPegar('terreno'),
   ir, marcarCambio, guardar, calcular, actualizarCabecera, asegurarMotor, enlazarAcciones, importarExcel, exportar,
 });
 Object.assign(TITULOS, GEO.titulos); Object.assign(VISTAS, GEO.vistas); Object.assign(ENLACES, GEO.enlaces);
-
-function vistaDatosGeo() {
-  const filas = S.apoyos.map((a, i) => `<tr data-i="${i}" class="${a.z == null ? 'row-warn' : ''}">
-    <td class="idx">${i + 1}</td>
-    <td><input class="name" data-k="nombre" value="${h(a.nombre)}"></td>
-    <td><input data-k="lat" value="${h(a.lat != null ? (+a.lat).toFixed(8) : '')}" ${a.bloqueado ? 'disabled' : ''}></td>
-    <td><input data-k="lon" value="${h(a.lon != null ? (+a.lon).toFixed(8) : '')}" ${a.bloqueado ? 'disabled' : ''}></td>
-    <td class="num muted">${a.E != null ? nf(a.E, 2) : '—'}</td><td class="num muted">${a.N != null ? nf(a.N, 2) : '—'}</td>
-    <td><input data-k="z" inputmode="decimal" placeholder="sin dato" value="${h(a.z ?? '')}"></td>
-    <td class="small muted">${h(a.z_fuente || '—')}</td>
-    <td><input data-k="altura" inputmode="decimal" placeholder="—" value="${h(a.altura ?? '')}"></td>
-    <td><select data-k="tipo"><option value="S" ${a.tipo !== 'R' ? 'selected' : ''}>Suspensión</option><option value="R" ${a.tipo === 'R' ? 'selected' : ''}>Retención</option></select></td>
-    <td>${a.bloqueado ? '🔒' : ''}</td>
-    <td><button class="del" title="Eliminar" data-del="${i}" ${a.bloqueado ? 'disabled' : ''}>✕</button></td></tr>`).join('');
-  const sinZ = S.apoyos.filter((a) => a.z == null).length;
-  return `<div class="page-head"><div><h1>Datos de la línea</h1><p>Postes georreferenciados (sistema de origen: ${h(S.meta.sistemaNombre || '—')}). Latitud/longitud aceptan decimal o GMS; Este/Norte en MAGNA-SIRGAS Origen Nacional se calculan solos. La abscisa del perfil es la distancia geodésica acumulada.</p></div>
-    <div class="actions"><button class="btn btn-primary" data-act="importar">⇪ Importar coordenadas</button><button class="btn" data-act="ir-mapa">🗺 Ver en el mapa</button><button class="btn" data-act="plantilla">⇩ Plantilla</button></div></div>
-    ${sinZ ? `<ul class="adv-list" style="margin-bottom:14px"><li>⚠ <span>${sinZ} poste(s) sin cota Z: el perfil está <b>incompleto</b> hasta ingresar la cota (topografía de campo o modelo de elevación).</span></li></ul>` : ''}
-    <div class="card"><div class="section-head"><h2>Postes <span class="badge">${S.apoyos.length}</span></h2><span class="muted small">Agregar, insertar y mover postes: desde el mapa</span></div>
-    <div class="table-wrap"><table class="grid-edit"><thead><tr><th>#</th><th>Poste</th><th>Latitud</th><th>Longitud</th><th>Este ON (m)</th><th>Norte ON (m)</th><th>Cota Z (m)</th><th>Fuente Z</th><th>Altura amarre (m)</th><th>Tipo</th><th></th><th></th></tr></thead><tbody>${filas}</tbody></table></div></div>
-    <div class="card" style="margin-top:18px"><div class="section-head"><h2>Perfil del terreno <span class="badge">${S.terreno.length} puntos</span></h2>
-      <div class="actions"><button class="btn btn-small btn-soft" id="btn-pegar-terreno">⎘ Pegar terreno</button></div></div>
-      <p class="muted small" style="margin:0">Opcional: pares (abscisa, cota) de topografía entre apoyos.</p></div>`;
-}
-function enlazarDatosGeo(vc) {
-  enlazarAcciones(vc);
-  $$('.grid-edit input, .grid-edit select', vc).forEach((el) => el.addEventListener('change', () => {
-    const i = +el.closest('tr').dataset.i; GEO.editar(i, el.dataset.k, el.value);
-  }));
-  $$('[data-del]', vc).forEach((b) => b.onclick = () => GEO.eliminar(+b.dataset.del));
-  const bt = $('#btn-pegar-terreno', vc); if (bt) bt.onclick = () => modalPegar('terreno');
-}
 
 function filaTabla(tabla, i) {
   const o = {}; tabla.columnas.forEach((c, k) => { o[c] = tabla.filas[i][k]; }); return o;
