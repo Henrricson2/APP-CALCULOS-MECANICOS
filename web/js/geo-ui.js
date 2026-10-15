@@ -1,7 +1,7 @@
 // Etapa 1: proyectos persistentes, asistente de importación con sistemas de coordenadas,
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
 import { obtenerCotas, FUENTES, muestrasRecorrido } from './elevacion.js';
-import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=10';
+import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=11';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
@@ -700,10 +700,33 @@ export function instalarGeo(C) {
       const t = da / (da + db || 1);
       const z = a.z != null && b.z != null ? +(a.z + t * (b.z - a.z)).toFixed(3) : null;
       const nuevo = { id: nuevoId(), nombre: nombreUnico(`${a.nombre}A`), ...u, z, z_fuente: z != null ? 'interpolada (verificar)' : null,
-        altura: a.altura ?? b.altura ?? null, tipo: 'S', bloqueado: false, conductor: a.conductor ?? null, orig: { sistema: 'ORIGEN_NACIONAL', u: String(u.E), v: String(u.N), nota: 'insertado en el mapa' } };
+        altura: a.poste_altura ? null : (a.altura ?? b.altura ?? null), poste_altura: a.poste_altura ?? b.poste_altura ?? null, poste_rotura: a.poste_rotura ?? null, templetes: [],
+        tipo: 'S', bloqueado: false, conductor: a.conductor ?? null, orig: { sistema: 'ORIGEN_NACIONAL', u: String(u.E), v: String(u.N), nota: 'insertado en el mapa' } };
       cambiar(() => { S.apoyos.splice(i + 1, 0, nuevo); }, 'insertar');
       S.sel = i + 1; pintarPlanta(); pintarTabla(); toast(`Poste ${nuevo.nombre} insertado entre ${a.nombre} y ${b.nombre}.`, 'success');
     } catch (e) { toast(e.message, 'error'); }
+  }
+  // Inserta una estructura entre i e i+1 en la fracción t del vano, con la cota del terreno z
+  // (desde el perfil). Copia el poste del vecino; el usuario lo ajusta después en la tabla.
+  async function insertarEnPerfil(i, t, z) {
+    const a = S.apoyos[i], b = S.apoyos[i + 1]; if (!a || !b) throw new Error('Vano no encontrado.');
+    const terrenoVigente = S.meta.terreno && S.meta.terreno.firma === firmaTrazado();
+    const susp = [a, b].find((q) => q.tipo !== 'R') || a;
+    const base = { id: nuevoId(), nombre: nombreUnico(`${a.nombre}A`), tipo: 'S', bloqueado: false, conductor: a.conductor ?? null,
+      poste_altura: susp.poste_altura ?? a.poste_altura ?? b.poste_altura ?? null, poste_rotura: susp.poste_rotura ?? null,
+      poste_peso: null, templetes: [], altura: (susp.poste_altura ?? a.poste_altura) ? null : (a.altura ?? b.altura ?? null) };
+    let nuevo;
+    if (a.lat != null && b.lat != null) {
+      const u = await ubicar({ lat: +a.lat + t * (b.lat - a.lat), lon: +a.lon + t * (b.lon - a.lon) });
+      nuevo = { ...base, ...u, z, z_fuente: 'perfil del terreno', orig: { sistema: 'ORIGEN_NACIONAL', u: String(u.E), v: String(u.N), nota: 'colocado en el perfil' } };
+    } else {
+      nuevo = { ...base, x: +(+a.x + t * (b.x - a.x)).toFixed(3), y: z };
+    }
+    cambiar(() => {
+      S.apoyos.splice(i + 1, 0, nuevo);
+      if (terrenoVigente) S.meta.terreno.firma = firmaTrazado(); // el poste queda sobre el mismo recorrido
+    }, 'colocar en el perfil');
+    return nuevo;
   }
   async function agregarPoste(pt) {
     try {
@@ -766,6 +789,6 @@ export function instalarGeo(C) {
     vistas: { proyectos: vistaProyectos },
     enlaces: { proyectos: enlazarProyectos },
     vistaEstructuras, enlazarEstructuras,
-    asistente, cambiar, deshacer, rehacer, guardarServidor, crearProyecto, sincronizarAlIniciar, editar: editarCampo, eliminar, programarGuardado, hayGeo, rpc, listaSistemas,
+    asistente, cambiar, deshacer, rehacer, guardarServidor, crearProyecto, sincronizarAlIniciar, insertarEnPerfil, editar: editarCampo, eliminar, programarGuardado, hayGeo, rpc, listaSistemas,
   };
 }

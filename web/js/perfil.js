@@ -8,7 +8,7 @@ const C = {
 
 export const abscisaK = (m) => `K${Math.floor(m / 1000)}+${(m % 1000).toFixed(2).padStart(6, '0')}`;
 
-function interp(xs, ys, x) {
+export function interp(xs, ys, x) {
   if (!xs.length) return NaN;
   if (x <= xs[0]) return ys[0];
   if (x >= xs[xs.length - 1]) return ys[ys.length - 1];
@@ -204,9 +204,36 @@ export function dibujarPerfil(contenedor, perfil, inicio, fin, opciones = {}) {
   p.push(`<line x1="${M.l}" x2="${xDer}" y1="${H - M.b}" y2="${H - M.b}" stroke="${C.muted}"/>`);
   p.push(`<text x="${M.l}" y="${M.t - 12}" font-size="${fs}" font-weight="700" fill="${C.texto}">Cota (m)</text>`);
   p.push(`<text x="${xDer}" y="${M.t - 12}" text-anchor="end" font-size="${fs - 1}" fill="${C.muted}">${exV ? `Escala X 1:1 · Y ${+exV.toFixed(2)}:1 · ` : ''}cotas cada ${+pasoY.toFixed(2)} m</text>`);
+  // modo «colocar poste»: guía vertical que sigue al cursor y clic para insertar
+  if (opciones.onColocar) {
+    p.push(`<g class="guia-colocar" visibility="hidden" pointer-events="none"><line x1="0" x2="0" y1="${M.t}" y2="${H - M.b}" stroke="${C.apoyo}" stroke-width="1.5" stroke-dasharray="5 4"/><circle r="5" fill="${C.apoyo}"/><rect rx="4" fill="#17324d" opacity="0.92"/><text font-size="${fs}" fill="#fff" font-weight="700"></text></g>`);
+    p.push(`<rect class="zona-colocar" x="${M.l}" y="${M.t}" width="${xDer - M.l}" height="${H - M.t - M.b}" fill="transparent" style="cursor:crosshair"/>`);
+  }
   p.push('</svg>');
 
   contenedor.innerHTML = p.join('') + '<div class="tip" hidden></div>';
+  if (opciones.onColocar) {
+    const svgC = contenedor.querySelector('svg'), zona = svgC.querySelector('.zona-colocar'), guia = svgC.querySelector('.guia-colocar');
+    const [gl, gc, gr, gt] = guia.children;
+    const aSvg = (ev) => { const pt = svgC.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY; return pt.matrixTransform(svgC.getScreenCTM().inverse()); };
+    const cotaTer = (x) => (ter ? interp(ter.x, ter.y, x) : interp(ap.map((a) => a.x), ap.map((a) => a.yt ?? a.ya), x));
+    const mover = (ev) => {
+      const q = aSvg(ev); const x = x0 + (q.x - M.l) / kx;
+      if (x <= x0 || x >= x1) { guia.setAttribute('visibility', 'hidden'); return null; }
+      const z = cotaTer(x), px = sx(x), py = sy(z);
+      gl.setAttribute('x1', px); gl.setAttribute('x2', px); gc.setAttribute('cx', px); gc.setAttribute('cy', py);
+      gt.textContent = `${abscisaK(x - x0 + (ap[0].abscisa ?? 0))} · cota ${z.toFixed(1)} m`;
+      const ancho = gt.textContent.length * fs * 0.58 + 12, izq = px + ancho + 14 > xDer;
+      const tx = izq ? px - ancho - 8 : px + 8, ty = Math.max(M.t + 4, py - 34);
+      gr.setAttribute('x', tx); gr.setAttribute('y', ty); gr.setAttribute('width', ancho); gr.setAttribute('height', fs + 10);
+      gt.setAttribute('x', tx + 6); gt.setAttribute('y', ty + fs + 3);
+      guia.setAttribute('visibility', 'visible');
+      return x;
+    };
+    zona.addEventListener('mousemove', mover);
+    zona.addEventListener('mouseleave', () => guia.setAttribute('visibility', 'hidden'));
+    zona.addEventListener('click', (ev) => { const x = mover(ev); if (x != null) opciones.onColocar(x, cotaTer(x)); });
+  }
   const tip = contenedor.querySelector('.tip');
   const svg = contenedor.querySelector('svg');
   const mostrarTip = (ev) => {

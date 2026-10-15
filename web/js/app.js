@@ -1,7 +1,7 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
-import { detectarMotor } from './motor.js?v=10';
-import { dibujarPerfil, paginas, paginasEscala, abscisaK } from './perfil.js?v=10';
-import { instalarGeo } from './geo-ui.js?v=10';
+import { detectarMotor } from './motor.js?v=11';
+import { dibujarPerfil, paginas, paginasEscala, abscisaK } from './perfil.js?v=11';
+import { instalarGeo } from './geo-ui.js?v=11';
 
 const CLAVE = 'cm-proyecto-v2';
 const $ = (s, el = document) => el.querySelector(s);
@@ -221,6 +221,30 @@ function sinResultado() {
   return `<div class="card empty"><div class="big">⌒</div><h3>Aún no hay cálculo</h3><p>El perfil, el plantillado y los resultados salen de las estructuras registradas en <b>Estructuras y mapa</b> (coordenadas, cota y altura del poste). Regístrelas y pulse <b>Calcular</b>.</p>
   <div class="actions" style="justify-content:center;margin-top:14px"><button class="btn btn-primary" data-act="ir-datos">📍 Ir a Estructuras y mapa</button>${S.apoyos.length >= 2 ? '<button class="btn" data-act="calcular">▶ Calcular</button>' : ''}</div></div>`;
 }
+// ---- colocar postes sobre el perfil (Resumen y Perfil)
+function botonColocar() {
+  return `<button class="btn btn-small ${S.colocando ? 'btn-primary' : 'btn-soft'}" id="btn-colocar" title="Toque el perfil entre dos estructuras para agregar un poste en ese punto">${S.colocando ? '✓ Terminar de colocar' : '＋ Colocar poste en el perfil'}</button>`;
+}
+function avisoColocar() {
+  return S.colocando ? '<ul class="adv-list" style="margin:0 0 10px"><li class="info">ⓘ <span>Mueva el cursor sobre el perfil: la guía roja muestra la abscisa y la cota del terreno. <b>Haga clic</b> entre dos estructuras para colocar un poste ahí (queda de suspensión, con el poste de su vecino; ajústelo en Estructuras y mapa). Ctrl+Z deshace.</span></li></ul>' : '';
+}
+function enlazarColocar(vc) {
+  const b = $('#btn-colocar', vc); if (!b) return;
+  b.onclick = () => { S.colocando = !S.colocando; ir(S.vista, true); };
+}
+async function colocarEnPerfil(x, z) {
+  const ap = S.resultado?.perfil?.apoyos; if (!ap) return;
+  const i = ap.findIndex((a, k) => k < ap.length - 1 && x > a.x && x < ap[k + 1].x);
+  if (i < 0) return toast('Haga clic entre dos estructuras.', 'warn');
+  if (x - ap[i].x < 3 || ap[i + 1].x - x < 3) return toast('Muy cerca de una estructura existente (menos de 3 m).', 'warn');
+  if (ap.length !== S.apoyos.length) return toast('Recalcule antes de colocar postes (la tabla cambió).', 'warn');
+  try {
+    const t = (x - ap[i].x) / (ap[i + 1].x - ap[i].x);
+    const nuevo = await GEO.insertarEnPerfil(i, t, +(+z).toFixed(2));
+    toast(`Poste ${nuevo.nombre} colocado entre ${ap[i].nombre} y ${ap[i + 1].nombre} (${abscisaK(x - ap[0].x)}, cota ${(+z).toFixed(1)} m). Recalculando…`, 'success');
+    await calcular({ irA: S.vista });
+  } catch (e) { toast(e.message, 'error'); }
+}
 function enlazarAcciones(vc) {
   $$('[data-act]', vc).forEach((b) => b.addEventListener('click', () => ACCIONES[b.dataset.act]?.(b)));
 }
@@ -270,7 +294,7 @@ const VISTAS = {
       <div class="card stat"><span class="stat-label">Advertencias</span><span class="stat-value">${r.advertencias.length}</span><span class="stat-note"><a href="#advertencias">Ver detalle →</a></span></div>
       <div class="card stat"><span class="stat-label">Motor de cálculo</span><span class="stat-value" style="font-size:16px">${h(S.motor.etiqueta)}</span><span class="stat-note">Python v${h(S.motor.version || '')}</span></div>
     </div>
-    <div class="card" style="margin-top:18px"><div class="section-head"><h2>Perfil completo</h2><button class="btn btn-small btn-soft" data-act="ir-perfil">Ver por páginas →</button></div><div class="perfil-wrap" id="perfil-mini"></div></div>`;
+    <div class="card" style="margin-top:18px"><div class="section-head"><h2>Perfil completo</h2><div class="actions">${botonColocar()}<button class="btn btn-small btn-soft" data-act="ir-perfil">Ver por páginas →</button></div></div>${avisoColocar()}<div class="perfil-wrap" id="perfil-mini"></div></div>`;
   },
 
   datos() {
@@ -363,7 +387,7 @@ const VISTAS = {
     const opts = '';
     return `${avisoDesactualizado()}<div class="page-head"><div><h1>Perfil / plantillado</h1><p>Toque un apoyo o un vano para ver sus datos. ▲ = arrancamiento · ✕ = no cumple distancia mínima.</p></div></div>
     <div class="card"><div class="perfil-bar"><div class="perfil-nav"><button class="btn btn-small" id="pag-ant">◀</button><select class="select" id="pag-sel" style="width:auto">${opts}</select><button class="btn btn-small" id="pag-sig">▶</button></div>
-      <span class="muted small" id="pag-info"></span></div>
+      <div class="actions">${botonColocar()}<span class="muted small" id="pag-info"></span></div></div>${avisoColocar()}
       <div class="perfil-wrap" id="perfil-svg"></div>
       <div class="perfil-legend"><span><i style="border-color:#1f6fb2"></i>Conductor caliente (${h(S.proyecto.hipotesis_plantillado)})</span>${r.perfil.modo === 'cambio_estado' ? `<span><i style="border-color:#7fb6df;border-top-style:dashed"></i>Conductor frío (${h(S.proyecto.hipotesis_arrancamiento)})</span>` : ''}${r.perfil.terreno ? `<span><i style="border-color:#a07c4a"></i>Terreno</span><span><i style="border-color:#c84c4c;border-top-style:dashed"></i>Distancia mínima ${nf(r.perfil.dmin)} m</span>` : ''}<span>■ Retención · ● Suspensión</span></div></div>`;
   },
@@ -433,12 +457,12 @@ const VISTAS = {
 // ================================================================== ENLACES
 const ENLACES = {
   resumen(vc) {
-    enlazarAcciones(vc);
+    enlazarAcciones(vc); enlazarColocar(vc);
     $$('[data-tabres]', vc).forEach((l) => l.addEventListener('click', () => { S.tabRes = l.dataset.tabres; }));
     const mini = $('#perfil-mini', vc);
     if (mini && S.resultado) {
       const n = S.resultado.perfil.vanos.length;
-      dibujarPerfil(mini, S.resultado.perfil, 0, n, { tipApoyo, tipVano, pasoY: S.proyecto.salida?.intervalo_cotas_m ?? 5 });
+      dibujarPerfil(mini, S.resultado.perfil, 0, n, { tipApoyo, tipVano, pasoY: S.proyecto.salida?.intervalo_cotas_m ?? 5, ...(S.colocando ? { onColocar: colocarEnPerfil } : {}) });
     }
   },
   datos(vc) {
@@ -496,7 +520,7 @@ const ENLACES = {
     $('#btn-restablecer', vc).onclick = () => { const n = S.proyecto.nombre; S.proyecto = clon(S.defaults); S.proyecto.nombre = n; marcarCambio(); ir('parametros', true); toast('Parámetros restablecidos (EH-RAA-004).'); };
   },
   perfil(vc) {
-    enlazarAcciones(vc);
+    enlazarAcciones(vc); enlazarColocar(vc);
     const cont = $('#perfil-svg', vc); if (!cont) return;
     const perfil = S.resultado.perfil;
     const exV = +(S.proyecto.salida?.exageracion_vertical_perfil ?? 5);
@@ -508,7 +532,7 @@ const ENLACES = {
     const pintar = () => {
       const [a, b] = S.pagina === -1 ? [0, perfil.vanos.length] : pags[S.pagina];
       const escala = S.pagina === -1 || !(exV > 0) ? {} : { exV, kx };
-      dibujarPerfil(cont, perfil, a, b, { tipApoyo, tipVano, pasoY: S.proyecto.salida?.intervalo_cotas_m ?? 5, ...escala });
+      dibujarPerfil(cont, perfil, a, b, { tipApoyo, tipVano, pasoY: S.proyecto.salida?.intervalo_cotas_m ?? 5, ...escala, ...(S.colocando ? { onColocar: colocarEnPerfil } : {}) });
       $('#pag-sel', vc).value = String(S.pagina);
     };
     $('#pag-ant', vc).onclick = () => { S.pagina = S.pagina <= 0 ? pags.length - 1 : S.pagina - 1; pintar(); };

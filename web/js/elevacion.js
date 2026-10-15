@@ -3,7 +3,7 @@
 //     con «Maps JavaScript API» y «Elevation API» habilitadas.
 //   - Gratis sin clave: OpenTopoData SRTM 30 m; si falla, Open-Meteo (Copernicus DEM 90 m).
 // Son modelos de SUPERFICIE: pueden medir sobre árboles o construcciones (error típico 2–10 m).
-import { cargarGoogle } from './mapa.js?v=10';
+import { cargarGoogle } from './mapa.js?v=11';
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 const lotes = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, k) => arr.slice(k * n, k * n + n));
