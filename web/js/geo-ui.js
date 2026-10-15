@@ -1,7 +1,7 @@
 // Etapa 1: proyectos persistentes, asistente de importación con sistemas de coordenadas,
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
 import { obtenerCotas, FUENTES, muestrasRecorrido, vincenty } from './elevacion.js';
-import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=13';
+import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=14';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
@@ -379,7 +379,7 @@ export function instalarGeo(C) {
           </div>
           <div id="dm-avisos"></div>
           <div class="card" style="margin-top:12px"><div class="section-head"><h2>Estructuras <span class="badge" id="dm-n">${S.apoyos.length}</span></h2>
-            <span class="small muted" id="dm-resumen"></span></div>
+            <span class="small muted" id="dm-resumen"></span><button class="btn btn-small btn-peligro" id="dm-borrar-todo" title="Eliminar todas las estructuras de este proyecto (antes se guarda una versión para poder recuperarlas)" ${S.apoyos.length ? '' : 'disabled'}>🗑 Eliminar todas</button></div>
             <div id="dm-tabla"></div></div>
           <div class="card" style="margin-top:12px"><div class="section-head"><h3>Perfil del terreno <span class="badge" id="dm-nter">${S.terreno.length} puntos</span></h3>
             <div class="actions"><button class="btn btn-small btn-primary" id="dm-perfil2">⛰ Obtener del mapa</button><button class="btn btn-small btn-soft" id="btn-pegar-terreno">⎘ Pegar topografía</button></div></div>
@@ -458,6 +458,7 @@ export function instalarGeo(C) {
     const act = document.activeElement, foco = el.contains(act) && act.dataset.k ? { i: act.closest('tr')?.dataset.i, k: act.dataset.k } : null;
     const n = S.apoyos.length;
     $('#dm-n').textContent = n;
+    const bt = $('#dm-borrar-todo'); if (bt) bt.disabled = !n;
     const sinZ = S.apoyos.filter((a) => a.z == null).length;
     let total = 0; for (let k = 1; k < n; k++) { const a = S.apoyos[k - 1], b = S.apoyos[k]; if (a.E != null && b.E != null) total += Math.hypot(b.E - a.E, b.N - a.N); }
     $('#dm-resumen').innerHTML = n ? `${nf(total, 1)} m en planta${sinZ ? ` · <span style="color:var(--danger)">${sinZ} sin cota Z</span>` : ''}` : '';
@@ -724,6 +725,7 @@ export function instalarGeo(C) {
     $('#m-kmz', vc).onclick = () => C.exportar('kmz');
     $('#m-html', vc).onclick = () => C.exportar('html');
     $('#dm-pegar', vc).onclick = pegarVarias;
+    $('#dm-borrar-todo', vc).onclick = eliminarTodas;
     $('#f-excel-btn', vc).onclick = () => $('#f-excel', vc).click();
     $('#f-excel', vc).onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) cargarExcelEstructuras(f); };
     $('#f-excel-plantilla', vc).onclick = async () => {
@@ -759,6 +761,20 @@ export function instalarGeo(C) {
     cambiar(() => { Object.assign(q, { lat: o.lat, lon: o.lon, E: o.E, N: o.N, z: o.z, z_fuente: o.z_fuente }); q.orig = { ...(q.orig || {}), nota: 'posición original restaurada' }; delete q.pos_original; }, 'restaurar posición');
     planta?.enfocar?.(i);
     toast(`${q.nombre} volvió a su posición original.`, 'success');
+  }
+  async function eliminarTodas() {
+    const n = S.apoyos.length; if (!n) return;
+    const bl = S.apoyos.filter((a) => a.bloqueado).length;
+    const ok = await confirmar(`¿Eliminar las ${n} estructuras?`, `<p>Se eliminarán <b>las ${n} estructuras</b> de <b>${h(S.proyecto?.nombre || S.meta?.nombre || 'este proyecto')}</b>, junto con su perfil del terreno y el último cálculo.${bl ? ` Incluye ${bl} estructura(s) bloqueada(s).` : ''}</p>
+      <p class="small muted">Antes de borrar, la app guarda una <b>versión</b> del proyecto («Antes de eliminar todas las estructuras»): si se arrepiente, en <b>Proyectos → ⎘ Versiones</b> pulse <b>Restaurar</b>. También puede deshacer con Ctrl+Z mientras siga en esta pestaña.</p>`, `Sí, eliminar las ${n}`);
+    if (!ok) return;
+    let respaldo = false;
+    try {
+      if (almacen()) { await guardarServidor(); if (!S.meta.id) throw new Error('sin id'); await almacen().version(S.meta.id, `Antes de eliminar todas las estructuras (${n})`); respaldo = true; }
+    } catch (e) { console.warn('Versión de respaldo:', e.message); }
+    if (!respaldo && !(await confirmar('No se pudo guardar la versión de respaldo', '<p>¿Eliminar de todas formas? Solo podrá recuperarlas con Ctrl+Z mientras no cierre esta pestaña.</p>', 'Eliminar de todas formas'))) return;
+    cambiar(() => { S.apoyos = []; S.terreno = []; if (S.meta) S.meta.terreno = null; S.resultado = null; S.sel = null; }, 'eliminar todas');
+    toast(`${n} estructuras eliminadas.${respaldo ? ' Quedó una versión de respaldo.' : ''}`, 'success');
   }
   const UMBRAL_MOVER_M = 25; // mover más que esto pide confirmación (evita arrastres accidentales)
   async function moverPoste(i, pt) {

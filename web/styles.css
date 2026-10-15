@@ -334,3 +334,7 @@ tr.row-actual td { background: var(--soft-teal); }
 .perfil-zoom { cursor: grab; user-select: none; }
 .perfil-zoom.arrastrando { cursor: grabbing; }
 @media (max-width: 640px) { .zoom-ayuda { display: none; } }
+
+.btn-peligro{color:var(--danger,#c0392b);border-color:color-mix(in srgb,var(--danger,#c0392b) 45%,transparent);margin-left:auto}
+.btn-peligro:hover:not(:disabled){background:var(--danger,#c0392b);color:#fff}
+.btn-peligro:disabled{opacity:.45;cursor:not-allowed}
