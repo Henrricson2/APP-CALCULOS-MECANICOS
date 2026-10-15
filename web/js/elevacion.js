@@ -32,43 +32,75 @@ async function google(puntos, clave, avance) {
   return out;
 }
 
-async function srtm(puntos, avance) {
-  const out = [];
-  const grupos = lotes(puntos, 100);
-  for (const [k, g] of grupos.entries()) {
-    avance?.(`Consultando SRTM 30 m… ${k + 1}/${grupos.length}`);
+// Desde el servidor de la app (sin bloqueo CORS); si no hay servidor, directo desde el navegador.
+async function consulta(fuente, g, rpc) {
+  if (rpc) {
+    try {
+      const r = await rpc('elevacion', { fuente, puntos: g.map((p) => ({ lat: p.lat, lon: p.lon })) });
+      if (r.ok && Array.isArray(r.cotas)) return r.cotas;
+      console.warn('Elevación por el servidor:', (r.errores || []).join(' '));
+    } catch (e) { console.warn('Elevación por el servidor:', e.message); }
+    // si el servidor no pudo (sin salida a internet, versión vieja…), se intenta desde el navegador
+  }
+  if (fuente === 'srtm') {
     const loc = g.map((p) => `${p.lat.toFixed(7)},${p.lon.toFixed(7)}`).join('|');
     const r = await fetch(`https://api.opentopodata.org/v1/srtm30m?interpolation=bilinear&locations=${loc}`);
     if (!r.ok) throw new Error(`OpenTopoData respondió ${r.status}`);
     const j = await r.json();
     if (j.status !== 'OK') throw new Error(j.error || 'OpenTopoData no devolvió datos');
-    out.push(...j.results.map((x) => x.elevation));
+    return j.results.map((x) => x.elevation);
+  }
+  const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${g.map((p) => p.lat.toFixed(6)).join(',')}&longitude=${g.map((p) => p.lon.toFixed(6)).join(',')}`);
+  if (!r.ok) throw new Error(`Open-Meteo respondió ${r.status}`);
+  const j = await r.json();
+  if (!Array.isArray(j.elevation)) throw new Error(j.reason || 'Open-Meteo no devolvió datos');
+  return j.elevation;
+}
+
+async function srtm(puntos, avance, rpc) {
+  const out = [];
+  const grupos = lotes(puntos, 100);
+  for (const [k, g] of grupos.entries()) {
+    avance?.(`Consultando SRTM 30 m… ${k + 1}/${grupos.length}`);
+    out.push(...await consulta('srtm', g, rpc));
     if (k < grupos.length - 1) await espera(1100); // límite del servicio público: 1 consulta/s
   }
   return out;
 }
 
-async function openmeteo(puntos, avance) {
+// Copernicus 90 m (Open-Meteo) entrega el valor de la celda: escalones de ~90 m. Se suaviza
+// uniendo con rectas los centros de cada tramo de valor constante.
+function suavizarEscalones(z) {
+  const centros = [];
+  let i = 0;
+  while (i < z.length) { let j = i; while (j + 1 < z.length && z[j + 1] === z[i]) j++; centros.push([(i + j) / 2, z[i]]); i = j + 1; }
+  if (centros.length < 2) return z;
+  return z.map((_, k) => {
+    if (k <= centros[0][0]) return centros[0][1];
+    if (k >= centros.at(-1)[0]) return centros.at(-1)[1];
+    let a = 0; while (centros[a + 1][0] < k) a++;
+    const [x0, y0] = centros[a], [x1, y1] = centros[a + 1];
+    return y0 + (y1 - y0) * (k - x0) / (x1 - x0);
+  });
+}
+
+async function openmeteo(puntos, avance, rpc) {
   const out = [];
   const grupos = lotes(puntos, 100);
   for (const [k, g] of grupos.entries()) {
     avance?.(`Consultando Copernicus 90 m… ${k + 1}/${grupos.length}`);
-    const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${g.map((p) => p.lat.toFixed(6)).join(',')}&longitude=${g.map((p) => p.lon.toFixed(6)).join(',')}`);
-    if (!r.ok) throw new Error(`Open-Meteo respondió ${r.status}`);
-    const j = await r.json();
-    if (!Array.isArray(j.elevation)) throw new Error(j.reason || 'Open-Meteo no devolvió datos');
-    out.push(...j.elevation);
+    out.push(...await consulta('openmeteo', g, rpc));
   }
-  return out;
+  return suavizarEscalones(out);
 }
 
 /** Devuelve { cotas: number[], fuente: 'google'|'srtm'|'openmeteo' } en el mismo orden que `puntos`. */
-export async function obtenerCotas(puntos, fuente, { clave, avance } = {}) {
+export async function obtenerCotas(puntos, fuente, { clave, avance, rpc } = {}) {
   let cotas, usada = fuente;
   if (fuente === 'google') cotas = await google(puntos, clave, avance);
   else {
-    try { cotas = await srtm(puntos, avance); usada = 'srtm'; }
-    catch (e) { avance?.('SRTM no respondió; probando Copernicus 90 m…'); cotas = await openmeteo(puntos, avance); usada = 'openmeteo'; }
+    try { cotas = await srtm(puntos, avance, rpc); usada = 'srtm'; }
+    catch (e) { console.warn('SRTM:', e.message); avance?.('SRTM no respondió; probando Copernicus 90 m…'); cotas = await openmeteo(puntos, avance, rpc); usada = 'openmeteo'; }
   }
   if (cotas.length !== puntos.length || cotas.some((z) => z == null || !Number.isFinite(+z))) {
     throw new Error('El modelo de elevación no tiene datos para algunos puntos.');

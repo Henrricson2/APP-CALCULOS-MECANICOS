@@ -592,7 +592,7 @@ export function instalarGeo(C) {
     let r;
     try { r = await rpc('perfil_muestras', { puntos: pts, paso_m: paso }); }
     catch { r = muestrasRecorrido(pts, paso); } // servidor viejo o sin esa función: se calcula aquí mismo
-    const { cotas, fuente: usada } = await obtenerCotas(r.muestras, fuente, { clave: S.config?.google_maps_key, avance: cargando });
+    const { cotas, fuente: usada } = await obtenerCotas(r.muestras, fuente, { clave: S.config?.google_maps_key, avance: cargando, rpc: servidor() ? (n, d) => S.motor.rpc(n, d) : null });
     cargando('');
     const etiqueta = usada === 'google' ? 'Google (estimada)' : usada === 'srtm' ? 'SRTM 30 m (estimada)' : 'Copernicus 90 m (estimada)';
     const protegida = (a) => !reemplazar && a.z != null && /topograf|manual|archivo/i.test(a.z_fuente || '');

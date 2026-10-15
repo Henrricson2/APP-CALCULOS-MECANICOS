@@ -81,6 +81,44 @@ def preparar_apoyos(apoyos: list[dict]) -> tuple[list[dict], list[str], list[flo
     return apoyos, errores, defl
 
 
+def _elevacion_web(fuente: str, puntos: list[dict]) -> dict:
+    """Consulta la elevación desde el servidor (evita el bloqueo CORS del navegador).
+
+    srtm: OpenTopoData SRTM 30 m (máx. 100 puntos por consulta, 1 consulta/s).
+    openmeteo: Open-Meteo, Copernicus DEM 90 m.
+    """
+    import ssl
+    import urllib.parse
+    import urllib.request
+    if len(puntos) > 100:
+        raise ValueError("Máximo 100 puntos por consulta.")
+    try:  # red corporativa con inspección SSL: usar los certificados de Windows
+        import truststore  # type: ignore
+        ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    except Exception:
+        ctx = ssl.create_default_context()
+    if fuente == "srtm":
+        loc = "|".join(f"{float(p['lat']):.7f},{float(p['lon']):.7f}" for p in puntos)
+        url = "https://api.opentopodata.org/v1/srtm30m?interpolation=bilinear&locations=" + urllib.parse.quote(loc, safe=",|.-")
+    elif fuente == "openmeteo":
+        url = ("https://api.open-meteo.com/v1/elevation?latitude=" + ",".join(f"{float(p['lat']):.6f}" for p in puntos)
+               + "&longitude=" + ",".join(f"{float(p['lon']):.6f}" for p in puntos))
+    else:
+        raise ValueError(f"Fuente desconocida: {fuente}")
+    req = urllib.request.Request(url, headers={"User-Agent": "calculos-mecanicos-mt"})
+    with urllib.request.urlopen(req, timeout=40, context=ctx) as r:
+        j = json.loads(r.read())
+    if fuente == "srtm":
+        if j.get("status") != "OK":
+            raise ValueError(j.get("error") or "OpenTopoData no devolvió datos")
+        cotas = [x.get("elevation") for x in j["results"]]
+    else:
+        cotas = j.get("elevation")
+        if not isinstance(cotas, list):
+            raise ValueError(j.get("reason") or "Open-Meteo no devolvió datos")
+    return {"cotas": cotas, "fuente": fuente}
+
+
 def _terreno_por_estructuras(terreno, apoyos):
     """El perfil del terreno pasa exactamente por la base de cada estructura (su cota Z):
     el poste queda parado sobre el terreno aunque la cota se haya corregido después."""
@@ -327,6 +365,11 @@ def rpc(nombre: str, datos: dict) -> dict:
                 E, N = geo.desde_geograficas(geo.INTERNO, float(p["lat"]), float(p["lon"]))
                 out.append({"E": E, "N": N})
             return {"ok": True, "puntos": out}
+        if nombre == "elevacion":
+            try:
+                return {"ok": True, **_elevacion_web(d.get("fuente") or "srtm", d.get("puntos") or [])}
+            except Exception as e:  # sin internet, proxy, certificado, servicio caído…
+                return {"ok": False, "errores": [f"No se pudo consultar la elevación: {e}"]}
         if nombre == "perfil_muestras":
             pts = [(float(p["lat"]), float(p["lon"])) for p in d.get("puntos", [])]
             return {"ok": True, **geo.muestras_perfil(pts, float(d.get("paso_m") or 10), int(d.get("max_muestras") or 2000))}
