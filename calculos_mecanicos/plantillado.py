@@ -51,6 +51,7 @@ class ResultadoPlantillado:
     apoyos: pd.DataFrame
     resumen: dict
     advertencias: list[str] = field(default_factory=list)
+    postes: pd.DataFrame | None = None     # verificación de postes y templetes
 
     def terreno(self, x):
         return _funcion_terreno(self.datos)(x)
@@ -217,8 +218,17 @@ def calcular_plantillado(datos: DatosLinea, proyecto: Proyecto) -> ResultadoPlan
         "Vanos que no cumplen distancia": int((df_vanos.get("Cumple distancia", pd.Series()) == "NO").sum()),
         "Apoyos con arrancamiento": int((df_ap["Arrancamiento"] == "SÍ").sum()),
     }
-    return ResultadoPlantillado(proyecto, datos, secciones, cats, frias,
-                                df_vanos, df_ap, resumen, adv)
+    res = ResultadoPlantillado(proyecto, datos, secciones, cats, frias, df_vanos, df_ap, resumen, adv)
+    # ---------------------------------------------- postes y templetes
+    from .estructuras import verificar_estructuras
+    estructuras = getattr(datos, "estructuras", None)
+    if estructuras and any((e or {}).get("poste_altura") not in (None, "") or (e or {}).get("templetes")
+                           for e in estructuras):
+        df_p, adv_p, res_p = verificar_estructuras(res, estructuras, datos.deflexiones)
+        res.postes = df_p
+        res.advertencias.extend(adv_p)
+        res.resumen.update(res_p)
+    return res
 
 
 def tabla_secciones(res: ResultadoPlantillado) -> pd.DataFrame:

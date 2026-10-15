@@ -296,10 +296,10 @@ tr.row-actual td { background: var(--soft-teal); }
 .dm-acc .del:disabled { opacity: .3; cursor: default; }
 #dm-tabla tbody tr { cursor: pointer; }
 @media (max-width: 1280px) { .dm-form { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dm-agregar { grid-column: 1 / -1; } }
-@media (max-width: 1100px) {
+@media (max-width: 1500px) {
   .dm-layout { grid-template-columns: minmax(0, 1fr); }
   .dm-der { position: static; order: -1; height: auto; min-height: 0; }
-  .mapa-cont.dm-mapa { height: 52vh; min-height: 300px; }
+  .mapa-cont.dm-mapa { height: 46vh; min-height: 300px; flex: none; }
   .dm-tabla-wrap { max-height: none; }
 }
 @media (max-width: 560px) { .dm-form { grid-template-columns: 1fr 1fr; } .dm-form .field-group:first-child { grid-column: 1 / -1; } }
@@ -314,3 +314,11 @@ tr.row-actual td { background: var(--soft-teal); }
 .dm-der .mapa-toolbar { padding: 8px; gap: 6px; }
 .dm-der .mapa-toolbar .tool { padding: 5px 8px; font-size: 12px; }
 .dm-der .mapa-toolbar .select { padding-top: 5px; padding-bottom: 5px; font-size: 12px; }
+
+/* postes y templetes en la tabla de estructuras */
+#dm-tabla [data-k=poste_altura], #dm-tabla [data-k=poste_peso] { width: 50px; } #dm-tabla [data-k=poste_rotura] { width: 56px; }
+#dm-tabla .tpl { border: 1px dashed var(--border); background: transparent; border-radius: 6px; padding: 3px 8px; font-size: 12px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+#dm-tabla .tpl.con { border-style: solid; border-color: var(--teal); color: var(--teal); font-weight: 700; background: var(--soft-teal); }
+#dm-tabla .tpl:hover { border-color: var(--teal); color: var(--teal); }
+#dm-tabla [data-k=lat] { width: 80px; } #dm-tabla [data-k=lon] { width: 88px; }
+.modal select[data-c=cable] { min-width: 230px; }

@@ -1,5 +1,5 @@
 {
- "version": "2.5.0",
+ "version": "2.6.0",
  "proyecto_defecto": {
   "nombre": "Proyecto de línea de media tensión",
   "conductor": {
@@ -52,7 +52,15 @@
    "n_fases": 3,
    "vano_min_alerta_m": 15.0,
    "vano_max_alerta_m": 300.0,
-   "pendiente_max_alerta": 0.15
+   "pendiente_max_alerta": 0.15,
+   "hipotesis_estructuras": "TMAX",
+   "empotramiento_coef": 0.1,
+   "empotramiento_base_m": 0.6,
+   "amarre_bajo_cima_m": 0.2,
+   "poste_diametro_medio_m": 0.25,
+   "fs_poste": 2.5,
+   "fs_templete": 2.5,
+   "peso_herrajes_kgf": 40.0
   },
   "salida": {
    "vanos_por_pagina": 5,
@@ -83,5 +91,131 @@
    "coef_dilatacion": 1.89e-05,
    "diametro_mm": 11.354
   }
- }
+ },
+ "postes": [
+  {
+   "nombre": "8 m · 510 kgf",
+   "altura": 8,
+   "rotura": 510,
+   "peso": 500
+  },
+  {
+   "nombre": "9 m · 510 kgf",
+   "altura": 9,
+   "rotura": 510,
+   "peso": 580
+  },
+  {
+   "nombre": "10 m · 510 kgf",
+   "altura": 10,
+   "rotura": 510,
+   "peso": 680
+  },
+  {
+   "nombre": "10 m · 750 kgf",
+   "altura": 10,
+   "rotura": 750,
+   "peso": 800
+  },
+  {
+   "nombre": "11 m · 510 kgf",
+   "altura": 11,
+   "rotura": 510,
+   "peso": 780
+  },
+  {
+   "nombre": "12 m · 510 kgf",
+   "altura": 12,
+   "rotura": 510,
+   "peso": 900
+  },
+  {
+   "nombre": "12 m · 750 kgf",
+   "altura": 12,
+   "rotura": 750,
+   "peso": 1050
+  },
+  {
+   "nombre": "12 m · 1050 kgf",
+   "altura": 12,
+   "rotura": 1050,
+   "peso": 1250
+  },
+  {
+   "nombre": "12 m · 1350 kgf",
+   "altura": 12,
+   "rotura": 1350,
+   "peso": 1450
+  },
+  {
+   "nombre": "14 m · 750 kgf",
+   "altura": 14,
+   "rotura": 750,
+   "peso": 1350
+  },
+  {
+   "nombre": "14 m · 1050 kgf",
+   "altura": 14,
+   "rotura": 1050,
+   "peso": 1550
+  },
+  {
+   "nombre": "14 m · 1350 kgf",
+   "altura": 14,
+   "rotura": 1350,
+   "peso": 1750
+  },
+  {
+   "nombre": "16 m · 1050 kgf",
+   "altura": 16,
+   "rotura": 1050,
+   "peso": 1900
+  }
+ ],
+ "cables_templete": [
+  {
+   "nombre": "1/4\" Siemens-Martin",
+   "rotura": 1429
+  },
+  {
+   "nombre": "1/4\" alta resistencia (HS)",
+   "rotura": 2155
+  },
+  {
+   "nombre": "1/4\" extra alta resistencia (EHS)",
+   "rotura": 3016
+  },
+  {
+   "nombre": "5/16\" Siemens-Martin",
+   "rotura": 2427
+  },
+  {
+   "nombre": "5/16\" alta resistencia (HS)",
+   "rotura": 3629
+  },
+  {
+   "nombre": "5/16\" extra alta resistencia (EHS)",
+   "rotura": 5080
+  },
+  {
+   "nombre": "3/8\" Siemens-Martin",
+   "rotura": 3152
+  },
+  {
+   "nombre": "3/8\" alta resistencia (HS)",
+   "rotura": 4899
+  },
+  {
+   "nombre": "3/8\" extra alta resistencia (EHS)",
+   "rotura": 6985
+  },
+  {
+   "nombre": "1/2\" alta resistencia (HS)",
+   "rotura": 8528
+  },
+  {
+   "nombre": "1/2\" extra alta resistencia (EHS)",
+   "rotura": 12202
+  }
+ ]
 }

@@ -30,6 +30,7 @@ import pandas as pd
 from . import __version__
 from .cambio_estado import ErrorCalculo
 from .config import BIBLIOTECA_CONDUCTORES, Conductor, Proyecto
+from .estructuras import CABLES_TEMPLETE, CATALOGO_POSTES
 from .datos import construir_datos, leer_datos
 from .plantillado import calcular_plantillado, tabla_secciones
 
@@ -80,11 +81,23 @@ def preparar_apoyos(apoyos: list[dict]) -> tuple[list[dict], list[str], list[flo
     return apoyos, errores, defl
 
 
+_CAMPOS_ESTRUCTURA = ("poste_altura", "poste_rotura", "poste_peso", "templetes")
+
+
 def _datos_payload(payload: dict, proyecto: Proyecto):
+    from .estructuras import _f, altura_amarre_desde_poste
     apoyos, errores, defl = preparar_apoyos(payload.get("apoyos") or [])
+    # altura de amarre a partir del poste cuando no se escribió
+    for a in apoyos:
+        L = _f(a.get("poste_altura"))
+        if L:  # la altura de amarre depende de la altura del poste
+            a["altura"] = round(altura_amarre_desde_poste(L, proyecto.criterios), 3)
     d = construir_datos(apoyos, payload.get("terreno"), None, proyecto.criterios, payload.get("origen", "web"))
     d.errores = errores + d.errores
     d.deflexiones = defl
+    validos = [a for a in apoyos if not (a.get("x") in (None, "") and a.get("y") in (None, "") and a.get("nombre") in (None, ""))]
+    if len(validos) == len(d.apoyos):
+        d.estructuras = [{k: a.get(k) for k in _CAMPOS_ESTRUCTURA} for a in validos]
     d.geo = [(a.get("lat"), a.get("lon")) for a in apoyos] if any(a.get("lat") is not None for a in apoyos) else None
     return d
 
@@ -95,6 +108,8 @@ def info() -> dict:
         "version": __version__,
         "proyecto_defecto": Proyecto().a_dict(),
         "conductores": {k: asdict(c) for k, c in BIBLIOTECA_CONDUCTORES.items()},
+        "postes": CATALOGO_POSTES,
+        "cables_templete": CABLES_TEMPLETE,
     }
 
 
@@ -172,6 +187,7 @@ def calcular(payload: dict) -> dict:
         "vanos": _registros(res.vanos),
         "apoyos": _registros(res.apoyos),
         "secciones": _registros(tabla_secciones(res)),
+        "postes": _registros(res.postes) if res.postes is not None else None,
         "advertencias": res.advertencias,
         "perfil": {"vanos": vanos_geo, "apoyos": apoyos_geo, "terreno": terreno,
                    "dmin": proyecto.criterios.distancia_minima_terreno_m,

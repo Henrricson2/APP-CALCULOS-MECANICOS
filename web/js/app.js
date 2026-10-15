@@ -1,7 +1,7 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
-import { detectarMotor } from './motor.js?v=7';
-import { dibujarPerfil, paginas, abscisaK } from './perfil.js?v=7';
-import { instalarGeo } from './geo-ui.js?v=7';
+import { detectarMotor } from './motor.js?v=8';
+import { dibujarPerfil, paginas, abscisaK } from './perfil.js?v=8';
+import { instalarGeo } from './geo-ui.js?v=8';
 
 const CLAVE = 'cm-proyecto-v2';
 const $ = (s, el = document) => el.querySelector(s);
@@ -218,8 +218,8 @@ function avisoDesactualizado() {
   return S.desactualizado ? `<ul class="adv-list" style="margin-bottom:14px"><li class="info">↻ Cambió los datos o parámetros. Pulse <b>Recalcular</b> para actualizar los resultados.</li></ul>` : '';
 }
 function sinResultado() {
-  return `<div class="card empty"><div class="big">⌒</div><h3>Aún no hay cálculo</h3><p>Importe un Excel o ingrese los apoyos y pulse <b>Calcular</b>.</p>
-  <div class="actions" style="justify-content:center;margin-top:14px"><button class="btn btn-primary" data-act="importar">Importar Excel</button><button class="btn" data-act="ejemplo">Cargar ejemplo</button><button class="btn btn-soft" data-act="ir-datos">Ingresar datos</button></div></div>`;
+  return `<div class="card empty"><div class="big">⌒</div><h3>Aún no hay cálculo</h3><p>El perfil, el plantillado y los resultados salen de las estructuras registradas en <b>Estructuras y mapa</b> (coordenadas, cota y altura del poste). Regístrelas y pulse <b>Calcular</b>.</p>
+  <div class="actions" style="justify-content:center;margin-top:14px"><button class="btn btn-primary" data-act="ir-datos">📍 Ir a Estructuras y mapa</button>${S.apoyos.length >= 2 ? '<button class="btn" data-act="calcular">▶ Calcular</button>' : ''}</div></div>`;
 }
 function enlazarAcciones(vc) {
   $$('[data-act]', vc).forEach((b) => b.addEventListener('click', () => ACCIONES[b.dataset.act]?.(b)));
@@ -248,11 +248,11 @@ const VISTAS = {
       return `<div class="page-head"><div><h1>Plantillado y cálculo mecánico</h1><p>Catenarias, cambio de estado por vano regulador, distancias de seguridad, gravivano/eolovano y exportación a Excel, PDF y DXF. Hipótesis por defecto según EH-RAA-004 (Electrohuila).</p></div></div>
       <div class="split"><div>${sinResultado()}</div>
       <div class="card"><div class="section-head"><h3>Cómo empezar</h3></div><ol class="steps">
-        <li><span><b>Datos:</b> importe su Excel (mismo formato DATOS.xlsx) o descargue la plantilla.</span></li>
-        <li><span><b>Parámetros:</b> revise conductor, hipótesis y distancia mínima.</span></li>
-        <li><span><b>Calcular</b> y revise el <b>perfil</b> y las <b>advertencias</b>.</span></li>
+        <li><span><b>Estructuras y mapa:</b> registre cada estructura con coordenadas, cota, poste (altura, carga de rotura, peso) y, donde se necesiten, sus templetes.</span></li>
+        <li><span><b>Parámetros:</b> revise conductor, hipótesis, distancia mínima y criterios de postes y templetes.</span></li>
+        <li><span><b>Calcular</b> y revise el <b>perfil</b>, los <b>resultados</b> (postes y templetes) y las <b>advertencias</b>.</span></li>
         <li><span><b>Exportar</b> la memoria (Excel), el plano (PDF) y el DXF 1:1.</span></li></ol>
-        <hr class="hr"><button class="btn btn-small" data-act="plantilla">⇩ Descargar plantilla Excel</button></div></div>`;
+        <hr class="hr"><button class="btn btn-small btn-soft" data-act="ir-datos">📍 Ir a Estructuras y mapa</button></div></div>`;
     }
     const s = r.resumen;
     const nNo = s['Vanos que no cumplen distancia'], nAr = s['Apoyos con arrancamiento'];
@@ -266,6 +266,7 @@ const VISTAS = {
       <div class="card stat"><span class="stat-label">Flecha máxima</span><span class="stat-value">${nf(s['Flecha máxima (m)'], 2)}<small>m</small></span><span class="stat-note">Hipótesis ${h(S.proyecto.hipotesis_plantillado)}</span></div>
       <div class="card stat ${nNo ? 'alert' : 'good'}"><span class="stat-label">Vanos sin distancia mínima</span><span class="stat-value">${nNo}</span><span class="stat-note ${nNo ? 'note-warn' : 'note-good'}">${nNo ? 'Requieren ajuste de apoyos' : (r.perfil.terreno ? 'Todos cumplen' : 'Sin terreno: no verificado')}</span></div>
       <div class="card stat ${nAr ? 'alert' : 'good'}"><span class="stat-label">Apoyos con arrancamiento</span><span class="stat-value">${nAr}</span><span class="stat-note ${nAr ? 'note-warn' : 'note-good'}">${nAr ? 'Gravivano negativo en frío' : 'Ninguno'}</span></div>
+      ${s['Postes que requieren templete'] != null ? `<div class="card stat ${s['Postes que requieren templete'] || s['Templetes insuficientes'] ? 'alert' : 'good'}"><span class="stat-label">Postes y templetes</span><span class="stat-value">${s['Postes que requieren templete']} / ${s['Templetes insuficientes']}</span><span class="stat-note ${s['Postes que requieren templete'] || s['Templetes insuficientes'] ? 'note-warn' : 'note-good'}">requieren templete / templetes insuficientes · <a href="#resultados" data-tabres="postes">ver</a></span></div>` : ''}
       <div class="card stat"><span class="stat-label">Advertencias</span><span class="stat-value">${r.advertencias.length}</span><span class="stat-note"><a href="#advertencias">Ver detalle →</a></span></div>
       <div class="card stat"><span class="stat-label">Motor de cálculo</span><span class="stat-value" style="font-size:16px">${h(S.motor.etiqueta)}</span><span class="stat-note">Python v${h(S.motor.version || '')}</span></div>
     </div>
@@ -341,6 +342,16 @@ const VISTAS = {
         ${campo('criterios.desperdicio_conductor', 'Desperdicio de conductor (fracción)', cr.desperdicio_conductor, '0.03 = 3 %')}
         ${campo('salida.exageracion_vertical_dxf', 'Exageración vertical DXF', p.salida.exageracion_vertical_dxf, '1 = escala 1:1')}
       </div></div>
+      <div class="card"><div class="section-head"><h2>Postes y templetes</h2><span class="muted small">Verifíquelos contra RETIE y la norma del operador de red</span></div><div class="form-grid cols-3">
+        <label class="field-group"><span class="field-label">Hipótesis de cargas</span><select class="select" data-path="criterios.hipotesis_estructuras" data-texto="1">${Object.keys(p.hipotesis).map((k) => `<option ${k === (cr.hipotesis_estructuras || 'TMAX') ? 'selected' : ''}>${k}</option>`).join('')}</select><span class="field-help">Viento máximo y tensión de esa hipótesis</span></label>
+        ${campo('criterios.empotramiento_coef', 'Empotramiento: coeficiente × L', cr.empotramiento_coef ?? 0.1, 'e = 0.10·L + 0.60 m')}
+        ${campo('criterios.empotramiento_base_m', 'Empotramiento: base (m)', cr.empotramiento_base_m ?? 0.6)}
+        ${campo('criterios.amarre_bajo_cima_m', 'Amarre bajo la cima (m)', cr.amarre_bajo_cima_m ?? 0.2, 'Amarre = L − e − este valor')}
+        ${campo('criterios.fs_poste', 'Factor de seguridad del poste', cr.fs_poste ?? 2.5, 'Carga de trabajo = rotura / FS')}
+        ${campo('criterios.fs_templete', 'Factor de seguridad del templete', cr.fs_templete ?? 2.5)}
+        ${campo('criterios.poste_diametro_medio_m', 'Diámetro medio del poste (m)', cr.poste_diametro_medio_m ?? 0.25, 'Para el viento sobre el poste')}
+        ${campo('criterios.peso_herrajes_kgf', 'Peso de herrajes por estructura (kgf)', cr.peso_herrajes_kgf ?? 40)}
+      </div></div>
     </div>`;
   },
 
@@ -360,11 +371,12 @@ const VISTAS = {
   resultados() {
     const r = S.resultado;
     if (!r) return sinResultado();
-    const tabs = [['vanos', 'Vanos'], ['apoyos', 'Apoyos'], ['secciones', 'Secciones de tendido']];
+    const tabs = [['vanos', 'Vanos'], ['apoyos', 'Apoyos'], ...(r.postes ? [['postes', 'Postes y templetes']] : []), ['secciones', 'Secciones de tendido']];
+    if (!r[S.tabRes]) S.tabRes = 'vanos';
     const t = r[S.tabRes];
-    const alerta = (fila) => t.columnas.some((c, i) => (c === 'Cumple distancia' && fila[i] === 'NO') || (c === 'Arrancamiento' && fila[i] === 'SÍ'));
+    const alerta = (fila) => t.columnas.some((c, i) => (c === 'Cumple distancia' && fila[i] === 'NO') || (c === 'Arrancamiento' && fila[i] === 'SÍ') || (c === 'Estado' && /REQUIERE|INSUFICIENTE/.test(fila[i] || '')));
     const celda = (v) => typeof v === 'number' ? `<td class="num">${nf(v, 3)}</td>` : `<td>${h(v ?? '')}</td>`;
-    return `${avisoDesactualizado()}<div class="page-head"><div><h1>Resultados</h1><p>Filas en rojo: no cumple distancia o tiene arrancamiento.</p></div><div class="actions"><button class="btn btn-navy" data-act="xlsx">⇩ Exportar Excel</button></div></div>
+    return `${avisoDesactualizado()}<div class="page-head"><div><h1>Resultados</h1><p>Filas en rojo: no cumple distancia, tiene arrancamiento, el poste requiere templete o el templete es insuficiente.</p></div><div class="actions"><button class="btn btn-navy" data-act="xlsx">⇩ Exportar Excel</button></div></div>
     <div class="tabs" role="tablist">${tabs.map(([k, n]) => `<button class="tab ${S.tabRes === k ? 'active' : ''}" data-tab="${k}">${n}</button>`).join('')}</div>
     <div class="card" style="padding:0"><div class="table-wrap" style="border:0"><table><thead><tr>${t.columnas.map((c) => `<th>${h(c)}</th>`).join('')}</tr></thead>
     <tbody>${t.filas.map((f) => `<tr class="${alerta(f) ? 'row-alert' : ''}">${f.map(celda).join('')}</tr>`).join('')}</tbody></table></div></div>`;
@@ -422,6 +434,7 @@ const VISTAS = {
 const ENLACES = {
   resumen(vc) {
     enlazarAcciones(vc);
+    $$('[data-tabres]', vc).forEach((l) => l.addEventListener('click', () => { S.tabRes = l.dataset.tabres; }));
     const mini = $('#perfil-mini', vc);
     if (mini && S.resultado) {
       const n = S.resultado.perfil.vanos.length;
@@ -583,7 +596,7 @@ async function iniciar() {
   }
 
   const def = await (await fetch('defaults.json', { cache: 'no-cache' })).json();
-  S.defaults = def.proyecto_defecto; S.conductores = def.conductores;
+  S.defaults = def.proyecto_defecto; S.conductores = def.conductores; S.catPostes = def.postes || []; S.catCables = def.cables_templete || [];
   const guardado = restaurar() || {};
   aplicarEstado(guardado);
   S.meta = guardado.meta || {};

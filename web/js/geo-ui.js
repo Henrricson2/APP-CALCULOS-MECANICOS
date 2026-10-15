@@ -1,6 +1,6 @@
 // Etapa 1: proyectos persistentes, asistente de importación con sistemas de coordenadas,
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
-import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=7';
+import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=8';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
@@ -334,6 +334,15 @@ export function instalarGeo(C) {
     if (!m) return nombreUnico(`AP-${String(S.apoyos.length + 1).padStart(3, '0')}`);
     return nombreUnico(`${m[1]}${String(+m[2] + 1).padStart(m[2].length, '0')}${m[3]}`);
   }
+  // ---- poste: la altura de amarre depende de la altura del poste
+  function amarreDePoste(L) {
+    const c = S.proyecto.criterios; if (!L) return null;
+    return +(L - ((c.empotramiento_coef ?? 0.1) * L + (c.empotramiento_base_m ?? 0.6)) - (c.amarre_bajo_cima_m ?? 0.2)).toFixed(2);
+  }
+  const posteEtiqueta = (a) => a.poste_altura ? `${a.poste_altura} m${a.poste_rotura ? ` · ${a.poste_rotura} kgf` : ''}` : '';
+  function opcionesPoste(sel = '') {
+    return `<option value="">— sin poste —</option>${(S.catPostes || []).map((p, k) => `<option value="${k}" ${sel === String(k) ? 'selected' : ''}>${h(p.nombre)}</option>`).join('')}`;
+  }
   function vistaEstructuras() {
     const herr = [['mover', '✥ Mover', 'Arrastrar y seleccionar estructuras'], ['insertar', '⊕ Insertar', 'Clic sobre un vano para insertar una estructura'], ['agregar', '＋ Nueva', 'Clic en el mapa para agregar una estructura al final'], ['medir', '📏 Medir', 'Medir distancia geodésica']];
     return `<div class="page-head" style="margin-bottom:12px"><div><h1>Estructuras y mapa</h1><p>Registre cada estructura con sus coordenadas: se agrega a la tabla y se dibuja en el mapa al instante. Edite en la tabla o arrastre en el mapa; todo queda sincronizado.</p></div>
@@ -348,11 +357,11 @@ export function instalarGeo(C) {
               <label class="field-group"><span class="field-label" id="f-e1">Latitud</span><input class="input" name="u" placeholder="2.927222 o 2°55'38&quot;N" required></label>
               <label class="field-group"><span class="field-label" id="f-e2">Longitud</span><input class="input" name="v" placeholder="-75.281944 o 75°16'55&quot;W" required></label>
               <label class="field-group"><span class="field-label">Cota Z (m)</span><input class="input" name="z" inputmode="decimal" placeholder="opcional"></label>
-              <label class="field-group"><span class="field-label">Altura amarre (m)</span><input class="input" name="altura" inputmode="decimal" placeholder="opcional" value="${h(S.apoyos[S.apoyos.length - 1]?.altura ?? '')}"></label>
+              <label class="field-group"><span class="field-label">Poste</span><select class="select" name="poste">${opcionesPoste(S.meta.posteDef ?? '')}</select></label>
               <label class="field-group"><span class="field-label">Tipo</span><select class="select" name="tipo"><option value="S">Suspensión</option><option value="R" ${S.apoyos.length ? '' : 'selected'}>Retención</option></select></label>
               <button class="btn btn-primary dm-agregar" type="submit">＋ Agregar</button>
             </form>
-            <p class="small muted" style="margin:6px 0 0">Enter = agregar y seguir con la siguiente. Las coordenadas aceptan decimal o grados-minutos-segundos.</p>
+            <p class="small muted" style="margin:6px 0 0">Enter = agregar y seguir con la siguiente. Coordenadas en decimal o grados-minutos-segundos. La altura de amarre sale de la altura del poste; los templetes se agregan en la tabla (⚓) solo donde se necesiten.</p>
           </div>
           <div class="card" style="margin-top:12px"><div class="section-head"><h2>Estructuras <span class="badge" id="dm-n">${S.apoyos.length}</span></h2>
             <span class="small muted" id="dm-resumen"></span></div>
@@ -373,6 +382,46 @@ export function instalarGeo(C) {
       </div>`;
   }
 
+  function pesoCat(a) {
+    const p = (S.catPostes || []).find((c) => Math.abs(c.altura - (+a.poste_altura)) < 0.01 && Math.abs(c.rotura - (+a.poste_rotura)) < 0.5);
+    return p ? p.peso : null;
+  }
+  function modalTempletes(i) {
+    const p = S.apoyos[i]; if (!p) return;
+    let filas = C.clon(p.templetes || []);
+    const amarre = p.poste_altura ? amarreDePoste(+p.poste_altura) : p.altura;
+    const cables = S.catCables || [];
+    const m = modal(`Templetes · ${p.nombre}`, '<div id="tp-cuerpo"></div>', '<button class="btn" data-x>Cancelar</button><button class="btn btn-primary" data-ok>Guardar</button>');
+    const pintar = () => {
+      $('#tp-cuerpo', m.root).innerHTML = `<p class="small muted">Agregue templetes solo si la estructura los necesita (terminales, ángulos, retenciones o postes que no resisten solos). Se suponen orientados contra la resultante de las cargas. La app verifica la tensión del cable y le avisa en <b>Resultados → Postes y templetes</b> si el poste requiere templete.</p>
+      ${filas.length ? `<div class="table-wrap"><table class="grid-edit"><thead><tr><th>Cant.</th><th>Cable</th><th>Rotura (kgf)</th><th>Distancia al anclaje (m)</th><th>Altura en el poste (m)</th><th></th></tr></thead><tbody>
+        ${filas.map((t, k) => `<tr data-k="${k}"><td><input data-c="cantidad" inputmode="numeric" value="${h(t.cantidad ?? 1)}" style="width:52px"></td>
+          <td><select data-c="cable"><option value="">— elija —</option>${cables.map((c) => `<option ${c.nombre === t.cable ? 'selected' : ''}>${h(c.nombre)}</option>`).join('')}</select></td>
+          <td><input data-c="rotura_kgf" inputmode="decimal" value="${h(t.rotura_kgf ?? '')}" style="width:80px"></td>
+          <td><input data-c="distancia_m" inputmode="decimal" placeholder="${amarre ? nf(amarre / 2, 1) : ''}" value="${h(t.distancia_m ?? '')}" style="width:80px"></td>
+          <td><input data-c="altura_m" inputmode="decimal" placeholder="${amarre ? nf(amarre, 2) : ''}" value="${h(t.altura_m ?? '')}" style="width:80px"></td>
+          <td><button class="del" data-q="${k}" title="Quitar">✕</button></td></tr>`).join('')}</tbody></table></div>`
+        : '<div class="empty" style="padding:16px"><h3>Sin templetes</h3><p>Esta estructura no tiene templetes.</p></div>'}
+      <button class="btn btn-small btn-soft" id="tp-add" style="margin-top:10px">＋ Agregar templete</button>
+      <p class="small muted" style="margin-top:8px">Vacíos: distancia al anclaje = ½ de la altura; altura en el poste = altura de amarre (${amarre ? nf(amarre, 2) + ' m' : 'sin poste'}).</p>`;
+      $$('[data-c]', m.root).forEach((el) => el.onchange = () => {
+        const k = +el.closest('tr').dataset.k, c = el.dataset.c;
+        if (c === 'cable') { filas[k].cable = el.value; const cat = cables.find((x) => x.nombre === el.value); if (cat) filas[k].rotura_kgf = cat.rotura; return pintar(); }
+        const n = num(el.value); filas[k][c] = Number.isNaN(n) ? null : n;
+      });
+      $$('[data-q]', m.root).forEach((b) => b.onclick = () => { filas.splice(+b.dataset.q, 1); pintar(); });
+      $('#tp-add', m.root).onclick = () => { const c = cables.find((x) => x.nombre.startsWith('3/8" alta')) || cables[0]; filas.push({ cantidad: 1, cable: c?.nombre || '', rotura_kgf: c?.rotura ?? null, distancia_m: null, altura_m: null }); pintar(); };
+    };
+    pintar();
+    $('[data-x]', m.root).onclick = m.cerrar;
+    $('[data-ok]', m.root).onclick = () => {
+      const limpias = filas.filter((t) => (+t.cantidad || 0) > 0);
+      if (limpias.some((t) => !t.rotura_kgf)) return toast('Indique el cable o la carga de rotura de cada templete.', 'warn');
+      m.cerrar();
+      cambiar(() => { S.apoyos[i].templetes = limpias; }, 'templetes');
+      toast(limpias.length ? `Templetes de ${p.nombre} guardados.` : `${p.nombre} sin templetes.`, 'success');
+    };
+  }
   function pintarTabla() {
     const el = $('#dm-tabla'); if (!el) return;
     const act = document.activeElement, foco = el.contains(act) && act.dataset.k ? { i: act.closest('tr')?.dataset.i, k: act.dataset.k } : null;
@@ -392,20 +441,25 @@ export function instalarGeo(C) {
       return `<tr data-i="${i}" class="${i === S.sel ? 'row-actual' : ''} ${a.z == null ? 'row-warn' : ''}">
         <td class="idx">${i + 1}</td>
         <td><input class="name" data-k="nombre" value="${h(a.nombre)}"></td>
-        <td><input data-k="lat" value="${h(a.lat != null ? (+a.lat).toFixed(7) : '')}" ${bl}></td>
-        <td><input data-k="lon" value="${h(a.lon != null ? (+a.lon).toFixed(7) : '')}" ${bl}></td>
+        <td><input data-k="lat" value="${h(a.lat != null ? (+a.lat).toFixed(6) : '')}" title="${h(a.lat ?? '')}" ${bl}></td>
+        <td><input data-k="lon" value="${h(a.lon != null ? (+a.lon).toFixed(6) : '')}" title="${h(a.lon ?? '')}" ${bl}></td>
         <td><input data-k="z" inputmode="decimal" placeholder="sin dato" value="${h(a.z ?? '')}" title="${h(a.z_fuente || '')}"></td>
-        <td><input data-k="altura" inputmode="decimal" placeholder="—" value="${h(a.altura ?? '')}"></td>
+        <td><input data-k="poste_altura" inputmode="decimal" placeholder="—" value="${h(a.poste_altura ?? '')}"></td>
+        <td><input data-k="poste_rotura" inputmode="decimal" placeholder="—" value="${h(a.poste_rotura ?? '')}"></td>
+        <td><input data-k="poste_peso" inputmode="decimal" placeholder="${h(pesoCat(a) ?? '—')}" value="${h(a.poste_peso ?? '')}" title="Vacío = peso de catálogo"></td>
+        <td class="num muted small" title="Altura de amarre = poste − empotramiento − ${S.proyecto.criterios.amarre_bajo_cima_m ?? 0.2} m">${a.poste_altura ? nf(amarreDePoste(+a.poste_altura), 2) : (a.altura != null ? `<i>${nf(a.altura, 2)}</i>` : '—')}</td>
         <td><select data-k="tipo"><option value="S" ${a.tipo !== 'R' ? 'selected' : ''}>Susp.</option><option value="R" ${a.tipo === 'R' ? 'selected' : ''}>Ret.</option></select></td>
+        <td><button class="tpl ${(a.templetes || []).length ? 'con' : ''}" data-a="tpl" title="Templetes de esta estructura">${(a.templetes || []).reduce((s, t) => s + (+t.cantidad || 0), 0) ? `⚓ ${(a.templetes || []).reduce((s, t) => s + (+t.cantidad || 0), 0)}` : '＋'}</button></td>
         <td class="num muted small">${vano}</td>
         <td class="dm-acc"><button class="del" data-a="sube" title="Mover antes" ${i === 0 ? 'disabled' : ''}>↑</button><button class="del" data-a="baja" title="Mover después" ${i === n - 1 ? 'disabled' : ''}>↓</button><button class="del" data-a="bloq" title="${a.bloqueado ? 'Desbloquear' : 'Bloquear coordenadas'}">${a.bloqueado ? '🔒' : '🔓'}</button><button class="del" data-a="del" title="Eliminar" ${bl}>✕</button></td></tr>`;
     }).join('');
-    el.innerHTML = `<div class="table-wrap dm-tabla-wrap"><table class="grid-edit"><thead><tr><th>#</th><th>Estructura</th><th>Latitud</th><th>Longitud</th><th>Cota Z (m)</th><th>Altura (m)</th><th>Tipo</th><th>Vano (m)</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`;
+    el.innerHTML = `<div class="table-wrap dm-tabla-wrap"><table class="grid-edit"><thead><tr><th>#</th><th>Estructura</th><th>Latitud</th><th>Longitud</th><th>Cota Z (m)</th><th title="Altura total del poste">Poste (m)</th><th title="Carga de rotura del poste">Rotura (kgf)</th><th>Peso (kg)</th><th title="Calculada desde el poste">Amarre (m)</th><th>Tipo</th><th>Templetes</th><th>Vano (m)</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`;
     $$('input[data-k], select[data-k]', el).forEach((inp) => inp.addEventListener('change', () => editarCampo(+inp.closest('tr').dataset.i, inp.dataset.k, inp.value)));
     $$('tbody tr', el).forEach((tr) => tr.addEventListener('focusin', () => seleccionar(+tr.dataset.i, true, false)));
     $$('[data-a]', el).forEach((b) => b.onclick = () => {
       const i = +b.closest('tr').dataset.i;
       if (b.dataset.a === 'del') return eliminar(i);
+      if (b.dataset.a === 'tpl') return modalTempletes(i);
       if (b.dataset.a === 'bloq') return cambiar(() => { S.apoyos[i].bloqueado = !S.apoyos[i].bloqueado; }, 'bloqueo');
       const j = b.dataset.a === 'sube' ? i - 1 : i + 1;
       cambiar(() => { [S.apoyos[j], S.apoyos[i]] = [S.apoyos[i], S.apoyos[j]]; S.sel = j; }, 'reordenar');
@@ -440,7 +494,8 @@ export function instalarGeo(C) {
       try {
         const nuevo = await crearEstructura(d, sel.value);
         cambiar(() => { S.apoyos.push(nuevo); S.sel = S.apoyos.length - 1; }, 'agregar');
-        planta?.enfocar?.(S.sel);
+        planta?.ajustar?.(); // muestra toda la línea con la nueva estructura
+        S.meta.posteDef = f.poste.value; C.guardar();
         f.nombre.value = siguienteNombre(); f.u.value = ''; f.v.value = ''; f.z.value = ''; f.tipo.value = 'S';
         f.u.focus();
         toast(`${nuevo.nombre} registrada y dibujada en el mapa.`, 'success');
@@ -452,19 +507,23 @@ export function instalarGeo(C) {
     const r = await rpc('geo_transformar', { sistema, puntos: [{ u: String(d.u).trim(), v: String(d.v).trim() }] });
     const q = r.puntos[0]; if (!q.ok) throw new Error(`${d.nombre || 'Estructura'}: ${q.error}`);
     const z = num(d.z ?? ''), alt = num(d.altura ?? '');
+    const cat = d.poste !== undefined && d.poste !== '' ? (S.catPostes || [])[+d.poste] : null;
+    const pL = cat ? cat.altura : num(d.poste_altura ?? ''), pR = cat ? cat.rotura : num(d.poste_rotura ?? ''), pP = cat ? null : num(d.poste_peso ?? '');
+    for (const [v, n] of [[pL, 'Altura del poste'], [pR, 'Carga de rotura'], [pP, 'Peso del poste']]) if (Number.isNaN(v)) throw new Error(`${n} no numérica.`);
     if (Number.isNaN(z)) throw new Error(`Cota Z no numérica: «${d.z}»`);
     if (Number.isNaN(alt)) throw new Error(`Altura no numérica: «${d.altura}»`);
     const nombre = String(d.nombre || '').trim() || siguienteNombre();
     if (S.apoyos.some((a) => String(a.nombre) === nombre) || base?.has(nombre)) throw new Error(`Ya existe la estructura «${nombre}».`);
     return { id: nuevoId(), nombre, lat: +q.lat.toFixed(9), lon: +q.lon.toFixed(9), E: +q.E.toFixed(4), N: +q.N.toFixed(4),
-      z: z ?? null, z_fuente: z != null ? 'manual' : null, altura: alt ?? null, tipo: String(d.tipo || 'S').toUpperCase().startsWith('R') ? 'R' : 'S',
+      z: z ?? null, z_fuente: z != null ? 'manual' : null, altura: pL ? null : (alt ?? null),
+      poste_altura: pL ?? null, poste_rotura: pR ?? null, poste_peso: pP ?? null, templetes: [], tipo: String(d.tipo || 'S').toUpperCase().startsWith('R') ? 'R' : 'S',
       bloqueado: false, orig: { sistema, u: String(d.u).trim(), v: String(d.v).trim(), nota: 'registrada en la tabla' } };
   }
   function pegarVarias() {
     const sis = sisEntrada();
     const m = modal('Pegar varias estructuras',
-      `<p class="muted small">Copie las filas desde Excel y péguelas. Columnas: <b>Estructura, ${['WGS84', 'MAGNA_GEO'].includes(sis) ? 'Latitud, Longitud' : 'Este, Norte'}</b> [, Cota Z] [, Altura] [, Tipo R/S]. Sistema: el elegido en «Registrar estructura». Se agregan al final.</p>
-       <textarea class="textarea" id="dm-txt" placeholder="AP-001\t2.927222\t-75.281944\t440.2\t10.5\tR\nAP-002\t2.928100\t-75.281000\t441.0\t10.5\tS"></textarea>`,
+      `<p class="muted small">Copie las filas desde Excel y péguelas. Columnas: <b>Estructura, ${['WGS84', 'MAGNA_GEO'].includes(sis) ? 'Latitud, Longitud' : 'Este, Norte'}</b> [, Cota Z] [, Altura poste (m)] [, Carga rotura (kgf)] [, Peso (kg)] [, Tipo R/S]. Sistema: el elegido en «Registrar estructura». Se agregan al final.</p>
+       <textarea class="textarea" id="dm-txt" placeholder="AP-001\t2.927222\t-75.281944\t440.2\t12\t750\t\tR\nAP-002\t2.928100\t-75.281000\t441.0\t12\t510\t\tS"></textarea>`,
       '<button class="btn" data-x>Cancelar</button><button class="btn btn-primary" data-ok>Agregar</button>');
     $('[data-x]', m.root).onclick = m.cerrar;
     setTimeout(() => $('#dm-txt').focus(), 50);
@@ -475,7 +534,7 @@ export function instalarGeo(C) {
       for (const [k, l] of lineas.entries()) {
         const c = sep(l);
         if (k === 0 && /estructura|poste|nombre|apoyo/i.test(c[0]) && Number.isNaN(num(c[1]))) continue; // encabezado
-        try { const p = await crearEstructura({ nombre: c[0], u: c[1], v: c[2], z: c[3] ?? '', altura: c[4] ?? '', tipo: c[5] || 'S' }, sis, usados); usados.add(p.nombre); nuevos.push(p); }
+        try { const p = await crearEstructura({ nombre: c[0], u: c[1], v: c[2], z: c[3] ?? '', poste_altura: c[4] ?? '', poste_rotura: c[5] ?? '', poste_peso: c[6] ?? '', tipo: c[7] || 'S' }, sis, usados); usados.add(p.nombre); nuevos.push(p); }
         catch (e) { errores.push(`Fila ${k + 1}: ${e.message}`); }
       }
       if (!nuevos.length) return toast(errores[0] || 'No se reconocieron filas.', 'warn');
@@ -592,7 +651,7 @@ export function instalarGeo(C) {
         const u = await ubicar({ E: k === 'E' ? num(v) : p.E, N: k === 'N' ? num(v) : p.N });
         return cambiar(() => Object.assign(S.apoyos[i], u, { orig: { sistema: 'ORIGEN_NACIONAL', u: String(u.E), v: String(u.N), nota: 'editado' } }), 'coordenadas');
       }
-      if (['z', 'altura'].includes(k)) {
+      if (['z', 'altura', 'poste_altura', 'poste_rotura', 'poste_peso'].includes(k)) {
         const n = num(v); if (Number.isNaN(n)) throw new Error(`Valor no numérico: «${v}»`);
         return cambiar(() => { S.apoyos[i][k] = n; if (k === 'z' && n != null && !S.apoyos[i].z_fuente) S.apoyos[i].z_fuente = 'manual'; if (k === 'z' && n == null) S.apoyos[i].z_fuente = null; }, k);
       }

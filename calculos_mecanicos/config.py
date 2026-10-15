@@ -111,6 +111,15 @@ class Criterios:
     vano_min_alerta_m: float = 15.0
     vano_max_alerta_m: float = 300.0
     pendiente_max_alerta: float = 0.15            # |Δy|/a por encima de la cual se alerta
+    # --- estructuras: poste y templetes (verificar contra RETIE y la norma del OR) ---
+    hipotesis_estructuras: str = "TMAX"           # hipótesis de cargas para postes y templetes
+    empotramiento_coef: float = 0.10              # empotramiento = coef·L + base
+    empotramiento_base_m: float = 0.60
+    amarre_bajo_cima_m: float = 0.20              # punto de amarre bajo la cima del poste
+    poste_diametro_medio_m: float = 0.25          # para el viento sobre el poste
+    fs_poste: float = 2.5                         # factor de seguridad del poste
+    fs_templete: float = 2.5                      # factor de seguridad del cable de templete
+    peso_herrajes_kgf: float = 40.0               # crucetas, aisladores y herrajes por estructura
 
 
 @dataclass

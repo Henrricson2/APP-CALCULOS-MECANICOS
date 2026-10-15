@@ -133,6 +133,8 @@ def exportar_excel(res: ResultadoPlantillado, ruta: str | Path) -> Path:
         "Apoyos": res.apoyos,
         "Secciones": tabla_secciones(res),
     }
+    if getattr(res, "postes", None) is not None:
+        hojas["Postes y templetes"] = res.postes
     if p.modo_flecha == "cambio_estado":
         hojas["Tabla de tendido"] = tabla_tendido(p.conductor, p.hipotesis,
                                                   list(range(20, 405, 5)),
@@ -154,7 +156,8 @@ def exportar_excel(res: ResultadoPlantillado, ruta: str | Path) -> Path:
                 ws.column_dimensions[get_column_letter(j)].width = min(max(10, largo + 2), 90)
             rojo = PatternFill("solid", fgColor="F8D7DA")
             enc = {c.value: c.column for c in ws[1]}
-            alertas = [(enc[k], v) for k, v in (("Cumple distancia", "NO"), ("Arrancamiento", "SÍ"))
+            alertas = [(enc[k], v) for k, v in (("Cumple distancia", "NO"), ("Arrancamiento", "SÍ"),
+                                                         ("Estado", "REQUIERE TEMPLETE"), ("Estado", "TEMPLETE INSUFICIENTE"))
                        if k in enc]
             for fila in ws.iter_rows(min_row=2):
                 if any(fila[col - 1].value == v for col, v in alertas):

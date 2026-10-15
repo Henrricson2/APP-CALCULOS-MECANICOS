@@ -32,6 +32,9 @@ CAMPOS = {
     "norte": "Norte / Y",
     "z": "Cota Z (m)",
     "altura": "Altura de amarre (m)",
+    "poste_altura": "Altura del poste (m)",
+    "poste_rotura": "Carga de rotura del poste (kgf)",
+    "poste_peso": "Peso del poste (kg)",
     "tipo": "Tipo de estructura (R/S)",
     "conductor": "Conductor asignado",
     "obs": "Observaciones",
@@ -46,6 +49,9 @@ _ALIAS = {
     "norte": ["norte", "north", "northing", "coordenada en y", "coord y", "y"],
     "z": ["cota", "z", "elevacion", "altitud", "alt", "altitude", "h"],
     "altura": ["altura amarre", "altura de amarre", "altura"],
+    "poste_altura": ["altura poste", "altura del poste", "longitud poste", "longitud del poste", "long poste", "l poste"],
+    "poste_rotura": ["carga rotura", "carga de rotura", "rotura", "resistencia", "kgf"],
+    "poste_peso": ["peso poste", "peso del poste", "peso"],
     "tipo": ["tipo", "estructura", "tipo estructura"],
     "conductor": ["conductor", "calibre"],
     "obs": ["observaciones", "obs", "descripcion", "description", "nota"],
@@ -186,7 +192,7 @@ def sugerir_mapeo(columnas: list[str]) -> dict:
                     ok = h == al if exacto else (al in h.split() or (len(al) > 3 and al in h))
                     if campo in ("nombre",) and "altura" in h:
                         ok = False
-                    if campo == "altura" and "amarre" not in h and not exacto:
+                    if campo == "altura" and ("amarre" not in h or "poste" in h) and not exacto:
                         ok = False
                     if ok:
                         mapa[campo] = columnas[i]
@@ -299,6 +305,9 @@ def previsualizar(tabla: dict, mapeo: dict, sistema: str | None,
         p["z_fuente"] = "archivo" if z is not None else None
         alt = _num(celda(f, "altura"))
         p["altura"] = alt if isinstance(alt, float) else None
+        for k in ("poste_altura", "poste_rotura", "poste_peso"):
+            v = _num(celda(f, k))
+            p[k] = v if isinstance(v, float) else None
         tipo = _norm(celda(f, "tipo"))
         p["tipo"] = "R" if tipo.startswith(("r", "t", "f", "anc", "ang")) or "reten" in tipo else "S"
         p["conductor"] = str(celda(f, "conductor")).strip() or None

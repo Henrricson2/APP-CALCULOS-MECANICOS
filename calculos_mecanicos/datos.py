@@ -95,6 +95,7 @@ class DatosLinea:
     errores: list[str] = field(default_factory=list)
     deflexiones: list | None = None              # ángulo en cada apoyo (si hay coordenadas)
     geo: list | None = None                      # (lat, lon) por apoyo
+    estructuras: list | None = None              # poste y templetes por apoyo (dicts)
 
     @property
     def n_apoyos(self) -> int:

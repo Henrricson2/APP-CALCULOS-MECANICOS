@@ -31,6 +31,15 @@ Un solo motor Python (`calculos_mecanicos/`) para todas las plataformas:
   (lat/lon decimal o GMS, MAGNA-SIRGAS Origen Nacional, Gauss-Krüger, UTM, coordenadas locales con
   puntos de control Helmert/afín), candidatos detectados automáticamente que el usuario confirma,
   validación (fuera de Colombia, duplicados, cotas vacías ≠ 0), vista previa del trazado.
+- **Postes y templetes**: cada estructura lleva su poste (altura, carga de rotura, peso; catálogo
+  referencial editable) y, solo donde se necesiten, sus templetes (cantidad, cable ASTM A475, distancia al
+  anclaje, altura). La **altura de amarre sale de la altura del poste** (L − (0.10·L + 0.60) − 0.20 m).
+  El cálculo verifica cada poste con la hipótesis TMAX (tiro por ángulo/terminal, viento sobre
+  conductores y poste, carga equivalente a 0.20 m de la cima vs carga de rotura / FS), indica
+  **«REQUIERE TEMPLETE»**, verifica la tensión del templete y da la carga vertical (peso del poste,
+  conductores, herrajes y compresión del templete). Factores y empotramiento editables en Parámetros.
+- El **perfil, plantillado y resultados** dependen solo de lo registrado en *Estructuras y mapa*; esas
+  vistas solo exportan.
 - **Proyectos independientes y completos**: cada proyecto guarda sus parámetros, estructuras, terreno,
   trazado georreferenciado y el **último cálculo con todos sus resultados** (resumen, vanos, apoyos,
   secciones, perfil y advertencias). Al abrirlo se ve tal como quedó, sin recalcular; si se cambia un dato

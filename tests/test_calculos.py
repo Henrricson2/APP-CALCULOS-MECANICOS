@@ -383,3 +383,58 @@ def test_mapa_html_con_folium():
     from calculos_mecanicos.mapa_html import proyecto_a_html
     h = proyecto_a_html(_POSTES_MAPA, usar_folium=True)
     assert "World_Imagery" in h and "leaflet" in h.lower()
+
+
+# ------------------------------------------------------------- postes y templetes
+def _linea_postes(templete=None, rot_ext=750, rot_int=510):
+    ap = [{"nombre": "E1", "lat": 2.9273, "lon": -75.2819, "z": 440, "tipo": "R", "poste_altura": 12, "poste_rotura": rot_ext},
+          {"nombre": "E2", "lat": 2.9281, "lon": -75.2819, "z": 441, "tipo": "S", "poste_altura": 12, "poste_rotura": rot_int},
+          {"nombre": "E3", "lat": 2.9289, "lon": -75.2819, "z": 442, "tipo": "R", "poste_altura": 12, "poste_rotura": rot_ext,
+           "poste_peso": 1111, "templetes": templete or []}]
+    from calculos_mecanicos import motor
+    r = motor.calcular({"proyecto": {}, "apoyos": ap})
+    assert r["ok"], r.get("errores")
+    t = r["postes"]
+    return r, [dict(zip(t["columnas"], f)) for f in t["filas"]]
+
+
+def test_amarre_sale_de_la_altura_del_poste():
+    r, filas = _linea_postes()
+    # 12 m: empotramiento 0.1·12 + 0.6 = 1.8 m; libre 10.2; amarre 10.0 m
+    assert filas[0]["Empotramiento (m)"] == pytest.approx(1.8) and filas[0]["Altura amarre (m)"] == pytest.approx(10.0)
+    ap = dict(zip(r["apoyos"]["columnas"], r["apoyos"]["filas"][0]))
+    assert ap["Altura amarre (m)"] == pytest.approx(10.0) and ap["Cota amarre (m)"] == pytest.approx(450.0)
+
+
+def test_terminal_sin_templete_y_alineacion_sin_tiro():
+    r, filas = _linea_postes()
+    H = None
+    sec = dict(zip(r["secciones"]["columnas"], r["secciones"]["filas"][0]))
+    H = sec["H TMAX (kgf)"]
+    assert filas[0]["Tiro conductores TMAX (kgf)"] == pytest.approx(3 * H, rel=1e-3)   # terminal: n·H
+    assert filas[1]["Tiro conductores TMAX (kgf)"] == pytest.approx(0, abs=0.5)        # recta, igual H
+    assert filas[0]["Estado"] == "REQUIERE TEMPLETE"
+    assert r["resumen"]["Postes que requieren templete"] >= 1
+    assert any("E1" in a and "templete" in a for a in r["advertencias"])
+
+
+def test_templete_tension_geometria_y_peso():
+    tp = [{"cantidad": 2, "cable": '3/8" EHS', "rotura_kgf": 6985, "distancia_m": 7.5, "altura_m": 10.0}]
+    r, filas = _linea_postes(tp)
+    f = filas[2]
+    M = (f["Tiro conductores TMAX (kgf)"] ** 2 + f["Viento conductores (kgf)"] ** 2) ** 0.5 * 10.0 + f["Viento poste (kgf)"] * 10.2 / 2
+    Ht = M / 10.0
+    sen = 7.5 / (7.5 ** 2 + 10 ** 2) ** 0.5
+    assert f["Tensión por templete (kgf)"] == pytest.approx(Ht / (2 * sen), rel=1e-3)
+    assert f["Utilización templete (%)"] == pytest.approx(100 * f["Tensión por templete (kgf)"] / (6985 / 2.5), rel=1e-3)
+    assert f["Estado"] in ("OK con templete", "TEMPLETE INSUFICIENTE")
+    assert f["Peso poste (kg)"] == 1111 and f["Peso estimado"] == ""
+    assert f["Carga vertical (kgf)"] > 1111 + Ht * 10 / 7.5          # peso + compresión del templete
+    assert filas[1]["Peso estimado"] == "catálogo"
+
+
+def test_importacion_reconoce_columnas_de_poste():
+    from calculos_mecanicos import importacion as I
+    m = I.sugerir_mapeo(["Poste", "Latitud", "Longitud", "Cota", "Altura poste", "Carga rotura", "Peso", "Tipo"])
+    assert m["poste_altura"] == "Altura poste" and m["poste_rotura"] == "Carga rotura" and m["poste_peso"] == "Peso"
+    assert "altura" not in m
