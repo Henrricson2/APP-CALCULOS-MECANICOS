@@ -508,3 +508,18 @@ def test_carga_estructuras_respeta_encabezado_y_exige_tres_columnas():
     assert r2["validas"] == 1 and r2["filas"][0]["nombre"] == "X1"
     with pytest.raises(ValueError):
         leer_estructuras(_xlsx([["Name", "Latitud"], ["A", 2.9]]), "e.xlsx")
+
+
+def test_advertencia_estructura_mal_ubicada():
+    from types import SimpleNamespace
+    import pandas as pd
+    from calculos_mecanicos import motor
+    datos = SimpleNamespace(geo=[(2.0400, -75.9700), (2.0410, -75.9700), (2.0550, -75.9600), (2.0420, -75.9700)],
+                            apoyos=pd.DataFrame({"nombre": ["A", "B", "C", "D"]}))
+    res = SimpleNamespace(advertencias=[])
+    motor._advertir_geometria(datos, res)
+    assert len(res.advertencias) == 1 and "C" in res.advertencias[0] and "mal ubicada" in res.advertencias[0]
+    datos.geo = [(2.0400, -75.9700), (2.0410, -75.9700), (2.0420, -75.9700), (2.0430, -75.9700)]
+    res.advertencias = []
+    motor._advertir_geometria(datos, res)
+    assert res.advertencias == []

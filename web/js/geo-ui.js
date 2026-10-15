@@ -1,7 +1,7 @@
 // Etapa 1: proyectos persistentes, asistente de importación con sistemas de coordenadas,
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
-import { obtenerCotas, FUENTES, muestrasRecorrido } from './elevacion.js';
-import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=12';
+import { obtenerCotas, FUENTES, muestrasRecorrido, vincenty } from './elevacion.js';
+import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=13';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
@@ -482,7 +482,7 @@ export function instalarGeo(C) {
         <td><select data-k="tipo"><option value="S" ${a.tipo !== 'R' ? 'selected' : ''}>Susp.</option><option value="R" ${a.tipo === 'R' ? 'selected' : ''}>Ret.</option></select></td>
         <td><button class="tpl ${(a.templetes || []).length ? 'con' : ''}" data-a="tpl" title="Templetes de esta estructura">${(a.templetes || []).reduce((s, t) => s + (+t.cantidad || 0), 0) ? `⚓ ${(a.templetes || []).reduce((s, t) => s + (+t.cantidad || 0), 0)}` : '＋'}</button></td>
         <td class="num muted small">${vano}</td>
-        <td class="dm-acc"><button class="del" data-a="sube" title="Mover antes" ${i === 0 ? 'disabled' : ''}>↑</button><button class="del" data-a="baja" title="Mover después" ${i === n - 1 ? 'disabled' : ''}>↓</button><button class="del" data-a="bloq" title="${a.bloqueado ? 'Desbloquear' : 'Bloquear coordenadas'}">${a.bloqueado ? '🔒' : '🔓'}</button><button class="del" data-a="del" title="Eliminar" ${bl}>✕</button></td></tr>`;
+        <td class="dm-acc"><button class="del" data-a="sube" title="Mover antes" ${i === 0 ? 'disabled' : ''}>↑</button><button class="del" data-a="baja" title="Mover después" ${i === n - 1 ? 'disabled' : ''}>↓</button><button class="del" data-a="bloq" title="${a.bloqueado ? 'Desbloquear' : 'Bloquear coordenadas'}">${a.bloqueado ? '🔒' : '🔓'}</button><button class="del" data-a="del" title="Eliminar" ${bl}>✕</button>${a.pos_original ? '<button class="del" data-a="rest" title="Volver a la posición original (antes de moverla en el mapa)">↺</button>' : ''}</td></tr>`;
     }).join('');
     el.innerHTML = `<div class="table-wrap dm-tabla-wrap"><table class="grid-edit"><thead><tr><th>#</th><th>Estructura</th><th>Latitud</th><th>Longitud</th><th>Cota Z (m)</th><th title="Altura total del poste">Poste (m)</th><th title="Carga de rotura del poste">Rotura (kgf)</th><th>Peso (kg)</th><th title="Calculada desde el poste">Amarre (m)</th><th>Tipo</th><th>Templetes</th><th>Vano (m)</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`;
     $$('input[data-k], select[data-k]', el).forEach((inp) => inp.addEventListener('change', () => editarCampo(+inp.closest('tr').dataset.i, inp.dataset.k, inp.value)));
@@ -491,6 +491,7 @@ export function instalarGeo(C) {
       const i = +b.closest('tr').dataset.i;
       if (b.dataset.a === 'del') return eliminar(i);
       if (b.dataset.a === 'tpl') return modalTempletes(i);
+      if (b.dataset.a === 'rest') return restaurarPosicion(i);
       if (b.dataset.a === 'bloq') return cambiar(() => { S.apoyos[i].bloqueado = !S.apoyos[i].bloqueado; }, 'bloqueo');
       const j = b.dataset.a === 'sube' ? i - 1 : i + 1;
       cambiar(() => { [S.apoyos[j], S.apoyos[i]] = [S.apoyos[i], S.apoyos[j]]; S.sel = j; }, 'reordenar');
@@ -744,12 +745,36 @@ export function instalarGeo(C) {
     const p = r.puntos[0]; if (!p.ok) throw new Error(p.error);
     return { lat: +p.lat.toFixed(9), lon: +p.lon.toFixed(9), E: +p.E.toFixed(4), N: +p.N.toFixed(4) };
   }
+  function confirmar(titulo, html, textoOk) {
+    return new Promise((res) => {
+      const m = modal(titulo, html, `<button class="btn" data-x>Cancelar</button><button class="btn btn-primary" data-ok>${textoOk}</button>`);
+      let hecho = false; const fin = (v) => { if (hecho) return; hecho = true; m.cerrar(); res(v); };
+      $('[data-x]', m.root).onclick = () => fin(false); $('[data-ok]', m.root).onclick = () => fin(true);
+      $('.modal-close', m.root).addEventListener('click', () => fin(false));
+      m.root.addEventListener('click', (e) => { if (e.target === m.root) fin(false); });
+    });
+  }
+  function restaurarPosicion(i) {
+    const q = S.apoyos[i], o = q?.pos_original; if (!o) return;
+    cambiar(() => { Object.assign(q, { lat: o.lat, lon: o.lon, E: o.E, N: o.N, z: o.z, z_fuente: o.z_fuente }); q.orig = { ...(q.orig || {}), nota: 'posición original restaurada' }; delete q.pos_original; }, 'restaurar posición');
+    planta?.enfocar?.(i);
+    toast(`${q.nombre} volvió a su posición original.`, 'success');
+  }
+  const UMBRAL_MOVER_M = 25; // mover más que esto pide confirmación (evita arrastres accidentales)
   async function moverPoste(i, pt) {
     const p = S.apoyos[i]; if (!p || p.bloqueado) return pintarPlanta();
     try {
       const u = await ubicar(pt);
+      const d = p.lat != null ? vincenty(+p.lat, +p.lon, u.lat, u.lon) : 0;
+      if (d > UMBRAL_MOVER_M) {
+        const ok = await confirmar(`¿Mover ${p.nombre}?`, `<p>La estructura <b>${h(p.nombre)}</b> se movería <b>${d >= 1000 ? nf(d / 1000, 2) + ' km' : nf(d, 1) + ' m'}</b> de donde está.</p>
+          <p class="small muted">Si fue un arrastre sin querer (por ejemplo, al mover el mapa), pulse <b>Cancelar</b> y la estructura queda donde estaba. Movimientos de menos de ${UMBRAL_MOVER_M} m no preguntan.</p>`, 'Sí, moverla');
+        if (!ok) { pintarPlanta(); return toast(`${p.nombre} no se movió.`); }
+      }
       cambiar(() => {
-        Object.assign(S.apoyos[i], u, { orig: { sistema: 'ORIGEN_NACIONAL', u: String(u.E), v: String(u.N), nota: 'movido en el mapa' } });
+        const q = S.apoyos[i];
+        if (!q.pos_original) q.pos_original = { lat: q.lat, lon: q.lon, E: q.E, N: q.N, z: q.z ?? null, z_fuente: q.z_fuente ?? null };
+        Object.assign(q, u, { orig: { sistema: 'ORIGEN_NACIONAL', u: String(u.E), v: String(u.N), nota: 'movido en el mapa' } });
         if (S.apoyos[i].z != null) S.apoyos[i].z_fuente = 'por verificar (poste movido)';
       }, 'mover');
       S.sel = i; pintarTabla(); toast(`${p.nombre} movido. Verifique su cota Z en el nuevo sitio.`, 'warn');

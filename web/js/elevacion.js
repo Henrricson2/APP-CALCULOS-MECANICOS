@@ -3,7 +3,7 @@
 //     con «Maps JavaScript API» y «Elevation API» habilitadas.
 //   - Gratis sin clave: OpenTopoData SRTM 30 m; si falla, Open-Meteo (Copernicus DEM 90 m).
 // Son modelos de SUPERFICIE: pueden medir sobre árboles o construcciones (error típico 2–10 m).
-import { cargarGoogle } from './mapa.js?v=12';
+import { cargarGoogle } from './mapa.js?v=13';
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 const lotes = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, k) => arr.slice(k * n, k * n + n));
@@ -109,7 +109,7 @@ export async function obtenerCotas(puntos, fuente, { clave, avance, rpc } = {}) 
 }
 
 // ---- muestreo del recorrido en el navegador (respaldo si el servidor no tiene «perfil_muestras»)
-function vincenty(la1, lo1, la2, lo2) { // distancia geodésica WGS84 (m)
+export function vincenty(la1, lo1, la2, lo2) { // distancia geodésica WGS84 (m)
   const a = 6378137, f = 1 / 298.257223563, b = a * (1 - f), r = Math.PI / 180;
   const L = (lo2 - lo1) * r, U1 = Math.atan((1 - f) * Math.tan(la1 * r)), U2 = Math.atan((1 - f) * Math.tan(la2 * r));
   const sU1 = Math.sin(U1), cU1 = Math.cos(U1), sU2 = Math.sin(U2), cU2 = Math.cos(U2);

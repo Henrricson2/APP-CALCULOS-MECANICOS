@@ -190,10 +190,32 @@ def importar_excel(contenido: bytes) -> dict:
             "errores": d.errores, "advertencias": d.advertencias}
 
 
+def _advertir_geometria(datos, res) -> None:
+    """Estructuras que parecen mal ubicadas: la línea va hasta ella y regresa (rodeo grande),
+    típico de un arrastre accidental en el mapa o de una coordenada mal digitada."""
+    from . import geo
+    pts = getattr(datos, "geo", None)
+    if not pts or len(pts) < 3 or any(p[0] in (None, "") for p in pts):
+        return
+    nombres = list(datos.apoyos["nombre"])
+    for i in range(1, len(pts) - 1):
+        (la0, lo0), (la1, lo1), (la2, lo2) = [(float(a), float(b)) for a, b in pts[i - 1:i + 2]]
+        a = geo.distancia_geodesica(la0, lo0, la1, lo1)
+        b = geo.distancia_geodesica(la1, lo1, la2, lo2)
+        c = geo.distancia_geodesica(la0, lo0, la2, lo2)
+        if a + b > 2.5 * max(c, 1.0) and a + b - c > 200:
+            res.advertencias.insert(0, (
+                f"Estructura {nombres[i]}: parece mal ubicada. Está a {a:.0f} m y {b:.0f} m de sus vecinas, "
+                f"que están a solo {c:.0f} m entre sí (la línea va y regresa). Revise sus coordenadas: "
+                "pudo moverse sin querer en el mapa (en la tabla, ↺ la devuelve a su posición original)."))
+
+
 def _resolver(payload: dict):
     proyecto = Proyecto.desde_dict(payload.get("proyecto"))
     datos = _datos_payload(payload, proyecto)
-    return proyecto, datos, calcular_plantillado(datos, proyecto)
+    res = calcular_plantillado(datos, proyecto)
+    _advertir_geometria(datos, res)
+    return proyecto, datos, res
 
 
 def calcular(payload: dict) -> dict:
