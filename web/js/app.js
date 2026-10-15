@@ -603,6 +603,9 @@ async function iniciar() {
 
   S.motor = await detectarMotor((msg) => { if (msg) cargando(msg); });
   S.config = await S.motor.config();
+  if (S.motor.tipo === 'servidor' && def.version && S.motor.version && S.motor.version !== def.version) {
+    modal('Reinicie el servidor de la app', `<p>La app se actualizó a la versión <b>${h(def.version)}</b>, pero el servidor que está corriendo es la <b>${h(S.motor.version)}</b>. Algunas funciones nuevas no responderán hasta reiniciarlo.</p><ol class="steps"><li><span>Cierre la ventana negra del servidor (o pulse Ctrl+C en ella).</span></li><li><span>Ejecute de nuevo <code>INICIAR_APP.bat</code>.</span></li><li><span>Recargue esta página con <b>Ctrl+F5</b>.</span></li></ol>`);
+  }
   pintarMotor(); actualizarCabecera();
   ir(location.hash.slice(1) || 'resumen', true);
   if (!S.meta.id && S.apoyos.length) GEO.guardarServidor(); // todo proyecto queda registrado
