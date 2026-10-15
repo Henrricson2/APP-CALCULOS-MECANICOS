@@ -1,7 +1,7 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
-import { detectarMotor } from './motor.js?v=6';
-import { dibujarPerfil, paginas, abscisaK } from './perfil.js?v=6';
-import { instalarGeo } from './geo-ui.js?v=6';
+import { detectarMotor } from './motor.js?v=7';
+import { dibujarPerfil, paginas, abscisaK } from './perfil.js?v=7';
+import { instalarGeo } from './geo-ui.js?v=7';
 
 const CLAVE = 'cm-proyecto-v2';
 const $ = (s, el = document) => el.querySelector(s);
@@ -49,14 +49,34 @@ function descargar(blob, nombre) {
 const clon = (o) => JSON.parse(JSON.stringify(o));
 
 // --------------------------------------------------------------- persistencia
+// Todo lo del proyecto viaja junto: entrada (parámetros, estructuras, terreno), trazado
+// georreferenciado (meta) y el último cálculo con su resumen.
+function resumenCalculo() {
+  const r = S.resultado; if (!r) return null;
+  const s = r.resumen || {};
+  return { fecha: S.calculado || null, desactualizado: !!S.desactualizado, vanos: s['Número de vanos'] ?? null,
+    longitud_m: s['Longitud horizontal (m)'] ?? null, no_cumplen: s['Vanos que no cumplen distancia'] ?? null,
+    arrancamiento: s['Apoyos con arrancamiento'] ?? null, advertencias: (r.advertencias || []).length };
+}
+function estadoProyecto() {
+  return { proyecto: S.proyecto, apoyos: S.apoyos, terreno: S.terreno, archivo: S.archivo, meta: S.meta,
+    resultado: S.resultado, desactualizado: !!S.desactualizado, calculado: S.calculado || null, calculo: resumenCalculo() };
+}
+function aplicarEstado(d) {
+  S.proyecto = fusionar(clon(S.defaults), d.proyecto || {});
+  S.apoyos = d.apoyos || []; S.terreno = d.terreno || []; S.archivo = d.archivo || '';
+  S.resultado = d.resultado || null; S.desactualizado = !!d.desactualizado; S.calculado = d.calculado || null; S.pagina = 0;
+}
 function guardar() {
-  try { localStorage.setItem(CLAVE, JSON.stringify({ proyecto: S.proyecto, apoyos: S.apoyos, terreno: S.terreno, archivo: S.archivo, meta: S.meta })); } catch { /* sin almacenamiento */ }
+  const d = estadoProyecto();
+  try { localStorage.setItem(CLAVE, JSON.stringify(d)); }
+  catch { try { localStorage.setItem(CLAVE, JSON.stringify({ ...d, resultado: null })); } catch { /* sin almacenamiento */ } }
 }
 function restaurar() {
   try { const d = JSON.parse(localStorage.getItem(CLAVE) || 'null'); if (d && d.proyecto) return d; } catch { /* nada */ }
   return null;
 }
-function marcarCambio() { if (S.resultado) S.desactualizado = true; guardar(); actualizarCabecera(); }
+function marcarCambio() { if (S.resultado) S.desactualizado = true; guardar(); actualizarCabecera(); GEO.programarGuardado(); }
 function payload() { return { proyecto: S.proyecto, apoyos: S.apoyos, terreno: S.terreno, origen: S.archivo || 'web' }; }
 
 // ------------------------------------------------------------------ motor
@@ -98,7 +118,9 @@ async function calcular({ irA } = {}) {
       modal('No se pudo calcular', `<ul class="adv-list">${(r.errores || []).filter(Boolean).map((e) => `<li class="err">✖ ${h(e)}</li>`).join('')}</ul>`);
       return;
     }
-    S.resultado = r; S.desactualizado = false; S.pagina = Math.min(S.pagina, Math.max(0, paginas(r.perfil, porPagina()).length - 1));
+    S.resultado = r; S.desactualizado = false; S.calculado = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 19); // hora local
+    guardar(); GEO.programarGuardado(0);
+    S.pagina = Math.min(S.pagina, Math.max(0, paginas(r.perfil, porPagina()).length - 1));
     const res = r.resumen;
     toast(`Cálculo listo: ${res['Número de vanos']} vanos · ${res['Vanos que no cumplen distancia']} sin distancia · ${res['Apoyos con arrancamiento']} con arrancamiento`, 'success');
     actualizarCabecera();
@@ -138,21 +160,24 @@ async function exportar(fmt) {
 }
 
 function guardarProyecto() {
-  const blob = new Blob([JSON.stringify({ app: 'calculos-mecanicos-mt', version: 2, ...payload() }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'calculos-mecanicos-mt', version: 3, ...estadoProyecto(), meta: { ...S.meta, id: undefined } }, null, 2)], { type: 'application/json' });
   descargar(blob, `${(S.proyecto.nombre || 'proyecto').replace(/[^\w\-]+/g, '_')}.cmt.json`);
 }
+// Abrir un archivo .cmt.json crea un proyecto propio (no sobrescribe el abierto), con su cálculo si lo trae.
 async function abrirProyecto(archivo) {
   try {
     const d = JSON.parse(await archivo.text());
     if (!d.proyecto || !Array.isArray(d.apoyos)) throw new Error('El archivo no es un proyecto de esta app.');
-    S.proyecto = fusionar(clon(S.defaults), d.proyecto); S.apoyos = d.apoyos; S.terreno = d.terreno || []; S.archivo = archivo.name;
-    S.resultado = null; guardar(); toast('Proyecto abierto.', 'success'); await calcular({ irA: 'resumen' });
+    await GEO.crearProyecto({ nombre: d.proyecto.nombre || archivo.name.replace(/\.[^.]+$/, ''), meta: { ...(d.meta || {}), id: undefined },
+      estado: { ...d, archivo: d.archivo || archivo.name } });
+    toast('Proyecto abierto desde archivo.', 'success');
+    if (S.resultado) ir('resumen', true); else await calcular({ irA: 'resumen' });
   } catch (e) { toast(e.message, 'error'); }
 }
 async function cargarEjemplo() {
   const d = await (await fetch('ejemplo.json')).json();
-  S.proyecto = fusionar(clon(S.defaults), d.proyecto); S.apoyos = d.apoyos; S.terreno = d.terreno; S.archivo = 'ejemplo';
-  S.resultado = null; guardar(); await calcular({ irA: 'resumen' });
+  await GEO.crearProyecto({ nombre: 'Ejemplo DATOS.xlsx', estado: { ...d, archivo: 'ejemplo' } });
+  await calcular({ irA: 'resumen' });
 }
 function fusionar(base, extra) {
   for (const [k, v] of Object.entries(extra || {})) {
@@ -490,7 +515,7 @@ const ENLACES = {
 // ================================================================== ETAPA 1 (geo)
 const GEO = instalarGeo({
   S, $, $$, h, nf, num, toast, modal, cargando, descargar, clon, fusionar,
-  pegarTerreno: () => modalPegar('terreno'),
+  pegarTerreno: () => modalPegar('terreno'), estadoProyecto, aplicarEstado,
   ir, marcarCambio, guardar, calcular, actualizarCabecera, asegurarMotor, enlazarAcciones, importarExcel, exportar,
 });
 Object.assign(TITULOS, GEO.titulos); Object.assign(VISTAS, GEO.vistas); Object.assign(ENLACES, GEO.enlaces);
@@ -559,16 +584,16 @@ async function iniciar() {
 
   const def = await (await fetch('defaults.json', { cache: 'no-cache' })).json();
   S.defaults = def.proyecto_defecto; S.conductores = def.conductores;
-  const guardado = restaurar();
-  S.proyecto = fusionar(clon(S.defaults), guardado?.proyecto || {});
-  S.apoyos = guardado?.apoyos || []; S.terreno = guardado?.terreno || []; S.archivo = guardado?.archivo || '';
-  S.meta = guardado?.meta || {};
+  const guardado = restaurar() || {};
+  aplicarEstado(guardado);
+  S.meta = guardado.meta || {};
 
   S.motor = await detectarMotor((msg) => { if (msg) cargando(msg); });
   S.config = await S.motor.config();
   pintarMotor(); actualizarCabecera();
   ir(location.hash.slice(1) || 'resumen', true);
-  if (S.apoyos.length >= 2 && S.motor.tipo === 'servidor') calcular();
+  if (!S.meta.id && S.apoyos.length) GEO.guardarServidor(); // todo proyecto queda registrado
+  if (S.apoyos.length >= 2 && S.motor.tipo === 'servidor' && !S.resultado) calcular();
 }
 
 iniciar().catch((e) => { console.error(e); toast('No se pudo iniciar la app: ' + e.message, 'error'); });

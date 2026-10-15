@@ -31,6 +31,11 @@ Un solo motor Python (`calculos_mecanicos/`) para todas las plataformas:
   (lat/lon decimal o GMS, MAGNA-SIRGAS Origen Nacional, Gauss-Krüger, UTM, coordenadas locales con
   puntos de control Helmert/afín), candidatos detectados automáticamente que el usuario confirma,
   validación (fuera de Colombia, duplicados, cotas vacías ≠ 0), vista previa del trazado.
+- **Proyectos independientes y completos**: cada proyecto guarda sus parámetros, estructuras, terreno,
+  trazado georreferenciado y el **último cálculo con todos sus resultados** (resumen, vanos, apoyos,
+  secciones, perfil y advertencias). Al abrirlo se ve tal como quedó, sin recalcular; si se cambia un dato
+  queda marcado «Por recalcular». Un proyecto nuevo empieza vacío con los parámetros por defecto (o
+  copiados, si se elige). Se guardan en el servidor (SQLite) o, sin servidor, en el dispositivo.
 - **Estructuras y mapa** (una sola pestaña): tabla tipo CRUD donde se registra cada estructura con sus
   coordenadas (lat/lon decimal o GMS, Origen Nacional, Gauss-Krüger o UTM) y se dibuja de inmediato en el
   mapa. Editar en la celda, reordenar (↑ ↓), bloquear, eliminar, deshacer (Ctrl+Z), pegar varias filas

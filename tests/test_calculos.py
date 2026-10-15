@@ -330,6 +330,27 @@ def test_almacen_proyectos_y_versiones(tmp_path):
     assert a.listar() == []
 
 
+
+def test_almacen_guarda_calculo_completo_por_proyecto(tmp_path):
+    """Cada proyecto conserva sus datos, el trazado y el último cálculo; los proyectos no se mezclan."""
+    import json as _json
+    from calculos_mecanicos import motor
+    ej = _json.loads((Path(__file__).resolve().parents[1] / "web" / "ejemplo.json").read_text(encoding="utf-8"))
+    res = motor.calcular(ej)
+    assert res["ok"]
+    a = Almacen(tmp_path / "app.db")
+    calc = {"fecha": "2026-10-15T08:00:00", "desactualizado": False, "vanos": res["resumen"]["Número de vanos"],
+            "longitud_m": res["resumen"]["Longitud horizontal (m)"], "no_cumplen": 0, "arrancamiento": 0,
+            "advertencias": len(res["advertencias"])}
+    pa = a.guardar({**ej, "meta": {"municipio": "Neiva"}, "resultado": res, "calculo": calc})["id"]
+    pb = a.guardar({"proyecto": {"nombre": "Otro"}, "apoyos": [], "terreno": [], "meta": {}})["id"]
+    datos = a.obtener(pa)["datos"]
+    assert datos["resultado"]["resumen"] == res["resumen"] and len(datos["resultado"]["perfil"]["vanos"]) == len(res["perfil"]["vanos"])
+    fila = {p["id"]: p for p in a.listar()}
+    assert fila[pa]["calc_vanos"] == calc["vanos"] and fila[pa]["calc_longitud_m"] == pytest.approx(calc["longitud_m"])
+    assert fila[pb]["calc_vanos"] is None and a.obtener(pb)["datos"].get("resultado") is None
+    assert "con cálculo" in a.bitacora(pa)[0]["detalle"]
+
 # ------------------------------------------------------------- mapa web gratuito (Leaflet / Folium)
 _POSTES_MAPA = {"nombre": "Prueba <mapa>", "postes": [
     {"nombre": "P1", "lat": 2.9273, "lon": -75.2819, "z": 440.0, "altura": 10.5, "tipo": "R"},

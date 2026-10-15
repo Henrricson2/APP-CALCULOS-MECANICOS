@@ -71,6 +71,13 @@ class Almacen:
         with self._con() as c:
             filas = c.execute("""SELECT p.id, p.nombre, p.departamento, p.municipio, p.sistema, p.creado,
                                         p.actualizado, json_array_length(json_extract(p.datos,'$.apoyos')) AS n_postes,
+                                        json_extract(p.datos,'$.calculo.fecha') AS calc_fecha,
+                                        json_extract(p.datos,'$.calculo.desactualizado') AS calc_desactualizado,
+                                        json_extract(p.datos,'$.calculo.longitud_m') AS calc_longitud_m,
+                                        json_extract(p.datos,'$.calculo.vanos') AS calc_vanos,
+                                        json_extract(p.datos,'$.calculo.no_cumplen') AS calc_no_cumplen,
+                                        json_extract(p.datos,'$.calculo.arrancamiento') AS calc_arrancamiento,
+                                        json_extract(p.datos,'$.calculo.advertencias') AS calc_advertencias,
                                         (SELECT COUNT(*) FROM versiones v WHERE v.proyecto_id = p.id) AS n_versiones
                                  FROM proyectos p WHERE archivado = 0 ORDER BY actualizado DESC""").fetchall()
         return [dict(f) for f in filas]
@@ -85,7 +92,8 @@ class Almacen:
         return d
 
     def guardar(self, datos: dict, pid: str | None = None, accion: str = "guardar") -> dict:
-        """Crea o actualiza un proyecto. `datos` = {proyecto, apoyos, terreno, meta}."""
+        """Crea o actualiza un proyecto. `datos` = {proyecto, apoyos, terreno, meta, resultado, calculo}:
+        datos de entrada, trazado georreferenciado y el último cálculo con su resumen."""
         meta = datos.get("meta") or {}
         nombre = (datos.get("proyecto") or {}).get("nombre") or "Proyecto sin nombre"
         ahora = _ahora()
@@ -102,7 +110,7 @@ class Almacen:
                                                            json.dumps(datos, ensure_ascii=False)))
                 accion = "crear"
             c.execute("INSERT INTO bitacora (proyecto_id, fecha, accion, detalle) VALUES (?,?,?,?)",
-                      (pid, ahora, accion, f"{len(datos.get('apoyos') or [])} postes"))
+                      (pid, ahora, accion, f"{len(datos.get('apoyos') or [])} postes" + (" · con cálculo" if datos.get("resultado") else "")))
         return {"id": pid, "actualizado": ahora}
 
     def archivar(self, pid: str) -> bool:

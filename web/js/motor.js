@@ -71,7 +71,43 @@ function cargarScript(src) {
   });
 }
 
+// Proyectos en este dispositivo (modo navegador, sin servidor): misma interfaz que el servidor.
+const CLAVE_PROY = 'cm-proyectos-v1';
+const ahora = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 19); // hora local
+function leerLocal() { try { return JSON.parse(localStorage.getItem(CLAVE_PROY) || '{}'); } catch { return {}; } }
+function escribirLocal(d) {
+  try { localStorage.setItem(CLAVE_PROY, JSON.stringify(d)); }
+  catch { throw new Error('El almacenamiento del navegador está lleno: guarde el proyecto como archivo o use el servidor.'); }
+}
+export const proyectosLocales = {
+  async listar() {
+    return Object.values(leerLocal()).filter((p) => !p.archivado).map((p) => {
+      const c = p.datos.calculo || {};
+      return { id: p.id, nombre: p.nombre, departamento: p.datos.meta?.departamento, municipio: p.datos.meta?.municipio, creado: p.creado, actualizado: p.actualizado,
+        n_postes: (p.datos.apoyos || []).length, n_versiones: (p.versiones || []).length, calc_fecha: c.fecha, calc_desactualizado: c.desactualizado,
+        calc_longitud_m: c.longitud_m, calc_vanos: c.vanos, calc_no_cumplen: c.no_cumplen, calc_arrancamiento: c.arrancamiento, calc_advertencias: c.advertencias };
+    }).sort((a, b) => (b.actualizado || '').localeCompare(a.actualizado || ''));
+  },
+  async obtener(id) { const p = leerLocal()[id]; if (!p) throw new Error('Proyecto no encontrado.'); return { id: p.id, nombre: p.nombre, actualizado: p.actualizado, datos: p.datos }; },
+  async guardar(datos, id) {
+    const todo = leerLocal(); const t = ahora();
+    id = id && todo[id] ? id : (id || Math.random().toString(16).slice(2, 14));
+    const p = todo[id] || { id, creado: t, versiones: [] };
+    Object.assign(p, { nombre: datos.proyecto?.nombre || 'Proyecto sin nombre', actualizado: t, datos });
+    todo[id] = p; escribirLocal(todo); return { id, actualizado: t };
+  },
+  async version(id, comentario) {
+    const todo = leerLocal(); const p = todo[id]; if (!p) throw new Error('Proyecto no encontrado.');
+    const v = { id: (p.versiones.at(-1)?.id || 0) + 1, fecha: ahora(), comentario, datos: p.datos };
+    p.versiones.push(v); escribirLocal(todo); return { version: v.id };
+  },
+  async versiones(id) { return (leerLocal()[id]?.versiones || []).map(({ id: i, fecha, comentario }) => ({ id: i, fecha, comentario })).reverse(); },
+  async version_obtener(id, v) { return (leerLocal()[id]?.versiones || []).find((x) => String(x.id) === String(v)); },
+  async archivar(id) { const todo = leerLocal(); if (todo[id]) { todo[id].archivado = true; escribirLocal(todo); } return { ok: true }; },
+};
+
 export class MotorPyodide {
+  get proyectos() { return proyectosLocales; }
   constructor(onProgreso) {
     this.tipo = 'navegador'; this.etiqueta = 'Python en el navegador';
     this.onProgreso = onProgreso || (() => {});

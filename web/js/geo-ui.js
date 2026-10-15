@@ -1,6 +1,6 @@
 // Etapa 1: proyectos persistentes, asistente de importación con sistemas de coordenadas,
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
-import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=6';
+import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=7';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
@@ -14,6 +14,7 @@ export function instalarGeo(C) {
   // ------------------------------------------------------------- utilidades
   const hayGeo = () => S.apoyos.some((a) => a.lat != null && a.lat !== '');
   const servidor = () => S.motor?.tipo === 'servidor';
+  const almacen = () => S.motor?.proyectos; // servidor (SQLite) o este dispositivo (modo navegador)
   async function rpc(nombre, datos) {
     await C.asegurarMotor();
     const r = await S.motor.rpc(nombre, datos || {});
@@ -58,20 +59,27 @@ export function instalarGeo(C) {
   }
 
   // ------------------------------------------------------------- persistencia en servidor
-  function datosProyecto() {
-    return { proyecto: S.proyecto, apoyos: S.apoyos, terreno: S.terreno, meta: S.meta };
-  }
-  function programarGuardado() {
-    if (!servidor() || !S.meta.id) return;
+  // El proyecto guardado lleva TODO: parámetros, estructuras, terreno, trazado (meta) y el último cálculo.
+  function datosProyecto() { return C.estadoProyecto(); }
+  function programarGuardado(espera = 1200) {
+    if (typeof espera !== 'number') espera = 1200;
+    if (!almacen() || !S.meta.id) return;
     clearTimeout(tGuardar);
-    tGuardar = setTimeout(guardarServidor, 1200);
+    tGuardar = setTimeout(guardarServidor, espera);
   }
-  async function guardarServidor(silencioso = true) {
-    if (!servidor()) return;
+  // Los guardados van en fila (uno tras otro) para que uno viejo nunca pise a uno nuevo.
+  let filaGuardado = Promise.resolve();
+  function guardarServidor(silencioso = true) {
+    clearTimeout(tGuardar);
+    filaGuardado = filaGuardado.then(() => guardarAhora(silencioso));
+    return filaGuardado;
+  }
+  async function guardarAhora(silencioso) {
+    if (!almacen()) return;
     try {
-      const r = await S.motor.proyectos.guardar(datosProyecto(), S.meta.id);
+      const r = await almacen().guardar(datosProyecto(), S.meta.id);
       S.meta.id = r.id; S.meta.guardado = r.actualizado; C.guardar(); pintarEstadoProyecto();
-      if (!silencioso) toast('Proyecto guardado en el servidor.', 'success');
+      if (!silencioso) toast(servidor() ? 'Proyecto guardado en el servidor.' : 'Proyecto guardado en este dispositivo.', 'success');
     } catch (e) { toast('No se pudo guardar: ' + e.message, 'error'); }
   }
   function pintarEstadoProyecto() {
@@ -80,50 +88,81 @@ export function instalarGeo(C) {
   }
   function cargarProyecto(p) {
     const d = p.datos || {};
-    S.proyecto = C.fusionar(C.clon(S.defaults), d.proyecto || {});
-    S.apoyos = d.apoyos || []; S.terreno = d.terreno || [];
+    C.aplicarEstado(d);
     S.meta = { ...(d.meta || {}), id: p.id, guardado: p.actualizado };
-    S.resultado = null; S.hist = { pila: [], futuro: [] }; S.sel = -1; C.guardar(); C.actualizarCabecera();
+    S.hist = { pila: [], futuro: [] }; S.sel = -1; C.guardar(); C.actualizarCabecera();
+  }
+  // Antes de cambiar de proyecto se guarda el actual (con su cálculo) para no perder nada.
+  async function guardarActual() {
+    if (!almacen()) return;
+    if (S.meta.id || S.apoyos.length) await guardarServidor();
+  }
+  async function abrirGuardado(id) {
+    await guardarActual();
+    const p = await almacen().obtener(id);
+    cargarProyecto(p);
+    toast(`Proyecto «${p.nombre}» abierto${S.resultado ? ' con su último cálculo' : ''}.`, 'success');
+    C.ir(S.resultado ? 'resumen' : 'datos', true);
+    if (!S.resultado && S.apoyos.length >= 2) C.calcular({ irA: 'resumen' });
+  }
+  // Crea un proyecto nuevo e independiente: parámetros por defecto (o copiados), sin estructuras ni cálculo.
+  async function crearProyecto({ nombre, meta = {}, estado = null, copiarParametros = false }) {
+    await guardarActual();
+    const base = copiarParametros ? C.clon(S.proyecto) : C.clon(S.defaults);
+    C.aplicarEstado(estado || { proyecto: base });
+    S.proyecto.nombre = nombre;
+    S.meta = { ...meta }; S.hist = { pila: [], futuro: [] }; S.sel = -1;
+    C.guardar(); C.actualizarCabecera();
+    await guardarServidor(true);
   }
 
   // ===================================================================== PROYECTOS
   function vistaProyectos() {
-    return `<div class="page-head"><div><h1>Proyectos</h1><p>${servidor() ? 'Los proyectos se guardan en el servidor (base de datos SQLite), con versiones e historial de cambios.' : 'Modo navegador: los proyectos se guardan en este dispositivo y como archivo <code>.cmt.json</code>.'}</p></div>
-      <div class="actions"><button class="btn btn-primary" id="btn-nuevo-proy">＋ Nuevo proyecto</button>${servidor() ? '<button class="btn" id="btn-guardar-ver">⎘ Guardar versión</button>' : ''}<button class="btn" data-act="abrir-proyecto">⇪ Abrir archivo</button></div></div>
+    return `<div class="page-head"><div><h1>Proyectos</h1><p>Cada proyecto guarda sus parámetros, estructuras, trazado en el mapa y el último cálculo con sus resultados. ${servidor() ? 'Se guardan en el servidor (base de datos SQLite), con versiones e historial de cambios.' : 'Modo navegador: los proyectos se guardan en este dispositivo (y como archivo <code>.cmt.json</code>).'}</p></div>
+      <div class="actions"><button class="btn btn-primary" id="btn-nuevo-proy">＋ Nuevo proyecto</button><button class="btn" id="btn-guardar-ver">⎘ Guardar versión</button><button class="btn" data-act="guardar-proyecto">⇩ Guardar como archivo</button><button class="btn" data-act="abrir-proyecto">⇪ Abrir archivo</button></div></div>
       <div class="card"><div class="section-head"><h2>Proyecto actual</h2><span class="muted small" id="estado-guardado"></span></div>
         <dl class="kv"><dt>Nombre</dt><dd>${h(S.proyecto.nombre)}</dd><dt>Ubicación</dt><dd>${h([S.meta.municipio, S.meta.departamento].filter(Boolean).join(', ') || '—')}</dd>
-        <dt>Sistema de los datos</dt><dd>${h(S.meta.sistemaNombre || S.meta.sistema || '—')}</dd><dt>Postes</dt><dd>${S.apoyos.length}${hayGeo() ? ' (georreferenciados)' : ''}</dd></dl></div>
-      ${servidor() ? '<div class="card" style="margin-top:18px"><div class="section-head"><h2>Proyectos en el servidor</h2></div><div id="lista-proy" class="muted">Cargando…</div></div>' : ''}`;
+        <dt>Sistema de los datos</dt><dd>${h(S.meta.sistemaNombre || S.meta.sistema || '—')}</dd><dt>Estructuras</dt><dd>${S.apoyos.length}${hayGeo() ? ' (georreferenciadas)' : ''}</dd>
+        <dt>Cálculo</dt><dd>${estadoCalculo({ calc_fecha: S.calculado, calc_desactualizado: S.desactualizado, calc_vanos: S.resultado?.resumen?.['Número de vanos'] }, !!S.resultado)}</dd></dl>
+        <div class="actions" style="margin-top:12px"><button class="btn btn-small btn-soft" data-act="ir-datos">📍 Estructuras y mapa</button>${S.resultado ? '<button class="btn btn-small" data-ir="resumen">⌂ Resumen</button><button class="btn btn-small" data-ir="perfil">⌒ Perfil</button><button class="btn btn-small" data-ir="resultados">▦ Resultados</button>' : ''}<button class="btn btn-small btn-primary" data-act="calcular">${S.resultado && !S.desactualizado ? '↻ Recalcular' : '▶ Calcular'}</button></div></div>
+      <div class="card" style="margin-top:18px"><div class="section-head"><h2>${servidor() ? 'Proyectos en el servidor' : 'Proyectos en este dispositivo'}</h2></div><div id="lista-proy" class="muted">Cargando…</div></div>`;
+  }
+  function estadoCalculo(p, hay = p.calc_fecha != null || p.calc_vanos != null) {
+    if (!hay) return '<span class="badge">Sin calcular</span>';
+    const f = p.calc_fecha ? String(p.calc_fecha).replace('T', ' ').slice(0, 16) : '';
+    return p.calc_desactualizado ? `<span class="badge badge-orange" title="Cambiaron los datos después del cálculo">↻ Por recalcular</span> <span class="small muted">${h(f)}</span>`
+      : `<span class="badge badge-green">✓ Calculado</span> <span class="small muted">${h(f)}</span>`;
   }
   async function enlazarProyectos(vc) {
     C.enlazarAcciones(vc); pintarEstadoProyecto();
+    $$('[data-ir]', vc).forEach((b) => b.onclick = () => C.ir(b.dataset.ir));
     $('#btn-nuevo-proy', vc).onclick = asistenteNuevo;
     const bv = $('#btn-guardar-ver', vc);
     if (bv) bv.onclick = async () => {
       if (!S.meta.id) await guardarServidor(false);
       const com = prompt('Comentario de la versión (opcional):', '') ?? null;
       if (com === null) return;
-      await guardarServidor(); await S.motor.proyectos.version(S.meta.id, com);
+      await guardarServidor(); await almacen().version(S.meta.id, com);
       toast('Versión guardada.', 'success'); C.ir('proyectos', true);
     };
-    if (!servidor()) return;
     try {
-      const lista = await S.motor.proyectos.listar();
+      const lista = await almacen().listar();
       const el = $('#lista-proy', vc); if (!el) return;
       if (!lista.length) { el.innerHTML = '<div class="empty"><h3>Sin proyectos guardados</h3><p>Cree uno nuevo o guarde el actual.</p><button class="btn btn-soft" id="btn-guardar-actual">Guardar el proyecto actual</button></div>'; $('#btn-guardar-actual', vc).onclick = () => guardarServidor(false).then(() => C.ir('proyectos', true)); return; }
       el.className = '';
-      el.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Proyecto</th><th>Municipio</th><th>Postes</th><th>Versiones</th><th>Actualizado</th><th></th></tr></thead><tbody>${lista.map((p) => `<tr class="${p.id === S.meta.id ? 'row-actual' : ''}"><td><b>${h(p.nombre)}</b></td><td>${h(p.municipio || '')}</td><td class="num">${p.n_postes ?? 0}</td><td class="num">${p.n_versiones}</td><td>${h((p.actualizado || '').replace('T', ' '))}</td>
-        <td><button class="btn btn-small btn-soft" data-abrir="${p.id}">Abrir</button> <button class="btn btn-small" data-vers="${p.id}">Versiones</button> <button class="btn btn-small" data-arch="${p.id}" title="Archivar">Archivar</button></td></tr>`).join('')}</tbody></table></div>`;
-      $$('[data-abrir]', el).forEach((b) => b.onclick = async () => { const p = await S.motor.proyectos.obtener(b.dataset.abrir); cargarProyecto(p); toast(`Proyecto «${p.nombre}» abierto.`, 'success'); C.ir('datos'); });
+      el.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Proyecto</th><th>Municipio</th><th>Estructuras</th><th>Longitud (m)</th><th>Cálculo</th><th>Verificación</th><th>Vers.</th><th>Actualizado</th><th></th></tr></thead><tbody>${lista.map((p) => `<tr class="${p.id === S.meta.id ? 'row-actual' : ''}"><td><b>${h(p.nombre)}</b>${p.id === S.meta.id ? ' <span class="small muted">(abierto)</span>' : ''}</td><td>${h(p.municipio || '')}</td><td class="num">${p.n_postes ?? 0}</td><td class="num">${p.calc_longitud_m != null ? nf(p.calc_longitud_m, 1) : '—'}</td><td>${estadoCalculo(p)}</td>
+        <td class="small">${p.calc_vanos != null ? `${p.calc_no_cumplen ? `<span style="color:var(--danger)">${p.calc_no_cumplen} vano(s) sin distancia</span>` : 'Distancias OK'}${p.calc_arrancamiento ? ` · ${p.calc_arrancamiento} arranc.` : ''} · ${p.calc_advertencias ?? 0} adv.` : '—'}</td><td class="num">${p.n_versiones}</td><td>${h((p.actualizado || '').replace('T', ' '))}</td>
+        <td><button class="btn btn-small btn-soft" data-abrir="${p.id}">Abrir</button> <button class="btn btn-small" data-vers="${p.id}" title="Versiones guardadas">⎘</button> <button class="btn btn-small" data-arch="${p.id}" title="Archivar (deja de aparecer en la lista; no se borra)">🗄</button></td></tr>`).join('')}</tbody></table></div>`;
+      $$('[data-abrir]', el).forEach((b) => b.onclick = () => abrirGuardado(b.dataset.abrir).catch((e) => toast(e.message, 'error')));
       $$('[data-vers]', el).forEach((b) => b.onclick = () => modalVersiones(b.dataset.vers));
-      $$('[data-arch]', el).forEach((b) => b.onclick = async () => { if (!confirm('¿Archivar el proyecto? Deja de aparecer en la lista (no se borra).')) return; await S.motor.proyectos.archivar(b.dataset.arch); if (b.dataset.arch === S.meta.id) S.meta.id = null; C.ir('proyectos', true); });
+      $$('[data-arch]', el).forEach((b) => b.onclick = async () => { if (!confirm('¿Archivar el proyecto? Deja de aparecer en la lista (no se borra).')) return; await almacen().archivar(b.dataset.arch); if (b.dataset.arch === S.meta.id) S.meta.id = null; C.ir('proyectos', true); });
     } catch (e) { const el = $('#lista-proy', vc); if (el) el.textContent = 'No se pudo cargar la lista: ' + e.message; }
   }
   async function modalVersiones(pid) {
-    const v = await S.motor.proyectos.versiones(pid);
+    const v = await almacen().versiones(pid);
     const m = modal('Versiones guardadas', v.length ? `<div class="table-wrap"><table><thead><tr><th>#</th><th>Fecha</th><th>Comentario</th><th></th></tr></thead><tbody>${v.map((x) => `<tr><td>${x.id}</td><td>${h(x.fecha.replace('T', ' '))}</td><td>${h(x.comentario || '')}</td><td><button class="btn btn-small btn-soft" data-rest="${x.id}">Restaurar</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Este proyecto no tiene versiones guardadas.</p>');
     $$('[data-rest]', m.root).forEach((b) => b.onclick = async () => {
-      const ver = await S.motor.proyectos.version_obtener(pid, b.dataset.rest);
+      const ver = await almacen().version_obtener(pid, b.dataset.rest);
       cargarProyecto({ id: pid, datos: ver.datos }); m.cerrar();
       await guardarServidor(); toast(`Versión ${b.dataset.rest} restaurada (el estado anterior sigue en el historial).`, 'success'); C.ir('proyectos', true);
     });
@@ -137,19 +176,19 @@ export function instalarGeo(C) {
       <label class="field-group"><span class="field-label">Departamento</span><select class="select" id="np-dep"><option>Huila</option></select></label>
       <label class="field-group"><span class="field-label">Municipio</span><select class="select" id="np-mun">${muni.map((x) => `<option ${x === 'Neiva' ? 'selected' : ''}>${h(x)}</option>`).join('')}</select></label>
       <label class="field-group full"><span class="field-label">¿Qué tipo de coordenadas tiene?</span><select class="select" id="np-sis">${sist.sistemas.map((s) => `<option value="${s.codigo}">${h(s.nombre)}</option>`).join('')}<option value="DESCONOCIDO">No sé — que la app lo identifique al importar</option></select><span class="field-help">Se puede cambiar en cada importación. Los cálculos internos usan MAGNA-SIRGAS Origen Nacional.</span></label>
-      <label class="field-group full" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="np-vaciar" checked> <span class="small">Empezar con la lista de postes vacía (el proyecto actual queda guardado si ya estaba en el servidor)</span></label></div>`,
+      <label class="field-group full" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="np-copiar"> <span class="small">Copiar los parámetros del proyecto actual (conductor, hipótesis, criterios). Si no, usa los valores por defecto EH-RAA-004.</span></label>
+      <p class="small muted full" style="margin:0">El proyecto nuevo empieza sin estructuras ni cálculo. El proyecto actual queda guardado con todo lo suyo.</p></div>`,
     '<button class="btn" data-x>Cancelar</button><button class="btn btn-primary" data-ok>Crear proyecto</button>');
     $('[data-x]', m.root).onclick = m.cerrar;
     $('[data-ok]', m.root).onclick = async () => {
       const nombre = $('#np-nombre').value.trim(); if (!nombre) return toast('Escriba un nombre.', 'warn');
-      if ($('#np-vaciar').checked) { S.apoyos = []; S.terreno = []; S.resultado = null; }
       const sel = $('#np-sis');
-      S.proyecto.nombre = nombre;
-      S.meta = { departamento: $('#np-dep').value, municipio: $('#np-mun').value, sistema: sel.value, sistemaNombre: sel.selectedOptions[0].textContent };
-      S.hist = { pila: [], futuro: [] }; C.guardar(); C.actualizarCabecera(); m.cerrar();
-      if (servidor()) await guardarServidor(false);
-      toast('Proyecto creado. Ahora importe o ingrese las coordenadas de los postes.', 'success');
-      C.ir('datos');
+      const meta = { departamento: $('#np-dep').value, municipio: $('#np-mun').value, sistema: sel.value, sistemaNombre: sel.selectedOptions[0].textContent };
+      if (['WGS84', 'MAGNA_GEO', 'ORIGEN_NACIONAL'].includes(sel.value) || sel.value.startsWith('GK_') || sel.value.startsWith('UTM')) meta.sisEntrada = sel.value;
+      const copiar = $('#np-copiar').checked; m.cerrar();
+      await crearProyecto({ nombre, meta, copiarParametros: copiar });
+      toast('Proyecto creado. Registre o importe sus estructuras.', 'success');
+      C.ir('datos', true);
     };
   }
 
@@ -587,6 +626,6 @@ export function instalarGeo(C) {
     vistas: { proyectos: vistaProyectos },
     enlaces: { proyectos: enlazarProyectos },
     vistaEstructuras, enlazarEstructuras,
-    asistente, cambiar, deshacer, rehacer, guardarServidor, editar: editarCampo, eliminar, programarGuardado, hayGeo, rpc, listaSistemas,
+    asistente, cambiar, deshacer, rehacer, guardarServidor, crearProyecto, editar: editarCampo, eliminar, programarGuardado, hayGeo, rpc, listaSistemas,
   };
 }
