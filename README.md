@@ -129,3 +129,29 @@ modo navegador.
 
 > Valores por defecto según EH-RAA-004 (Electrohuila). El ingeniero responsable debe confirmar
 > hipótesis, límites de tensión y datos del conductor en cada proyecto.
+
+
+## Clima por municipio (IDEAM)
+
+Al crear un proyecto (asistente «Nuevo proyecto»), las temperaturas de las hipótesis se llenan solas con el clima del municipio elegido. La tarjeta **Parámetros → Clima del sitio (IDEAM)** muestra los datos, permite cambiar el municipio, el criterio y el calentamiento del conductor, y volver a llenar. Todos los valores de la tabla de hipótesis siguen siendo editables.
+
+| Hipótesis | Temperatura que se propone |
+|---|---|
+| TMAX (frío + viento) y FMIN | Temperatura mínima absoluta del municipio (redondeada hacia abajo) |
+| EDS | Temperatura media anual |
+| FMAX (plantilla caliente) | Temperatura máxima absoluta + calentamiento del conductor (10 °C por defecto) |
+
+- El viento se deja en el valor de la norma (100 km/h): el IDEAM no publica viento de diseño con periodo de retorno.
+- Criterio «El más exigente entre IDEAM y la norma»: toma el valor más desfavorable entre el IDEAM y EH-RAA-004 (0/20/0/50 °C).
+- Base: `web/clima_huila.json` (37 municipios). Se genera con `python clima_ideam/construir_clima.py` a partir de `clima_ideam/ideam_huila_raw.json`: normales climatológicas IDEAM 1991-2020 (datos.gov.co, nsz2-kzcq), extremos diarios de las estaciones automáticas del IDEAM (afdg-3zpb, ccvq-rp9s), cabeceras DANE-DIVIPOLA y gradiente térmico con la altura ajustado con las estaciones del Huila. `clima_ideam/clima_huila.csv` sirve para revisarla en Excel.
+
+
+## Estructuras normalizadas EH y diseño 3D
+
+- **Estructuras y mapa → columna «Estructura EH»**: buscador de las 217 estructuras de redes aéreas de las Normas Técnicas de Construcción de Electrohuila (BT, 13,2 kV y 34,5 kV), con filtros, miniatura y lámina en PDF. Sugiere la función según el ángulo de deflexión del poste. Al elegirla se fija el tipo (retención/suspensión) y la **altura real del conductor más bajo** (distancia bajo la cima de la estructura).
+- Sin estructura asignada, el conductor más bajo queda **0,70 m bajo la cima** (EH-RAA-004 §7.1: 11,3 m en poste de 14 m).
+- Catálogo: `web/estructuras_eh.json`, generado con `python estructuras_eh/construir_catalogo.py "<carpeta App normativa>"`. La geometría (posición de fases y cable de guarda) se leyó de las láminas RH-231, SH-225, S-120, P-102, EH-521, EH-522 y EH-541 y se aplica por familia al resto (aproximada; confirmar con la lámina). Las láminas PDF se copian a `web/estructuras_eh/pdf/` (no se suben a GitHub).
+- **Exportar → Google Earth 3D** (o el botón en Estructuras y mapa): KML con postes (sencillos o en H), crucetas, cada fase con su catenaria en caliente y en frío, cable de guarda, línea de distancia mínima al terreno, vanos que no cumplen y ficha de cada estructura.
+- **Exportar → Plano en planta + 3D (AutoCAD)**: DXF R12 con capas `PLANTA_*` (eje, postes, crucetas, fases, nombres, estructura EH, longitud de vanos y ángulos, en z = 0) y `3D_*` (postes, crucetas, conductores con su catenaria, conductor en frío —capa apagada—, cable de guarda, terreno, distancia mínima y alertas, con cotas reales), en coordenadas MAGNA-SIRGAS Origen Nacional. **DWG** (AutoCAD 2018): el servidor lo convierte con `accoreconsole.exe` del AutoCAD instalado en el PC (o con ODA File Converter si no hay AutoCAD).
+- **Bloques 3D (sólidos) de estructuras EH**: `web/js/bloques3d.js` genera, desde el catálogo, un bloque por estructura (crucetas de ángulo, aisladores de espigo, cadenas de disco, bayonetas, riostras de las H, transformadores y percha de BT en las subestaciones tipo poste) y bloques `POSTE_<L>M` con los diámetros de EH-RAA-004. Los planos DXF/DWG insertan estos bloques en cada poste, girados según la línea; los conductores son las catenarias del cálculo mecánico.
+- **Biblioteca**: `estructuras_eh/BIBLIOTECA_ESTRUCTURAS_EH_3D.dwg` (y .dxf) con las 218 estructuras (incluidas 26 subestaciones tipo poste TRM/TRT) y los postes de 8 a 18 m. Se regenera desde Exportar → «Biblioteca 3D de estructuras EH». En AutoCAD los bloques se pueden insertar con INSERTAR / DesignCenter desde ese archivo.

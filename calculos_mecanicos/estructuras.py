@@ -97,9 +97,12 @@ def empotramiento(L: float, crit) -> float:
     return crit.empotramiento_coef * L + crit.empotramiento_base_m
 
 
-def altura_amarre_desde_poste(L: float, crit) -> float:
-    """Altura del punto de amarre sobre el terreno a partir de la longitud del poste."""
-    return L - empotramiento(L, crit) - crit.amarre_bajo_cima_m
+def altura_amarre_desde_poste(L: float, crit, bajo_cima: float | None = None) -> float:
+    """Altura del conductor más bajo sobre el terreno a partir de la longitud del poste.
+
+    `bajo_cima`: distancia de la cima al conductor según la estructura EH asignada al poste;
+    si no hay, se usa `crit.amarre_bajo_cima_m`."""
+    return L - empotramiento(L, crit) - (crit.amarre_bajo_cima_m if bajo_cima is None else bajo_cima)
 
 
 def verificar_estructuras(res, estructuras: list[dict], deflexiones=None):
@@ -183,6 +186,7 @@ def verificar_estructuras(res, estructuras: list[dict], deflexiones=None):
                            "Momento en la base (kgf·m)": round(F * h_c, 1), "Peso conductores (kgf)": round(Vc, 1)})
         h_am = float(ap["altura"][i]) if float(ap["altura"][i]) > 0 else None
         fila = {"Apoyo": ap["nombre"][i], "Tipo": "Retención" if ap["retencion"][i] else "Suspensión",
+                "Estructura EH": e.get("estructura") or "",
                 "Deflexión (°)": round(alfa, 2),
                 "Poste L (m)": L, "Carga rotura (kgf)": rot,
                 "Peso poste (kg)": None if peso is None else round(peso, 0),
@@ -197,7 +201,8 @@ def verificar_estructuras(res, estructuras: list[dict], deflexiones=None):
         if L is not None and L > 0:
             emp = empotramiento(L, crit)
             hl = L - emp
-            h_am = h_am if h_am is not None else hl - crit.amarre_bajo_cima_m
+            bc = _f(e.get("bajo_cima_m"))
+            h_am = h_am if h_am is not None else hl - (crit.amarre_bajo_cima_m if bc is None else bc)
             Fp = q * crit.poste_diametro_medio_m * hl
             h_ref = max(hl - 0.20, 0.1)
             momento = MF + Fp * hl / 2
@@ -265,7 +270,9 @@ def verificar_estructuras(res, estructuras: list[dict], deflexiones=None):
                    f"flexión ({', '.join(sin_poste[:8])}{'…' if len(sin_poste) > 8 else ''}).")
     resumen = {"Postes que requieren templete": req, "Templetes insuficientes": insuf}
     df = pd.DataFrame(filas)
-    primero = ["Apoyo", "Tipo", "Estado"] + (["Circuitos"] if multi else []) + [ "Poste L (m)", "Carga rotura (kgf)", "Utilización poste (%)", "Templetes",
+    if "Estructura EH" in df.columns and not df["Estructura EH"].astype(bool).any():
+        df = df.drop(columns=["Estructura EH"])
+    primero = ["Apoyo", "Tipo"] + (["Estructura EH"] if "Estructura EH" in df.columns else []) + ["Estado"] + (["Circuitos"] if multi else []) + [ "Poste L (m)", "Carga rotura (kgf)", "Utilización poste (%)", "Templetes",
                "Cable templete", "Tensión por templete (kgf)", "Utilización templete (%)", "Carga vertical (kgf)",
                "Peso poste (kg)", "Peso estimado", "Altura amarre (m)"]
     df = df[primero + [c for c in df.columns if c not in primero]]

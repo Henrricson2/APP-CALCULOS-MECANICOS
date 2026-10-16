@@ -10,3 +10,6 @@ Programacion*/
 salida/
 # generado por construir_web.py (modo sin servidor)
 web/py/
+respaldos_*/
+web/estructuras_eh/pdf/
+estructuras_eh/BIBLIOTECA_ESTRUCTURAS_EH_3D.*

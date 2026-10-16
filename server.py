@@ -13,6 +13,8 @@ API (JSON):
     POST /api/importar              cuerpo = bytes del .xlsx  -> tablas editables
     POST /api/calcular              cuerpo = JSON del proyecto -> resultados
     POST /api/exportar/{xlsx|pdf|dxf}  cuerpo = JSON del proyecto -> archivo
+    POST /api/dwg                   cuerpo = texto DXF -> DWG (con AutoCAD o ODA File Converter de este PC)
+    POST /api/biblioteca            cuerpo = DXF de la biblioteca 3D EH -> se guarda (DXF y DWG) en estructuras_eh/
 """
 from __future__ import annotations
 
@@ -43,6 +45,52 @@ from calculos_mecanicos.almacen import Almacen  # noqa: E402
 
 ALMACEN = Almacen()
 CONFIG = Path(ALMACEN.ruta).parent / "config.json"
+
+
+# ---------------------------------------------------------------- DXF -> DWG
+# El formato DWG es cerrado: se convierte con el AutoCAD instalado en este PC (accoreconsole, sin
+# abrir ventanas) o, si no hay, con el ODA File Converter gratuito. Si no hay ninguno, se usa el DXF.
+def convertidor_dwg() -> tuple[str | None, str | None]:
+    import glob
+    for pf in (os.environ.get("ProgramFiles", r"C:\Program Files"), os.environ.get("ProgramW6432", r"C:\Program Files")):
+        c = sorted(glob.glob(os.path.join(pf, "Autodesk", "AutoCAD*", "accoreconsole.exe")))
+        if c:
+            return "AutoCAD", c[-1]
+    for pf in (os.environ.get("ProgramFiles", r"C:\Program Files"), os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")):
+        c = sorted(glob.glob(os.path.join(pf, "ODA", "ODAFileConverter*", "ODAFileConverter.exe")))
+        if c:
+            return "ODA File Converter", c[-1]
+    return None, None
+
+
+def dxf_a_dwg(dxf: bytes) -> bytes:
+    import tempfile
+    tipo, exe = convertidor_dwg()
+    if not exe:
+        raise ValueError("No se encontró AutoCAD ni ODA File Converter en este PC: descargue el DXF (AutoCAD lo abre igual).")
+    with tempfile.TemporaryDirectory(prefix="cmt_dwg_") as d:
+        d = Path(d)
+        (d / "entrada").mkdir()
+        src = d / "entrada" / "plano.dxf"
+        src.write_bytes(dxf)
+        dst = d / "plano.dwg"
+        if tipo == "AutoCAD":
+            scr = d / "convertir.scr"
+            scr.write_text(f'FILEDIA\n0\n_.SAVEAS\n2018\n"{dst}"\n', encoding="ascii", errors="replace")
+            for idioma in (["/l", "es-ES"], []):   # AutoCAD en español; si falla, idioma por defecto
+                subprocess.run([exe, "/i", str(src), "/s", str(scr), *idioma], capture_output=True, timeout=240,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                if dst.is_file():
+                    break
+        else:
+            salida = d / "salida"
+            salida.mkdir()
+            subprocess.run([exe, str(d / "entrada"), str(salida), "ACAD2018", "DWG", "0", "1", "*.DXF"],
+                           capture_output=True, timeout=240, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            dst = salida / "plano.dwg"
+        if not dst.is_file():
+            raise ValueError(f"{tipo} no pudo convertir el plano a DWG. Use el DXF.")
+        return dst.read_bytes()
 
 
 def leer_config() -> dict:
@@ -111,9 +159,15 @@ class Manejador(BaseHTTPRequestHandler):
         ruta = urlparse(self.path).path
         try:
             if ruta == "/api/salud":
-                return self._json({"ok": True, "motor": "servidor", "version": __version__})
+                return self._json({"ok": True, "motor": "servidor", "version": __version__, "dwg": convertidor_dwg()[0]})
             if ruta == "/api/info":
                 return self._json(motor.info())
+            if ruta in ("/api/biblioteca/dxf", "/api/biblioteca/dwg"):
+                arch = RAIZ / "estructuras_eh" / f"BIBLIOTECA_ESTRUCTURAS_EH_3D.{ruta[-3:]}"
+                if not arch.is_file():
+                    return self._error(404, "Aún no se ha generado la biblioteca.")
+                return self._enviar(200, arch.read_bytes(), "application/acad" if ruta.endswith("dwg") else "application/dxf",
+                                    {"Content-Disposition": f"attachment; filename={arch.name}", "Cache-Control": "no-store"})
             if ruta == "/api/plantilla":
                 return self._enviar(200, motor.plantilla_excel(),
                                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -179,6 +233,26 @@ class Manejador(BaseHTTPRequestHandler):
                     return self._json({"ok": True, **ALMACEN.crear_version(pid, d.get("comentario", ""))})
                 if len(partes) == 4 and partes[3] == "archivar":
                     return self._json({"ok": ALMACEN.archivar(pid)})
+            if ruta == "/api/dwg":
+                if not cuerpo:
+                    return self._error(400, "No se recibió el plano DXF.")
+                return self._enviar(200, dxf_a_dwg(cuerpo), "application/acad", {
+                    "Content-Disposition": "attachment; filename=plano.dwg", "Cache-Control": "no-store"})
+            if ruta == "/api/biblioteca":   # biblioteca 3D de estructuras EH: queda guardada en la carpeta de la app
+                if self.client_address[0] not in ("127.0.0.1", "::1"):
+                    return self._error(403, "Solo desde este PC.")
+                if not cuerpo:
+                    return self._error(400, "No se recibió la biblioteca.")
+                carpeta = RAIZ / "estructuras_eh"
+                carpeta.mkdir(exist_ok=True)
+                (carpeta / "BIBLIOTECA_ESTRUCTURAS_EH_3D.dxf").write_bytes(cuerpo)
+                dwg, aviso = None, ""
+                try:
+                    dwg = dxf_a_dwg(cuerpo)
+                    (carpeta / "BIBLIOTECA_ESTRUCTURAS_EH_3D.dwg").write_bytes(dwg)
+                except ValueError as e:
+                    aviso = str(e)
+                return self._json({"ok": True, "carpeta": str(carpeta), "dwg": dwg is not None, "aviso": aviso})
             if ruta.startswith("/api/exportar/"):
                 fmt = ruta.rsplit("/", 1)[1]
                 datos, nombre, mime = motor.exportar(json.loads(cuerpo or b"{}"), fmt)

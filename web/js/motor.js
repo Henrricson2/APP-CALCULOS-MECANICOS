@@ -37,6 +37,17 @@ export class MotorServidor {
     if (!r.ok) throw new Error(await leerError(r));
     return { blob: await r.blob(), nombre: nombreDeCabecera(r, `resultado.${formato}`) };
   }
+  // DXF -> DWG con el AutoCAD (o ODA File Converter) del PC donde corre el servidor
+  async dwg(dxf) {
+    const r = await fetch('api/dwg', { method: 'POST', headers: { 'Content-Type': 'application/dxf' }, body: dxf });
+    if (!r.ok) throw new Error(await leerError(r));
+    return r.blob();
+  }
+  async guardarBiblioteca(dxf) {
+    const r = await fetch('api/biblioteca', { method: 'POST', headers: { 'Content-Type': 'application/dxf' }, body: dxf });
+    if (!r.ok) throw new Error(await leerError(r));
+    return r.json();
+  }
   async plantilla() {
     const r = await fetch('api/plantilla');
     return { blob: await r.blob(), nombre: 'PLANTILLA_DATOS.xlsx' };

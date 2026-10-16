@@ -2,6 +2,7 @@
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
 import { obtenerCotas, FUENTES, muestrasRecorrido, vincenty } from './elevacion.js';
 import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=15';
+import { cargarCatalogo, abrirSelector } from './estructuras-eh.js?v=4';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
@@ -91,7 +92,9 @@ export function instalarGeo(C) {
     const d = p.datos || {};
     C.aplicarEstado(d);
     S.meta = { ...(d.meta || {}), id: p.id, guardado: p.actualizado };
-    S.hist = { pila: [], futuro: [] }; S.sel = -1; C.guardar(); C.actualizarCabecera();
+    S.hist = { pila: [], futuro: [] }; S.sel = -1;
+    if (C.asegurarClima?.()) programarGuardado();
+    C.guardar(); C.actualizarCabecera();
   }
   // Antes de cambiar de proyecto se guarda el actual (con su cálculo) para no perder nada.
   async function guardarActual() {
@@ -123,6 +126,12 @@ export function instalarGeo(C) {
     C.aplicarEstado(estado || { proyecto: base });
     S.proyecto.nombre = nombre;
     S.meta = { ...meta }; S.hist = { pila: [], futuro: [] }; S.sel = -1;
+    // proyecto nuevo: las hipótesis se llenan solas con el clima del municipio (IDEAM); siguen editables
+    if (!estado && meta.municipio) {
+      delete S.proyecto.clima;
+      const v = C.climaProyecto?.(S.proyecto, meta.municipio);
+      if (v) toast(`Hipótesis llenadas con el clima de ${meta.municipio} (IDEAM): TMAX ${v.TMAX} °C · EDS ${v.EDS} °C · FMAX ${v.FMAX} °C. Puede editarlas en Parámetros.`, 'success');
+    }
     C.guardar(); C.actualizarCabecera();
     await guardarServidor(true);
   }
@@ -187,7 +196,7 @@ export function instalarGeo(C) {
       <label class="field-group"><span class="field-label">Departamento</span><select class="select" id="np-dep"><option>Huila</option></select></label>
       <label class="field-group"><span class="field-label">Municipio</span><select class="select" id="np-mun">${muni.map((x) => `<option ${x === 'Neiva' ? 'selected' : ''}>${h(x)}</option>`).join('')}</select></label>
       <label class="field-group full"><span class="field-label">¿Qué tipo de coordenadas tiene?</span><select class="select" id="np-sis">${sist.sistemas.map((s) => `<option value="${s.codigo}">${h(s.nombre)}</option>`).join('')}<option value="DESCONOCIDO">No sé — que la app lo identifique al importar</option></select><span class="field-help">Se puede cambiar en cada importación. Los cálculos internos usan MAGNA-SIRGAS Origen Nacional.</span></label>
-      <label class="field-group full" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="np-copiar"> <span class="small">Copiar los parámetros del proyecto actual (conductor, hipótesis, criterios). Si no, usa los valores por defecto EH-RAA-004.</span></label>
+      <label class="field-group full" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="np-copiar"> <span class="small">Copiar los parámetros del proyecto actual (conductor, hipótesis, criterios). Si no, usa los valores por defecto EH-RAA-004. En ambos casos, las temperaturas de las hipótesis se llenan con el clima del municipio (IDEAM).</span></label>
       <p class="small muted full" style="margin:0">El proyecto nuevo empieza sin estructuras ni cálculo. El proyecto actual queda guardado con todo lo suyo.</p></div>`,
     '<button class="btn" data-x>Cancelar</button><button class="btn btn-primary" data-ok>Crear proyecto</button>');
     $('[data-x]', m.root).onclick = m.cerrar;
@@ -346,9 +355,11 @@ export function instalarGeo(C) {
     return nombreUnico(`${m[1]}${String(+m[2] + 1).padStart(m[2].length, '0')}${m[3]}`);
   }
   // ---- poste: la altura de amarre depende de la altura del poste
-  function amarreDePoste(L) {
+  // altura del conductor más bajo: poste − empotramiento − distancia bajo la cima (de la estructura EH si tiene)
+  function amarreDePoste(L, a = null) {
     const c = S.proyecto.criterios; if (!L) return null;
-    return +(L - ((c.empotramiento_coef ?? 0.1) * L + (c.empotramiento_base_m ?? 0.6)) - (c.amarre_bajo_cima_m ?? 0.2)).toFixed(2);
+    const bajo = a?.bajo_cima_m != null ? +a.bajo_cima_m : (c.amarre_bajo_cima_m ?? 0.7);
+    return +(L - ((c.empotramiento_coef ?? 0.1) * L + (c.empotramiento_base_m ?? 0.6)) - bajo).toFixed(2);
   }
   const posteEtiqueta = (a) => a.poste_altura ? `${a.poste_altura} m${a.poste_rotura ? ` · ${a.poste_rotura} kgf` : ''}` : '';
   function opcionesPoste(sel = '') {
@@ -357,7 +368,7 @@ export function instalarGeo(C) {
   function vistaEstructuras() {
     const herr = [['mover', '✥ Mover', 'Arrastrar y seleccionar estructuras'], ['insertar', '⊕ Insertar', 'Clic sobre un vano para insertar una estructura'], ['agregar', '＋ Nueva', 'Clic en el mapa para agregar una estructura al final'], ['medir', '📏 Medir', 'Medir distancia geodésica']];
     return `<div class="page-head" style="margin-bottom:12px"><div><h1>Estructuras y mapa</h1><p>Registre cada estructura con sus coordenadas: se agrega a la tabla y se dibuja en el mapa al instante. Edite en la tabla o arrastre en el mapa; todo queda sincronizado.</p></div>
-      <div class="actions"><button class="btn btn-primary" id="dm-perfil" title="Cotas Z y perfil del terreno desde Google o un modelo de elevación gratuito">⛰ Perfil del terreno</button><button class="btn" data-act="importar">⇪ Importar archivo</button><button class="btn" id="dm-pegar">⎘ Pegar varias</button><button class="btn" id="m-kmz">⇩ KMZ</button><button class="btn" id="m-html" title="Mapa satelital en un solo archivo HTML (Folium/Leaflet, gratis)">⇩ Mapa HTML</button></div></div>
+      <div class="actions"><button class="btn btn-primary" id="dm-perfil" title="Cotas Z y perfil del terreno desde Google o un modelo de elevación gratuito">⛰ Perfil del terreno</button><button class="btn" data-act="importar">⇪ Importar archivo</button><button class="btn" id="dm-pegar">⎘ Pegar varias</button><button class="btn" id="m-kmz">⇩ KMZ</button><button class="btn" data-act="kml3d" title="Diseño 3D para Google Earth (requiere cálculo)">⇩ Google Earth 3D</button><button class="btn" data-act="cad-dxf" title="Planta y 3D para AutoCAD (requiere cálculo)">⇩ DXF planta+3D</button><button class="btn" id="m-html" title="Mapa satelital en un solo archivo HTML (Folium/Leaflet, gratis)">⇩ Mapa HTML</button></div></div>
       <div class="dm-layout">
         <div class="dm-izq">
           <div class="card dm-form-card">
@@ -400,6 +411,27 @@ export function instalarGeo(C) {
   function pesoCat(a) {
     const p = (S.catPostes || []).find((c) => Math.abs(c.altura - (+a.poste_altura)) < 0.01 && Math.abs(c.rotura - (+a.poste_rotura)) < 0.5);
     return p ? p.peso : null;
+  }
+  // Estructura normalizada de Electrohuila para el poste i (buscador con filtros y miniaturas)
+  async function elegirEstructura(i) {
+    const cat = await cargarCatalogo();
+    if (!cat.estructuras?.length) return toast('No se encontró el catálogo web/estructuras_eh.json. Ejecute estructuras_eh/construir_catalogo.py.', 'error');
+    abrirSelector(C, i, {
+      onElegir: (e, todas) => cambiar(() => {
+        const poner = (a) => {
+          if (!e) { a.estructura = null; a.estructura_id = null; a.bajo_cima_m = null; a.cadena_m = null; return; }
+          a.estructura = e.codigo; a.estructura_id = e.id;
+          if (e.tipo) a.tipo = e.tipo;
+          // altura real del conductor más bajo según la estructura (EH)
+          a.bajo_cima_m = e.geometria ? e.geometria.bajo_cima_m : null;
+          a.cadena_m = e.cadena_m || 0;
+        };
+        poner(S.apoyos[i]);
+        let n = 1;
+        if (e && todas) S.apoyos.forEach((a, k) => { if (k !== i && !a.estructura) { poner(a); n++; } });
+        toast(e ? `${e.codigo} asignada a ${n} estructura(s)${e.tipo ? ` · tipo ${e.tipo === 'R' ? 'retención' : 'suspensión'}` : ''}.` : 'Estructura quitada.', 'success');
+      }, 'estructura EH'),
+    });
   }
   function modalTempletes(i) {
     const p = S.apoyos[i]; if (!p) return;
@@ -488,19 +520,21 @@ export function instalarGeo(C) {
         <td><input data-k="poste_altura" inputmode="decimal" placeholder="—" value="${h(a.poste_altura ?? '')}"></td>
         <td><input data-k="poste_rotura" inputmode="decimal" placeholder="—" value="${h(a.poste_rotura ?? '')}"></td>
         <td><input data-k="poste_peso" inputmode="decimal" placeholder="${h(pesoCat(a) ?? '—')}" value="${h(a.poste_peso ?? '')}" title="Vacío = peso de catálogo"></td>
-        <td class="num muted small" title="Altura de amarre = poste − empotramiento − ${S.proyecto.criterios.amarre_bajo_cima_m ?? 0.2} m">${a.poste_altura ? nf(amarreDePoste(+a.poste_altura), 2) : (a.altura != null ? `<i>${nf(a.altura, 2)}</i>` : '—')}</td>
+        <td class="num muted small" title="Conductor más bajo = poste − empotramiento − ${a.bajo_cima_m != null ? `${a.bajo_cima_m} m (estructura ${a.estructura})` : `${S.proyecto.criterios.amarre_bajo_cima_m ?? 0.7} m`}">${a.poste_altura ? nf(amarreDePoste(+a.poste_altura, a), 2) : (a.altura != null ? `<i>${nf(a.altura, 2)}</i>` : '—')}</td>
         <td><select data-k="tipo"><option value="S" ${a.tipo !== 'R' ? 'selected' : ''}>Susp.</option><option value="R" ${a.tipo === 'R' ? 'selected' : ''}>Ret.</option></select></td>
+        <td><button class="eh-btn ${a.estructura ? 'con' : ''}" data-a="eh" title="${h(a.estructura ? `${a.estructura} · clic para cambiar` : 'Elegir la estructura normalizada de Electrohuila')}">${a.estructura ? h(String(a.estructura).replace(/^EH[-–\s]*/i, '')) : 'Elegir…'}</button></td>
         <td><button class="tpl ${(a.templetes || []).length ? 'con' : ''}" data-a="tpl" title="Templetes de esta estructura">${(a.templetes || []).reduce((s, t) => s + (+t.cantidad || 0), 0) ? `⚓ ${(a.templetes || []).reduce((s, t) => s + (+t.cantidad || 0), 0)}` : '＋'}</button></td>
         ${circs.length ? celdaCirc(i) : ''}<td class="num muted small">${vano}</td>
         <td class="dm-acc"><button class="del" data-a="sube" title="Mover antes" ${i === 0 ? 'disabled' : ''}>↑</button><button class="del" data-a="baja" title="Mover después" ${i === n - 1 ? 'disabled' : ''}>↓</button><button class="del" data-a="bloq" title="${a.bloqueado ? 'Desbloquear' : 'Bloquear coordenadas'}">${a.bloqueado ? '🔒' : '🔓'}</button><button class="del" data-a="del" title="Eliminar" ${bl}>✕</button>${a.pos_original ? '<button class="del" data-a="rest" title="Volver a la posición original (antes de moverla en el mapa)">↺</button>' : ''}</td></tr>`;
     }).join('');
-    el.innerHTML = `<div class="table-wrap dm-tabla-wrap"><table class="grid-edit"><thead><tr><th>#</th><th>Estructura</th><th>Latitud</th><th>Longitud</th><th>Cota Z (m)</th><th title="Altura total del poste">Poste (m)</th><th title="Carga de rotura del poste">Rotura (kgf)</th><th>Peso (kg)</th><th title="Calculada desde el poste">Amarre (m)</th><th>Tipo</th><th>Templetes</th>${circs.length ? '<th title="Circuitos que lleva la estructura (Parámetros → Circuitos)">Circ.</th>' : ''}<th>Vano (m)</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`;
+    el.innerHTML = `<div class="table-wrap dm-tabla-wrap"><table class="grid-edit"><thead><tr><th>#</th><th>NO. CIRCUITO</th><th>Latitud</th><th>Longitud</th><th>Cota Z (m)</th><th title="Altura total del poste">Poste (m)</th><th title="Carga de rotura del poste">Rotura (kgf)</th><th>Peso (kg)</th><th title="Calculada desde el poste">Amarre (m)</th><th>Tipo</th><th title="Estructura normalizada de Electrohuila">Estructura EH</th><th>Templetes</th>${circs.length ? '<th title="Circuitos que lleva la estructura (Parámetros → Circuitos)">Circ.</th>' : ''}<th>Vano (m)</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`;
     $$('input[data-k], select[data-k]', el).forEach((inp) => inp.addEventListener('change', () => editarCampo(+inp.closest('tr').dataset.i, inp.dataset.k, inp.value)));
     $$('tbody tr', el).forEach((tr) => tr.addEventListener('focusin', () => seleccionar(+tr.dataset.i, true, false)));
     $$('[data-a]', el).forEach((b) => b.onclick = () => {
       const i = +b.closest('tr').dataset.i;
       if (b.dataset.a === 'del') return eliminar(i);
       if (b.dataset.a === 'tpl') return modalTempletes(i);
+      if (b.dataset.a === 'eh') return elegirEstructura(i);
       if (b.dataset.a === 'rest') return restaurarPosicion(i);
       if (b.dataset.a === 'bloq') return cambiar(() => { S.apoyos[i].bloqueado = !S.apoyos[i].bloqueado; }, 'bloqueo');
       const j = b.dataset.a === 'sube' ? i - 1 : i + 1;

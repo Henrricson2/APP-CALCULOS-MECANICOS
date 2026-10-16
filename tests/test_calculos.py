@@ -386,11 +386,13 @@ def test_mapa_html_con_folium():
 
 
 # ------------------------------------------------------------- postes y templetes
-def _linea_postes(templete=None, rot_ext=750, rot_int=510):
+def _linea_postes(templete=None, rot_ext=750, rot_int=510, bajo_cima_primero=None, estructura_primero=None):
     ap = [{"nombre": "E1", "lat": 2.9273, "lon": -75.2819, "z": 440, "tipo": "R", "poste_altura": 12, "poste_rotura": rot_ext},
           {"nombre": "E2", "lat": 2.9281, "lon": -75.2819, "z": 441, "tipo": "S", "poste_altura": 12, "poste_rotura": rot_int},
           {"nombre": "E3", "lat": 2.9289, "lon": -75.2819, "z": 442, "tipo": "R", "poste_altura": 12, "poste_rotura": rot_ext,
            "poste_peso": 1111, "templetes": templete or []}]
+    if bajo_cima_primero is not None:
+        ap[0].update(bajo_cima_m=bajo_cima_primero, estructura=estructura_primero)
     from calculos_mecanicos import motor
     r = motor.calcular({"proyecto": {}, "apoyos": ap})
     assert r["ok"], r.get("errores")
@@ -400,10 +402,10 @@ def _linea_postes(templete=None, rot_ext=750, rot_int=510):
 
 def test_amarre_sale_de_la_altura_del_poste():
     r, filas = _linea_postes()
-    # 12 m: empotramiento 0.1·12 + 0.6 = 1.8 m; libre 10.2; amarre 10.0 m
-    assert filas[0]["Empotramiento (m)"] == pytest.approx(1.8) and filas[0]["Altura amarre (m)"] == pytest.approx(10.0)
+    # 12 m: empotramiento 0.1·12 + 0.6 = 1.8 m; libre 10.2; conductor 0.70 m bajo la cima (EH-RAA-004) -> 9.5 m
+    assert filas[0]["Empotramiento (m)"] == pytest.approx(1.8) and filas[0]["Altura amarre (m)"] == pytest.approx(9.5)
     ap = dict(zip(r["apoyos"]["columnas"], r["apoyos"]["filas"][0]))
-    assert ap["Altura amarre (m)"] == pytest.approx(10.0) and ap["Cota amarre (m)"] == pytest.approx(450.0)
+    assert ap["Altura amarre (m)"] == pytest.approx(9.5) and ap["Cota amarre (m)"] == pytest.approx(449.5)
 
 
 def test_terminal_sin_templete_y_alineacion_sin_tiro():
@@ -422,7 +424,7 @@ def test_templete_tension_geometria_y_peso():
     tp = [{"cantidad": 2, "cable": '3/8" EHS', "rotura_kgf": 6985, "distancia_m": 7.5, "altura_m": 10.0}]
     r, filas = _linea_postes(tp)
     f = filas[2]
-    M = (f["Tiro conductores TMAX (kgf)"] ** 2 + f["Viento conductores (kgf)"] ** 2) ** 0.5 * 10.0 + f["Viento poste (kgf)"] * 10.2 / 2
+    M = (f["Tiro conductores TMAX (kgf)"] ** 2 + f["Viento conductores (kgf)"] ** 2) ** 0.5 * 9.5 + f["Viento poste (kgf)"] * 10.2 / 2
     Ht = M / 10.0
     sen = 7.5 / (7.5 ** 2 + 10 ** 2) ** 0.5
     assert f["Tensión por templete (kgf)"] == pytest.approx(Ht / (2 * sen), rel=1e-3)
@@ -580,7 +582,7 @@ def test_circuito_por_tramo_y_altura_de_montaje():
     sep = _filas(r["separaciones"])
     assert [s["Vano"] for s in sep] == [2, 3]
     assert all(s["Circuito superior"] == "Circuito 1" for s in sep)
-    assert sep[0]["Separación en apoyos (m)"] == pytest.approx(1.4, abs=1e-3)
+    assert sep[0]["Separación en apoyos (m)"] == pytest.approx(1.6 - 0.7, abs=1e-3)   # principal a 0.70 m bajo la cima
 
 
 def test_circuito_con_estructura_inexistente_da_error_claro():
@@ -604,3 +606,51 @@ def test_exportaciones_con_varios_circuitos():
     assert {"Circuitos", "Separación circuitos", "Cargas por circuito", "Vanos C234,5"} <= set(hojas)
     d, _, _ = motor.exportar(pl, "dxf")
     assert b"CIRCUITOS" in d
+
+
+# ------------------------------------------------------------ base de clima por municipio (IDEAM)
+def test_base_clima_huila():
+    import json
+    from calculos_mecanicos.motor import MUNICIPIOS_HUILA
+    base = json.loads((RAIZ / "web" / "clima_huila.json").read_text(encoding="utf-8"))
+    regs = {m["municipio"]: m for m in base["municipios"]}
+    assert set(regs) == set(MUNICIPIOS_HUILA)          # los 37 municipios del asistente «Nuevo proyecto»
+    for m in regs.values():
+        assert 250 < m["alt_m"] < 2500
+        assert (m["t_min_absoluta_c"] < m["t_min_media_mes_frio_c"] < m["t_media_anual_c"]
+                < m["t_max_media_mes_calido_c"] < m["t_max_absoluta_c"]), m["municipio"]
+        assert 0 < m["t_min_absoluta_c"] and m["t_max_absoluta_c"] < 47
+    # los sitios bajos y cálidos (Neiva, Villavieja) son más calientes que los altos (San Agustín)
+    assert regs["Villavieja"]["t_media_anual_c"] > regs["Neiva"]["t_media_anual_c"] - 1 > regs["San Agustín"]["t_media_anual_c"]
+    # el gradiente con la altura de las normales IDEAM 1991-2020 es el físico (~ -0.6 °C/100 m)
+    for g in base["metodo"]["gradiente_c_por_100m"].values():
+        assert -1.0 < g < -0.4
+
+
+# ------------------------------------------------------------ estructuras normalizadas EH
+def test_estructura_eh_fija_la_altura_del_conductor():
+    r0, f0 = _linea_postes()
+    # la misma línea, con la estructura S-120 (fases verticales, la más baja 2.7 m bajo la cima) en el primer poste
+    r1, f1 = _linea_postes(bajo_cima_primero=2.7, estructura_primero="EH-S120 N2")
+    assert f1[0]["Altura amarre (m)"] == pytest.approx(12 - 1.8 - 2.7)
+    assert f1[0]["Estructura EH"] == "EH-S120 N2"
+    assert f1[1]["Altura amarre (m)"] == pytest.approx(f0[1]["Altura amarre (m)"])   # los demás no cambian
+
+
+def test_catalogo_estructuras_eh():
+    import json
+    ruta = RAIZ / "web" / "estructuras_eh.json"
+    if not ruta.is_file():
+        pytest.skip("catálogo no generado")
+    cat = json.loads(ruta.read_text(encoding="utf-8"))["estructuras"]
+    assert len(cat) > 150
+    por = {c["codigo"]: c for c in cat}
+    rh = por["EH-RH231 N2"]
+    assert rh["tipo"] == "R" and rh["poste"] == "H" and rh["guarda"]
+    assert rh["geometria"]["bajo_cima_m"] == pytest.approx(0.7)          # EH-RAA-004 §7.1 / lámina RH-231
+    assert por["EH-S120 N2"]["geometria"]["bajo_cima_m"] == pytest.approx(2.7)
+    assert por["EH-521 N2"]["tipo"] == "S"
+    for c in cat:
+        g = c["geometria"]
+        if g:
+            assert g["bajo_cima_m"] == max(z for _, z in g["fases"]) and -1 < g["bajo_cima_m"] < 5

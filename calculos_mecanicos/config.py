@@ -134,7 +134,7 @@ class Criterios:
     hipotesis_estructuras: str = "TMAX"           # hipótesis de cargas para postes y templetes
     empotramiento_coef: float = 0.10              # empotramiento = coef·L + base
     empotramiento_base_m: float = 0.60
-    amarre_bajo_cima_m: float = 0.20              # punto de amarre bajo la cima del poste
+    amarre_bajo_cima_m: float = 0.70              # conductor más bajo bajo la cima (EH-RAA-004 §7.1: 11.3 m en poste de 14 m)
     poste_diametro_medio_m: float = 0.25          # para el viento sobre el poste
     fs_poste: float = 2.5                         # factor de seguridad del poste
     fs_templete: float = 2.5                      # factor de seguridad del cable de templete

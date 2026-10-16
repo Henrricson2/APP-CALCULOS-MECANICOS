@@ -67,7 +67,9 @@ def altura_circuito(i: int, c: Circuito, datos: DatosLinea, crit) -> float:
     if L:
         return L - empotramiento(L, crit) - float(c.bajo_cima_m)
     # sin altura de poste: se baja desde el amarre del circuito principal
-    return float(datos.apoyos["altura"][i]) - (float(c.bajo_cima_m) - float(crit.amarre_bajo_cima_m))
+    bc = _f(est.get("bajo_cima_m"))
+    ppal = float(crit.amarre_bajo_cima_m) if bc is None else bc
+    return float(datos.apoyos["altura"][i]) - (float(c.bajo_cima_m) - ppal)
 
 
 def calcular_circuitos(datos: DatosLinea, proyecto: Proyecto) -> list[ResultadoCircuito]:

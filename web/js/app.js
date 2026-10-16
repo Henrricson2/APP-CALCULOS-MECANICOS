@@ -1,7 +1,12 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
-import { detectarMotor } from './motor.js?v=15';
+import { detectarMotor } from './motor.js?v=16';
 import { dibujarPerfil, paginas, paginasEscala, perfilInteractivo, abscisaK, COLORES_CIRCUITOS } from './perfil.js?v=15';
-import { instalarGeo } from './geo-ui.js?v=15';
+import { instalarGeo } from './geo-ui.js?v=23';
+import { generarKML3D } from './earth3d.js?v=2';
+import { generarDXF, generarBibliotecaDXF } from './cad.js?v=2';
+import { visorProyecto } from './visor3d.js?v=1';
+import { cargarCatalogo } from './estructuras-eh.js?v=4';
+import { cargarClima, buscarMunicipio, propuesta, aplicarClima, editadas, menosExigente, renombrar, NORMA, MODOS, DELTA_CONDUCTOR } from './clima.js?v=1';
 
 const CLAVE = 'cm-proyecto-v2';
 const $ = (s, el = document) => el.querySelector(s);
@@ -10,7 +15,7 @@ const h = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<'
 const nf = (v, d = 2) => (v == null || v === '' || Number.isNaN(+v)) ? '—' : (+v).toLocaleString('es-CO', { maximumFractionDigits: d, minimumFractionDigits: 0 });
 const num = (v) => { if (v == null) return null; const s = String(v).trim().replace(',', '.'); if (s === '') return null; const n = Number(s); return Number.isFinite(n) ? n : NaN; };
 
-const TITULOS = { resumen: 'Resumen', datos: 'Estructuras y mapa', parametros: 'Parámetros', perfil: 'Perfil / plantillado', resultados: 'Resultados', advertencias: 'Advertencias', exportar: 'Exportar', acerca: 'Normas y ayuda' };
+const TITULOS = { resumen: 'Resumen', datos: 'Estructuras y mapa', parametros: 'Parámetros', perfil: 'Perfil / plantillado', vista3d: 'Vista 3D', resultados: 'Resultados', advertencias: 'Advertencias', exportar: 'Exportar', acerca: 'Normas y ayuda' };
 
 const S = {
   vista: 'resumen', defaults: null, proyecto: null, apoyos: [], terreno: [], conductores: {},
@@ -159,6 +164,51 @@ async function exportar(fmt) {
   } catch (e) { cargando(''); toast('No se pudo exportar: ' + e.message, 'error'); }
 }
 
+// Diseño 3D para Google Earth (KML) a partir del último cálculo
+async function exportar3D() {
+  if (!S.resultado) return toast('Primero calcule el proyecto (▶ Calcular).', 'warn');
+  if (S.desactualizado) toast('Ojo: el cálculo está desactualizado; recalcule para que el 3D refleje los últimos cambios.', 'warn');
+  try {
+    const kml = generarKML3D({ S, catalogo: await cargarCatalogo() });
+    descargar(new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' }), `${(S.proyecto.nombre || 'proyecto').replace(/[^\w\-]+/g, '_')}_3D.kml`);
+    toast('Diseño 3D descargado: ábralo con Google Earth (Pro o web → Proyectos → Importar).', 'success');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// Plano CAD: planta (capas PLANTA_*) y modelo 3D (capas 3D_*) en DXF; DWG con el AutoCAD del PC servidor
+async function exportarCAD(fmt) {
+  if (!S.resultado) return toast('Primero calcule el proyecto (▶ Calcular).', 'warn');
+  if (S.desactualizado) toast('Ojo: el cálculo está desactualizado; recalcule para que el plano refleje los últimos cambios.', 'warn');
+  const base = (S.proyecto.nombre || 'proyecto').replace(/[^\w\-]+/g, '_');
+  try {
+    const r = generarDXF({ S, catalogo: await cargarCatalogo() });
+    if (fmt === 'dxf') {
+      descargar(new Blob([r.dxf], { type: 'application/dxf' }), `${base}_planta_3D.dxf`);
+      return toast(`DXF descargado (${r.entidades} entidades${r.georreferenciado ? ', MAGNA-SIRGAS Origen Nacional' : ', coordenadas locales'}).`, 'success');
+    }
+    if (S.motor?.tipo !== 'servidor' || !S.motor.dwg) throw new Error('El DWG necesita el servidor de la app en el PC con AutoCAD. Descargue el DXF.');
+    cargando('Convirtiendo a DWG con AutoCAD… (puede tardar unos segundos)');
+    const blob = await S.motor.dwg(r.dxf);
+    cargando(''); descargar(blob, `${base}_planta_3D.dwg`); toast('DWG descargado.', 'success');
+  } catch (e) { cargando(''); toast(e.message, 'error'); }
+}
+
+// Biblioteca 3D de todas las estructuras EH (bloques). En el PC servidor queda guardada en estructuras_eh/.
+async function bibliotecaEH(fmt) {
+  try {
+    cargando('Generando la biblioteca 3D de estructuras EH…');
+    const { dxf, estructuras, bloques } = generarBibliotecaDXF(await cargarCatalogo(), { bajo: +(S.proyecto.criterios.amarre_bajo_cima_m ?? 0.7) });
+    if (S.motor?.tipo === 'servidor' && S.motor.guardarBiblioteca && ['127.0.0.1', 'localhost'].includes(location.hostname)) {
+      cargando(fmt === 'dwg' ? 'Guardando y convirtiendo a DWG con AutoCAD… (puede tardar un minuto)' : 'Guardando…');
+      const r = await S.motor.guardarBiblioteca(dxf);
+      cargando('');
+      toast(`Biblioteca guardada en ${r.carpeta} (${estructuras} estructuras, ${bloques} bloques)${r.dwg ? ' en DXF y DWG' : ` en DXF. ${r.aviso}`}.`, 'success');
+      if (fmt === 'dwg' && r.dwg) return descargar(await (await fetch('api/biblioteca/dwg', { cache: 'no-store' })).blob(), 'BIBLIOTECA_ESTRUCTURAS_EH_3D.dwg');
+    } else cargando('');
+    descargar(new Blob([dxf], { type: 'application/dxf' }), 'BIBLIOTECA_ESTRUCTURAS_EH_3D.dxf');
+  } catch (e) { cargando(''); toast(e.message, 'error'); }
+}
+
 function guardarProyecto() {
   const blob = new Blob([JSON.stringify({ app: 'calculos-mecanicos-mt', version: 3, ...estadoProyecto(), meta: { ...S.meta, id: undefined } }, null, 2)], { type: 'application/json' });
   descargar(blob, `${(S.proyecto.nombre || 'proyecto').replace(/[^\w\-]+/g, '_')}.cmt.json`);
@@ -199,6 +249,7 @@ function ir(vista, forzar = false) {
   $('#breadcrumb-current').textContent = TITULOS[vista];
   cerrarMenu();
   const vc = $('#view-container');
+  if (S.visor) { try { S.visor.liberar(); } catch { /* ya liberado */ } S.visor = null; }
   vc.innerHTML = VISTAS[vista]();
   ENLACES[vista]?.(vc);
   vc.focus({ preventScroll: true });
@@ -259,12 +310,79 @@ const ACCIONES = {
   'ir-param': () => ir('parametros'),
   plantilla: async () => { try { cargando('Generando plantilla…'); await asegurarMotor(); const { blob, nombre } = await S.motor.plantilla(); cargando(''); descargar(blob, nombre); } catch (e) { cargando(''); toast(e.message, 'error'); } },
   'guardar-proyecto': guardarProyecto,
+  kml3d: () => exportar3D(),
+  'cad-dxf': () => exportarCAD('dxf'),
+  'cad-dwg': () => exportarCAD('dwg'),
+  'bib-dxf': () => bibliotecaEH('dxf'),
+  'bib-dwg': () => bibliotecaEH('dwg'),
   'abrir-proyecto': () => $('#file-json').click(),
   xlsx: () => exportar('xlsx'), pdf: () => exportar('pdf'), dxf: () => exportar('dxf'),
   calcular: () => calcular(),
 };
 
 // ================================================================== VISTAS
+// ------------------------------------------------- clima del sitio (IDEAM) -> hipótesis
+const ETQ_HIP = { TMAX: 'TMAX · frío + viento', EDS: 'EDS · tensión de cada día', FMIN: 'FMIN · flecha mínima', FMAX: 'FMAX · plantilla caliente' };
+function tarjetaClima() {
+  const base = S.clima || { municipios: [] }, p = S.proyecto, cl = p.clima || {};
+  if (!base.municipios?.length) return `<div class="card"><div class="section-head"><h2>Clima del sitio (IDEAM)</h2></div><p class="small muted" style="margin:0">No se encontró la base <code>web/clima_huila.json</code>. Ejecute <code>python clima_ideam/construir_clima.py</code>.</p></div>`;
+  const reg = buscarMunicipio(base, cl.municipio || S.meta?.municipio);
+  const modo = cl.modo || 'ideam', delta = cl.delta_conductor_c ?? DELTA_CONDUCTOR;
+  const prop = reg ? propuesta(reg, { modo, delta_conductor_c: delta }) : null;
+  const ed = editadas(p);
+  const filas = Object.keys(NORMA).filter((k) => p.hipotesis[k]).map((k) => {
+    const t = p.hipotesis[k].temperatura_c, warn = menosExigente(k, t);
+    return `<tr><td><b>${ETQ_HIP[k]}</b></td><td class="num">${NORMA[k]} °C</td><td class="num">${prop ? `${prop[k]} °C` : '—'}</td>
+      <td class="num"><b>${h(t)} °C</b> ${ed.includes(k) ? '<span class="badge badge-gold" title="Cambiado a mano después de llenar con el IDEAM">editado</span>' : ''}${warn ? ' <span class="badge badge-orange" title="Menos exigente que el valor por defecto de la norma EH-RAA-004">&lt; norma</span>' : ''}</td></tr>`;
+  }).join('');
+  const estado = cl.aplicado
+    ? `<span class="badge badge-green">Llenado con ${h(cl.municipio)} · ${h(cl.aplicado)}</span>`
+    : '<span class="badge badge-orange">Hipótesis sin llenar con el clima del municipio</span>';
+  return `<div class="card"><div class="section-head"><h2>Clima del sitio (IDEAM)</h2>${estado}</div>
+    <p class="small muted" style="margin-top:0">Al crear un proyecto, las temperaturas de las hipótesis se llenan solas con el clima del municipio. Todas siguen siendo editables: si tiene un dato mejor (estación más cercana, estudio del sitio, exigencia del operador), escríbalo directamente en la tabla de hipótesis. El viento se mantiene en el valor de la norma (el IDEAM no publica viento de diseño con periodo de retorno).</p>
+    <div class="form-grid cols-3">
+      <label class="field-group"><span class="field-label">Municipio</span><select class="select" id="clima-mun"><option value="">— Elija el municipio —</option>${base.municipios.map((m) => `<option ${reg && m.municipio === reg.municipio ? 'selected' : ''}>${h(m.municipio)}</option>`).join('')}</select></label>
+      <label class="field-group"><span class="field-label">Criterio</span><select class="select" id="clima-modo">${Object.entries(MODOS).map(([k, t]) => `<option value="${k}" ${k === modo ? 'selected' : ''}>${h(t)}</option>`).join('')}</select></label>
+      <label class="field-group"><span class="field-label">Calentamiento del conductor sobre T máx. ambiente (°C)</span><input class="input" id="clima-delta" inputmode="decimal" value="${h(delta)}"><span class="field-help">FMAX = T máx. absoluta + este valor (sol y corriente)</span></label>
+    </div>
+    ${reg ? `<dl class="kv" style="margin-top:12px"><dt>Cabecera</dt><dd>${h(reg.municipio)} · ${nf(reg.alt_m, 0)} m s. n. m.</dd>
+      <dt>T media anual</dt><dd>${nf(reg.t_media_anual_c, 1)} °C</dd>
+      <dt>T mínima absoluta</dt><dd>${nf(reg.t_min_absoluta_c, 1)} °C <span class="small muted">(${h(reg.nota_t_min_absoluta)})</span></dd>
+      <dt>T máxima absoluta</dt><dd>${nf(reg.t_max_absoluta_c, 1)} °C <span class="small muted">(${h(reg.nota_t_max_absoluta)})</span></dd>
+      <dt>Estación de referencia</dt><dd>${h(reg.estacion_principal)}</dd></dl>
+    <div class="table-wrap" style="max-height:none;margin-top:12px"><table><thead><tr><th>Hipótesis</th><th>Norma EH-RAA-004</th><th>IDEAM ${h(reg.municipio)}</th><th>En el proyecto</th></tr></thead><tbody>${filas}</tbody></table></div>
+    <div class="actions" style="margin-top:12px"><button class="btn btn-soft" id="clima-aplicar">↻ Llenar hipótesis con el IDEAM</button></div>` : '<p class="small muted">Elija el municipio para ver sus datos.</p>'}
+    <p class="small muted" style="margin-bottom:0">Fuente: ${h(base.fuente?.normales || 'IDEAM')}; extremos de las estaciones automáticas del IDEAM, corregidos por la altura de la cabecera. Revise que el clima del trazado (no solo de la cabecera) sea similar.</p></div>`;
+}
+function enlazarClima(vc) {
+  const sel = $('#clima-mun', vc); if (!sel) return;
+  const cl = () => (S.proyecto.clima = S.proyecto.clima || {});
+  // elegir el municipio, el criterio o el calentamiento llena de una vez las hipótesis (siguen editables)
+  const llenar = (msg = true) => {
+    const reg = buscarMunicipio(S.clima, S.proyecto.clima?.municipio || S.meta?.municipio);
+    const v = reg ? aplicarClima(S.proyecto, reg) : null;
+    marcarCambio(); ir('parametros', true);
+    if (v && msg) toast(`Hipótesis llenadas con ${reg.municipio}: TMAX ${v.TMAX} °C · EDS ${v.EDS} °C · FMIN ${v.FMIN} °C · FMAX ${v.FMAX} °C`, 'success');
+  };
+  sel.onchange = () => { cl().municipio = sel.value; if (sel.value) S.meta.municipio = sel.value; llenar(); };
+  $('#clima-modo', vc).onchange = (e) => { cl().modo = e.target.value; llenar(); };
+  $('#clima-delta', vc).onchange = (e) => {
+    const n = num(e.target.value); if (n == null || Number.isNaN(n) || n < 0 || n > 40) { e.target.classList.add('bad'); return toast(`Valor inválido: «${e.target.value}»`, 'warn'); }
+    cl().delta_conductor_c = n; llenar();
+  };
+  const ap = $('#clima-aplicar', vc);
+  if (ap) ap.onclick = () => llenar();
+}
+
+// Proyecto con municipio cuyas hipótesis nunca se llenaron con el IDEAM (p. ej. creado antes de
+// esta función): se llenan una sola vez. Después se respetan los cambios hechos a mano.
+function asegurarClima() {
+  if (!S.proyecto || S.proyecto.clima?.aplicado || !S.meta?.municipio) return null;
+  const v = aplicarClima(S.proyecto, buscarMunicipio(S.clima, S.meta.municipio));
+  if (v) { guardar(); toast(`Hipótesis llenadas con el clima de ${S.meta.municipio} (IDEAM). Puede editarlas en Parámetros.`, 'success'); }
+  return v;
+}
+
 // ------------------------------------------------- varios circuitos en las mismas estructuras
 const CAMPOS_CONDUCTOR = [['nombre', 'Nombre / calibre', 1], ['seccion_mm2', 'Sección (mm²)'], ['carga_rotura_kgf', 'Carga de rotura (kgf)'], ['peso_kgf_m', 'Peso (kgf/m)'], ['modulo_elasticidad', 'Módulo E (kgf/mm²)'], ['coef_dilatacion', 'Coef. dilatación α (1/°C)'], ['diametro_mm', 'Diámetro exterior (mm)']];
 function tarjetaCircuitos() {
@@ -286,9 +404,15 @@ function tarjetaCircuitos() {
   return `<div class="card"><div class="section-head"><h2>Circuitos en las mismas estructuras <span class="badge">${1 + cs.length}</span></h2><button class="btn btn-small btn-soft" id="circ-add">＋ Agregar circuito</button></div>
     <p class="small muted" style="margin-top:0">Una misma estructura puede llevar varios circuitos (p. ej. un poste de 14 m con dos de 34,5 kV y dos de 13,8 kV). El <b>circuito principal</b> usa el conductor y los criterios de esta página y recorre toda la línea. Cada circuito adicional ocupa un <b>tramo</b> (desde–hasta) con su propio conductor, tensión, fases y altura de montaje. Se plantilla cada circuito, se verifica su distancia al terreno y la <b>separación entre circuitos</b>, y sus cargas se <b>suman</b> en la verificación de postes y templetes.</p>
     <div class="table-wrap" style="max-height:none"><table class="tabla-circ"><thead><tr><th></th><th>Circuito</th><th>kV</th><th>Conductor</th><th>Fases</th><th>Desde</th><th>Hasta</th><th title="Distancia del punto de amarre bajo la cima del poste">Amarre bajo cima (m)</th><th title="Crucetas, aisladores y herrajes de este circuito">Herrajes (kgf)</th><th></th></tr></thead>
-    <tbody><tr class="fila-principal"><td></td><td><span class="circ-color" style="background:#1f6fb2"></span><input class="input" data-path="criterios.nombre_circuito_principal" data-texto="1" value="${h(cr.nombre_circuito_principal ?? 'Circuito 1')}" style="min-width:120px"></td>
-      <td class="num">${nf(cr.tension_kv)}</td><td>${h(p.conductor.nombre)} <span class="small muted">(tarjeta Conductor)</span></td><td class="num">${h(cr.n_fases)}</td><td class="small muted">Inicio</td><td class="small muted">Fin</td><td class="num">${nf(cr.amarre_bajo_cima_m ?? 0.2)}</td><td class="num">${nf(cr.peso_herrajes_kgf ?? 40)}</td><td></td></tr>${filas}</tbody></table></div>
-    ${cs.length ? '' : '<p class="small muted">Sin circuitos adicionales: la línea se calcula con un solo circuito, como hasta ahora.</p>'}
+    <tbody><tr class="fila-principal"><td></td><td><span class="circ-color" style="background:#1f6fb2"></span><input class="input" data-path="criterios.nombre_circuito_principal" data-texto="1" data-rerender="1" value="${h(cr.nombre_circuito_principal ?? 'Circuito 1')}" style="min-width:120px">
+      <div class="small muted">Principal · toda la línea</div></td>
+      <td><input class="input" data-path="criterios.tension_kv" data-rerender="1" inputmode="decimal" value="${h(cr.tension_kv)}" style="width:70px"></td>
+      <td><select class="select" id="circ-ppal-cond" style="min-width:160px">${opCond(p.conductor || {})}</select></td>
+      <td><input class="input" data-path="criterios.n_fases" data-rerender="1" inputmode="numeric" value="${h(cr.n_fases)}" style="width:52px"></td>
+      <td class="small muted">Inicio</td><td class="small muted">Fin</td>
+      <td><input class="input" data-path="criterios.amarre_bajo_cima_m" data-rerender="1" inputmode="decimal" value="${h(cr.amarre_bajo_cima_m ?? 0.7)}" style="width:70px"></td>
+      <td><input class="input" data-path="criterios.peso_herrajes_kgf" data-rerender="1" inputmode="decimal" value="${h(cr.peso_herrajes_kgf ?? 40)}" style="width:70px"></td><td></td></tr>${filas}</tbody></table></div>
+    <p class="small muted">${cs.length ? `La línea lleva ${1 + cs.length} circuitos: el principal más ${cs.length} adicional(es).` : 'La primera fila es el <b>circuito principal</b> de la línea (siempre existe; no es un circuito agregado). Puede editar sus datos aquí mismo. Use «＋ Agregar circuito» solo si las estructuras llevan otro circuito.'}</p>
     <div class="form-grid cols-3" style="margin-top:12px">
       <label class="field-group"><span class="field-label">Separación vertical mínima entre circuitos (m)</span><input class="input" data-path="criterios.separacion_min_circuitos_m" inputmode="decimal" value="${h(cr.separacion_min_circuitos_m ?? 1.2)}"><span class="field-help">Exigida en los apoyos. Verifíquela contra RETIE y la norma del operador de red.</span></label>
       <label class="field-group"><span class="field-label">Factor en el vano</span><input class="input" data-path="criterios.separacion_vano_factor" inputmode="decimal" value="${h(cr.separacion_vano_factor ?? 0.75)}"><span class="field-help">En el vano se admite factor × mínima (0.75, NESC 235C2b). Superior con flecha máxima, inferior a 20 °C (EDS).</span></label>
@@ -297,7 +421,7 @@ function tarjetaCircuitos() {
 function nuevoCircuito() {
   const cs = S.proyecto.circuitos || [];
   const ult = cs[cs.length - 1];
-  const bajo = +((ult ? +ult.bajo_cima_m : +(S.proyecto.criterios.amarre_bajo_cima_m ?? 0.2)) + 1.2).toFixed(2);
+  const bajo = +((ult ? +ult.bajo_cima_m : +(S.proyecto.criterios.amarre_bajo_cima_m ?? 0.7)) + 1.2).toFixed(2);
   return { nombre: `Circuito ${cs.length + 2}`, tension_kv: 13.8, conductor: clon(S.proyecto.conductor), n_fases: 3, desde: '', hasta: '', bajo_cima_m: bajo, peso_herrajes_kgf: 40, long_cadena_aisladores_m: 0, activo: true };
 }
 function modalConductorCircuito(i) {
@@ -318,6 +442,11 @@ function modalConductorCircuito(i) {
 }
 function enlazarCircuitos(vc) {
   const add = $('#circ-add', vc); if (!add) return;
+  const selPpal = $('#circ-ppal-cond', vc);
+  if (selPpal) selPpal.onchange = (e) => {
+    const c = S.conductores[e.target.value]; if (!c) return;
+    S.proyecto.conductor = clon(c); marcarCambio(); ir('parametros', true); toast(`Conductor ${c.nombre} cargado en el circuito principal.`, 'success');
+  };
   add.onclick = () => { S.proyecto.circuitos = S.proyecto.circuitos || []; S.proyecto.circuitos.push(nuevoCircuito()); marcarCambio(); ir('parametros', true); toast('Circuito agregado: elija su conductor, tramo y altura de montaje.', 'success'); };
   $$('[data-cdel]', vc).forEach((b) => b.onclick = () => { S.proyecto.circuitos.splice(+b.dataset.cdel, 1); marcarCambio(); ir('parametros', true); });
   $$('[data-cedit]', vc).forEach((b) => b.onclick = () => modalConductorCircuito(+b.dataset.cedit));
@@ -425,6 +554,7 @@ const VISTAS = {
           ${campo('conductor.diametro_mm', 'Diámetro exterior (mm)', c.diametro_mm)}
         </div></div>
       ${tarjetaCircuitos()}
+      ${tarjetaClima()}
       <div class="card"><div class="section-head"><h2>Hipótesis de cálculo</h2><span class="muted small">Límite vacío = solo verificación</span></div>
         <div class="table-wrap" style="max-height:none"><table><thead><tr><th>Hipótesis</th><th>T (°C)</th><th>Viento (km/h)</th><th>Hielo (kgf/m)</th><th>Límite (% rotura)</th></tr></thead><tbody>${hip}</tbody></table></div></div>
       <div class="card"><div class="section-head"><h2>Criterios de diseño</h2></div><div class="form-grid cols-3">
@@ -444,13 +574,29 @@ const VISTAS = {
         <label class="field-group"><span class="field-label">Hipótesis de cargas</span><select class="select" data-path="criterios.hipotesis_estructuras" data-texto="1">${Object.keys(p.hipotesis).map((k) => `<option ${k === (cr.hipotesis_estructuras || 'TMAX') ? 'selected' : ''}>${k}</option>`).join('')}</select><span class="field-help">Viento máximo y tensión de esa hipótesis</span></label>
         ${campo('criterios.empotramiento_coef', 'Empotramiento: coeficiente × L', cr.empotramiento_coef ?? 0.1, 'e = 0.10·L + 0.60 m')}
         ${campo('criterios.empotramiento_base_m', 'Empotramiento: base (m)', cr.empotramiento_base_m ?? 0.6)}
-        ${campo('criterios.amarre_bajo_cima_m', 'Amarre bajo la cima (m)', cr.amarre_bajo_cima_m ?? 0.2, 'Amarre = L − e − este valor')}
+        ${campo('criterios.amarre_bajo_cima_m', 'Amarre bajo la cima (m)', cr.amarre_bajo_cima_m ?? 0.7, 'Conductor más bajo. Amarre = L − e − este valor. EH-RAA-004 §7.1: 0,70 m. Si el poste tiene estructura EH asignada, se usa la de la estructura.')}
         ${campo('criterios.fs_poste', 'Factor de seguridad del poste', cr.fs_poste ?? 2.5, 'Carga de trabajo = rotura / FS')}
         ${campo('criterios.fs_templete', 'Factor de seguridad del templete', cr.fs_templete ?? 2.5)}
         ${campo('criterios.poste_diametro_medio_m', 'Diámetro medio del poste (m)', cr.poste_diametro_medio_m ?? 0.25, 'Para el viento sobre el poste')}
         ${campo('criterios.peso_herrajes_kgf', 'Peso de herrajes por estructura (kgf)', cr.peso_herrajes_kgf ?? 40)}
       </div></div>
     </div>`;
+  },
+
+  vista3d() {
+    if (!S.resultado) return sinResultado();
+    const ap = S.resultado.perfil?.apoyos || [];
+    if (ap.some((a) => a.lat == null)) return `<div class="card empty"><div class="big">◆</div><h3>Faltan coordenadas</h3><p>La vista 3D necesita latitud y longitud de las estructuras (Estructuras y mapa).</p></div>`;
+    const sinEst = S.apoyos.filter((a) => !a.estructura).length;
+    return `${avisoDesactualizado()}<div class="page-head"><div><h1>Vista 3D</h1><p>Postes y estructuras EH como bloques 3D (los mismos de la biblioteca y de los planos DXF/DWG) y conductores con la catenaria del cálculo mecánico. Arrastre para girar, rueda para acercar, clic derecho o Mayús+arrastre para desplazar.${sinEst ? ` <b>${sinEst} estructura(s) sin estructura EH asignada</b> se dibujan con una cruceta genérica.` : ''}</p></div>
+      <div class="actions"><button class="btn btn-navy" data-act="cad-dwg">⇩ DWG</button><button class="btn" data-act="cad-dxf">⇩ DXF</button><button class="btn" data-act="kml3d">⇩ Google Earth</button><button class="btn" id="v3-img">⇩ Imagen</button></div></div>
+      <div class="card" style="padding:10px"><div class="actions" style="margin-bottom:8px;flex-wrap:wrap">
+        <label class="small">Ir a <select class="select" id="v3-poste" style="width:auto">${ap.map((a, k) => `<option value="${k}">${h(a.nombre)}</option>`).join('')}</select></label>
+        <button class="btn btn-small" id="v3-todo">Ver toda la línea</button>
+        <label class="small" style="display:flex;gap:4px;align-items:center"><input type="checkbox" id="v3-frio"> Conductor en frío</label>
+        <label class="small">Escala vertical <select class="select" id="v3-ex" style="width:auto"><option value="1">1:1</option><option value="2">×2</option><option value="3">×3</option></select></label>
+        <span class="small muted" id="v3-info"></span></div>
+        <div id="visor3d" style="height:calc(100vh - 290px);min-height:380px;border-radius:8px;overflow:hidden;background:#eef3f7"><p class="muted" style="padding:20px">Cargando el visor 3D…</p></div></div>`;
   },
 
   perfil() {
@@ -500,6 +646,9 @@ const VISTAS = {
       ${tarjeta('xlsx', '#218c84', 'Memoria de cálculo', 'Resumen, vanos, apoyos, secciones, tabla de tendido, advertencias y parámetros.')}
       ${tarjeta('pdf', '#c84c4c', 'Plano de plantillado (A3)', 'Resumen, perfiles paginados con terreno y distancia mínima, y tabla de vanos.')}
       ${tarjeta('dxf', '#214e6b', 'DXF escala 1:1', 'Capas: terreno, seguridad, conductor, postes, textos y abscisas para AutoCAD.')}
+      <div class="card export-card"><div class="ico" style="background:#7a4fa3">CAD</div><h3 style="margin:0;color:var(--navy)">Plano en planta + 3D (AutoCAD)</h3><p class="muted small" style="margin:0;flex:1">Planta (eje, postes, crucetas, fases, nombres, estructura EH, vanos y ángulos) y modelo 3D con cotas reales: cada poste y su estructura EH como <b>bloque 3D sólido</b> (poste con su diámetro, crucetas, aisladores, herrajes, transformador) girado según la línea, y los conductores con la catenaria del cálculo mecánico, cable de guarda, terreno y distancia mínima. Coordenadas MAGNA-SIRGAS Origen Nacional. El DWG se genera con el AutoCAD de este PC.</p><div class="actions"><button class="btn btn-navy" data-act="cad-dxf">⇩ DXF</button><button class="btn" data-act="cad-dwg">⇩ DWG</button></div></div>
+      <div class="card export-card"><div class="ico" style="background:#a35a2f">EH</div><h3 style="margin:0;color:var(--navy)">Biblioteca 3D de estructuras EH</h3><p class="muted small" style="margin:0;flex:1">Todas las estructuras de la norma de Electrohuila (MT, BT, redes compactas, equipos y subestaciones tipo poste) y postes de 8 a 18 m como bloques 3D, en un solo archivo. Se guarda en la carpeta <code>estructuras_eh</code> de la app y los planos usan los mismos bloques.</p><div class="actions"><button class="btn btn-navy" data-act="bib-dwg">⇩ Generar DXF + DWG</button></div></div>
+      <div class="card export-card"><div class="ico" style="background:#2f8f4e">3D</div><h3 style="margin:0;color:var(--navy)">Google Earth 3D</h3><p class="muted small" style="margin:0;flex:1">Postes y crucetas según la estructura EH de cada poste, fases con su catenaria (caliente y fría), cable de guarda, distancia mínima al terreno y vanos que no cumplen. Requiere coordenadas y un cálculo.</p><button class="btn btn-navy" data-act="kml3d">⇩ Descargar KML 3D</button></div>
     </div>
     <div class="grid grid-2" style="margin-top:18px">
       <div class="card"><div class="section-head"><h2>Proyecto</h2></div><p class="muted small">Guarde el proyecto completo (datos + parámetros) en un archivo <code>.cmt.json</code> para abrirlo en otro equipo o en el celular.</p>
@@ -535,6 +684,23 @@ const VISTAS = {
 
 // ================================================================== ENLACES
 const ENLACES = {
+  async vista3d(vc) {
+    enlazarAcciones(vc);
+    const cont = $('#visor3d', vc); if (!cont) return;
+    const abrir = async () => {
+      if (S.visor) { try { S.visor.liberar(); } catch { /* */ } S.visor = null; }
+      try {
+        S.visor = await visorProyecto(cont, { S, catalogo: await cargarCatalogo(), opciones: { frio: $('#v3-frio', vc).checked, exageracion: +$('#v3-ex', vc).value } });
+        $('#v3-info', vc).textContent = `${S.visor.info.postes} estructuras${S.visor.info.alertas ? ` · ${S.visor.info.alertas} vano(s) que no cumplen (esferas rojas)` : ''}`;
+      } catch (e) { cont.innerHTML = `<p style="padding:20px;color:var(--danger)">No se pudo abrir el visor 3D: ${h(e.message)}. Se necesita conexión a internet la primera vez (librería three.js).</p>`; }
+    };
+    await abrir();
+    $('#v3-poste', vc).onchange = (e) => S.visor?.irPoste(+e.target.value);
+    $('#v3-todo', vc).onclick = abrir;
+    $('#v3-frio', vc).onchange = abrir;
+    $('#v3-ex', vc).onchange = abrir;
+    $('#v3-img', vc).onclick = async () => { if (!S.visor) return; descargar(await (await fetch(S.visor.imagen())).blob(), `${(S.proyecto.nombre || 'proyecto').replace(/[^\w\-]+/g, '_')}_3D.png`); };
+  },
   resumen(vc) {
     enlazarAcciones(vc); enlazarColocar(vc);
     $$('[data-tabres]', vc).forEach((l) => l.addEventListener('click', () => { S.tabRes = l.dataset.tabres; }));
@@ -591,12 +757,15 @@ const ENLACES = {
       let o = S.proyecto; ruta.slice(0, -1).forEach((k) => { o = o[k]; }); o[ruta[ruta.length - 1]] = v;
       marcarCambio();
       if (ruta[0] === 'modo_flecha' || ruta[0] === 'nombre') actualizarCabecera();
+      if (ruta[0] === 'hipotesis' && ['temperatura_c', 'viento_kmh'].includes(ruta[2])) { renombrar(ruta[1], S.proyecto.hipotesis[ruta[1]]); ir('parametros', true); return; }
+      if (el.dataset.rerender) ir('parametros', true);
     }));
     $('#sel-conductor', vc).onchange = (e) => {
       const c = S.conductores[e.target.value]; if (!c) return;
       S.proyecto.conductor = clon(c); marcarCambio(); ir('parametros', true); toast(`Conductor ${c.nombre} cargado.`, 'success');
     };
     enlazarCircuitos(vc);
+    enlazarClima(vc);
     $('#gm-ver', vc).onclick = () => { const k = $('#gm-key', vc); k.type = k.type === 'password' ? 'text' : 'password'; };
     $('#gm-guardar', vc).onclick = async () => {
       S.config = { ...(S.config || {}), google_maps_key: $('#gm-key', vc).value.trim() };
@@ -646,6 +815,8 @@ const GEO = instalarGeo({
   S, $, $$, h, nf, num, toast, modal, cargando, descargar, clon, fusionar,
   pegarTerreno: () => modalPegar('terreno'), estadoProyecto, aplicarEstado,
   ir, marcarCambio, guardar, calcular, actualizarCabecera, asegurarMotor, enlazarAcciones, importarExcel, exportar,
+  climaProyecto: (proyecto, municipio) => aplicarClima(proyecto, buscarMunicipio(S.clima, municipio)),
+  asegurarClima: () => asegurarClima(),
 });
 Object.assign(TITULOS, GEO.titulos); Object.assign(VISTAS, GEO.vistas); Object.assign(ENLACES, GEO.enlaces);
 
@@ -713,9 +884,11 @@ async function iniciar() {
 
   const def = await (await fetch('defaults.json', { cache: 'no-cache' })).json();
   S.defaults = def.proyecto_defecto; S.conductores = def.conductores; S.catPostes = def.postes || []; S.catCables = def.cables_templete || [];
+  S.clima = await cargarClima();
   const guardado = restaurar() || {};
   aplicarEstado(guardado);
   S.meta = guardado.meta || {};
+  asegurarClima();
 
   S.motor = await detectarMotor((msg) => { if (msg) cargando(msg); });
   S.config = await S.motor.config();

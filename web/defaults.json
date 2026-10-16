@@ -56,7 +56,7 @@
    "hipotesis_estructuras": "TMAX",
    "empotramiento_coef": 0.1,
    "empotramiento_base_m": 0.6,
-   "amarre_bajo_cima_m": 0.2,
+   "amarre_bajo_cima_m": 0.7,
    "poste_diametro_medio_m": 0.25,
    "fs_poste": 2.5,
    "fs_templete": 2.5,

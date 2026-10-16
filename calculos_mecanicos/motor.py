@@ -135,7 +135,7 @@ def _terreno_por_estructuras(terreno, apoyos):
     return sorted(pts, key=lambda t: _f(t["x"]))
 
 
-_CAMPOS_ESTRUCTURA = ("poste_altura", "poste_rotura", "poste_peso", "templetes")
+_CAMPOS_ESTRUCTURA = ("poste_altura", "poste_rotura", "poste_peso", "templetes", "estructura", "bajo_cima_m")
 
 
 def _datos_payload(payload: dict, proyecto: Proyecto):
@@ -144,8 +144,8 @@ def _datos_payload(payload: dict, proyecto: Proyecto):
     # altura de amarre a partir del poste cuando no se escribió
     for a in apoyos:
         L = _f(a.get("poste_altura"))
-        if L:  # la altura de amarre depende de la altura del poste
-            a["altura"] = round(altura_amarre_desde_poste(L, proyecto.criterios), 3)
+        if L:  # la altura de amarre depende de la altura del poste (y de la estructura EH, si tiene)
+            a["altura"] = round(altura_amarre_desde_poste(L, proyecto.criterios, _f(a.get("bajo_cima_m"))), 3)
     terreno = _terreno_por_estructuras(payload.get("terreno"), apoyos)
     d = construir_datos(apoyos, terreno, None, proyecto.criterios, payload.get("origen", "web"))
     d.errores = errores + d.errores
