@@ -647,8 +647,10 @@ def test_catalogo_estructuras_eh():
     por = {c["codigo"]: c for c in cat}
     rh = por["EH-RH231 N2"]
     assert rh["tipo"] == "R" and rh["poste"] == "H" and rh["guarda"]
-    assert rh["geometria"]["bajo_cima_m"] == pytest.approx(0.7)          # EH-RAA-004 §7.1 / lámina RH-231
-    assert por["EH-S120 N2"]["geometria"]["bajo_cima_m"] == pytest.approx(2.7)
+    assert rh["geometria"]["bajo_cima_m"] == pytest.approx(0.74)         # lámina RH-231: cruceta a 0.70 m + grapa
+    assert por["EH-S120 N2"]["geometria"]["bajo_cima_m"] == pytest.approx(2.75)
+    assert por["EH-R131 N2"]["geometria"]["bajo_cima_m"] == pytest.approx(2.94)   # lámina R-131: crucetas a 1.7 y 2.9 m
+    assert all(c["geometria"] and c["geometria"]["fuente"] == "lámina" and "lamina" in c["geometria"] for c in cat)
     assert por["EH-521 N2"]["tipo"] == "S"
     for c in cat:
         g = c["geometria"]

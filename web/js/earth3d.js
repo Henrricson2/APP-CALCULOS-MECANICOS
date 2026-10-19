@@ -57,18 +57,25 @@ export function modelo3D({ S, catalogo }) {
     const base = conTerreno ? terr(a.x) : (libre != null ? cima - libre : (a.yt ?? cima - 10));
     return { a, s, e, g, cima, base, L };
   });
-  const posicion = (k, dx) => [P[k][0] + dx * perp[k][0], P[k][1] + dx * perp[k][1]];
+  const posicion = (k, dx, dy = 0) => [P[k][0] + dx * perp[k][0] + dy * dir[k][0], P[k][1] + dx * perp[k][1] + dy * dir[k][1]];
   const lineas = [];
   const add = (capa, nombre, pts, visible = true) => { if (pts.length > 1) lineas.push({ capa, nombre, pts, visible }); };
 
   // postes y crucetas
   const postes = geo.map((G, k) => {
     const x = G.a.x;
-    for (const dx of G.g.postes || [0]) { const en = posicion(k, dx); add('POSTES', G.a.nombre, [[en[0], en[1], G.base, x], [en[0], en[1], G.cima, x]]); }
+    for (const dx of G.g.postes || [0]) for (const dy of G.g.postes_y || [0]) { const en = posicion(k, dx, dy); add('POSTES', G.a.nombre, [[en[0], en[1], G.base, x], [en[0], en[1], G.cima, x]]); }
+    const crucetas = [];
+    if (G.g.lamina?.cr?.length) {          // crucetas de la lámina (longitud y altura reales)
+      for (const dy of G.g.postes_y || [0]) for (const [zc, x0, x1] of G.g.lamina.cr) {
+        const p1 = posicion(k, x0, dy), p2 = posicion(k, x1, dy), z = G.cima - zc;
+        crucetas.push([p1, p2]);
+        add('CRUCETAS', `Cruceta ${G.a.nombre}`, [[p1[0], p1[1], z, x], [p2[0], p2[1], z, x]]);
+      }
+    }
     const niveles = new Map();
     for (const [dx, dz] of G.g.fases) if (dz >= 0) { const key = Math.round(dz * 10); (niveles.get(key) || niveles.set(key, []).get(key)).push(dx); }
-    const crucetas = [];
-    for (const [key, dxs] of niveles) {
+    if (!G.g.lamina?.cr?.length) for (const [key, dxs] of niveles) {
       const xs = [...dxs, ...(G.g.postes || [0])];
       const mn = Math.min(...xs) - 0.1, mx = Math.max(...xs) + 0.1;
       if (mx - mn < 0.3) continue;
@@ -77,7 +84,7 @@ export function modelo3D({ S, catalogo }) {
       add('CRUCETAS', `Cruceta ${G.a.nombre}`, [[p1[0], p1[1], z, x], [p2[0], p2[1], z, x]]);
     }
     return { k, nombre: G.a.nombre, en: P[k], dir: dir[k], perp: perp[k], cima: G.cima, base: G.base, x, ya: G.a.ya, yt: G.a.yt,
-      tipo: G.a.tipo, estructura: G.s.estructura || '', ficha: G.e, L: G.L, rotura: G.s.poste_rotura, postesDx: G.g.postes || [0],
+      tipo: G.a.tipo, estructura: G.s.estructura || '', ficha: G.e, L: G.L, rotura: G.s.poste_rotura, postesDx: G.g.postes || [0], postesDy: G.g.postes_y || [0],
       fases: G.g.fases, crucetas, deflexion: deflex[k], verif: verif.get(String(G.a.nombre)) || {} };
   });
 

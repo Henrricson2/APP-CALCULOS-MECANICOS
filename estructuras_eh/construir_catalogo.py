@@ -5,7 +5,8 @@ Lee el portal «App normativa» (data/normas.js, data/miniaturas.js, docs/*.pdf)
   web/estructuras_eh/mini/<id>.jpg   miniatura de la primera hoja de cada estructura
   web/estructuras_eh/pdf/<id>.pdf    lámina original (copia local; no se sube a GitHub)
 
-Uso:  python estructuras_eh/construir_catalogo.py  "C:/Users/<usuario>/OneDrive/Documentos/App normativa"
+Uso:  python estructuras_eh/construir_catalogo.py  "C:/Normativa_Electrohuila"
+      python estructuras_eh/construir_catalogo.py  --solo-geometria   (solo aplica estructuras_eh/laminas.py)
 """
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ from datetime import date
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
-FUENTE = Path(sys.argv[1]) if len(sys.argv) > 1 else RAIZ.parent / "App normativa"
+FUENTE = Path(sys.argv[1]) if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else RAIZ.parent / "App normativa"
 WEB = RAIZ / "web"
 SALIDA = WEB / "estructuras_eh"
 
@@ -255,7 +256,68 @@ def geometria(cod: str, t: str, c: dict) -> dict | None:
             "fuente": "lámina" if k in LEIDAS else "típica de la familia (aprox.)"}
 
 
+# ----------------------------------------------------------------------------- medidas de las láminas
+# estructuras_eh/laminas.py guarda, para cada una de las 218 estructuras, lo leído en su lámina: crucetas, fases
+# con su tipo de aislamiento, cable de guarda, postes, equipos y transformador. De ahí salen las fases para el
+# cálculo y la pieza «lamina» que usa web/js/bloques3d.js para dibujar el bloque 3D.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:
+    from laminas import L as LAMINAS
+except Exception:  # pragma: no cover
+    LAMINAS = {}
+
+# altura del conductor sobre la cara superior de la cruceta en aisladores de espigo
+H_PIN = {"BT": 0.15, "13.2 kV": 0.22, "34.5 kV": 0.32}
+
+
+def geometria_lamina(eid: str, nivel: str) -> dict | None:
+    d = LAMINAS.get(eid)
+    if not d:
+        return None
+    hp = H_PIN.get(nivel, 0.22)
+    fases = []
+    for x, z, t in d.get("f", []):
+        if t in ("E", "E2"):
+            z = z - hp
+        elif t == "EP":
+            z = z - (hp + 0.05)
+        fases.append((round(x, 3), round(z, 3)))
+    if "postes" in d:
+        postes = [float(v) for v in d["postes"]]
+    elif d.get("h"):
+        postes = [-d["h"] / 2, d["h"] / 2]
+    else:
+        postes = [0.0]
+    lam = {k: v for k, v in d.items() if k in ("cr", "f", "g", "d", "dv", "m", "brz", "eq", "tr") and v is not None}
+    lam["hpin"] = hp
+    g = {"fases": fases, "guarda": [(round(x, 3), round(z, 3)) for x, z in d.get("g", [])],
+         "postes": [round(v, 3) for v in postes], "bajo_cima_m": round(max(z for _, z in fases), 3) if fases else 0.0,
+         "fuente": "lámina", "lamina": lam}
+    if d.get("py"):
+        g["postes_y"] = [float(v) for v in d["py"]]
+    return g
+
+
+def solo_geometria():
+    """Actualiza la geometría de web/estructuras_eh.json con las medidas de las láminas (sin el portal)."""
+    ruta = WEB / "estructuras_eh.json"
+    cat = json.loads(ruta.read_text(encoding="utf-8"))
+    n = 0
+    for r in cat["estructuras"]:
+        g = geometria_lamina(r["id"], r["nivel"])
+        if g:
+            r["geometria"] = g
+            n += 1
+    cat["generado"] = date.today().isoformat()
+    cat["nota"] = ("Función, aislamiento, circuitos y disposición se deducen del nombre de cada norma; "
+                   "la geometría (crucetas, fases, guarda, postes, equipos) se tomó de cada lámina.")
+    ruta.write_text(json.dumps(cat, ensure_ascii=False, indent=0), encoding="utf-8")
+    print(n, "estructuras con geometría de lámina de", len(cat["estructuras"]))
+
+
 def main():
+    if "--solo-geometria" in sys.argv:
+        return solo_geometria()
     normas = cargar_js(FUENTE / "data" / "normas.js")["normas"]
     mini = cargar_js(FUENTE / "data" / "miniaturas.js")
     (SALIDA / "mini").mkdir(parents=True, exist_ok=True)
@@ -266,7 +328,7 @@ def main():
             continue
         r = {"id": n["id"], "codigo": re.sub(r"\s+", " ", n["codigo"]).strip(), "nombre": re.sub(r"\s+", " ", n["nombre"]).strip(),
              "fecha": n.get("fecha"), **clasificar(n)}
-        r["geometria"] = geometria(r["codigo"], sin_tildes(n["nombre"]), r)
+        r["geometria"] = geometria_lamina(n["id"], r["nivel"]) or geometria(r["codigo"], sin_tildes(n["nombre"]), r)
         b64 = mini.get(n["id"], "")
         if b64.startswith("data:image"):
             (SALIDA / "mini" / f"{n['id']}.jpg").write_bytes(base64.b64decode(b64.split(",", 1)[1]))

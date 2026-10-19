@@ -4,8 +4,9 @@
 // Ejes del bloque de ESTRUCTURA: origen en la cima del poste (en H, en el centro entre los dos postes);
 //   x = transversal a la línea (+ a la derecha del abscisado), y = a lo largo de la línea, z hacia arriba.
 // Bloque de POSTE: origen en la base enterrada, z hacia arriba hasta la longitud L.
-// Medidas: geometría del catálogo EH (fases, cable de guarda, postes en H) + herrajes típicos (crucetas
-// de ángulo 76×76 mm, aisladores de espigo, cadenas de 3 discos, bayonetas, transformadores). Aproximado.
+// Medidas: las de cada lámina EH (estructuras_eh/laminas.py → geometria.lamina del catálogo): crucetas con su
+// longitud y altura, tipo de aislamiento de cada fase, cable de guarda, diagonales, red compacta, equipos y
+// subestaciones tipo poste. Herrajes (aisladores, cadenas, grapas) con dimensiones típicas.
 
 export const CAPAS_BLOQUES = { '3D_POSTES': 8, '3D_CRUCETAS': 30, '3D_AISLADORES': 254, '3D_HERRAJES': 251, '3D_TRANSFORMADOR': 150, '3D_BT': 34 };
 
@@ -75,7 +76,195 @@ export function carasPoste(L) {
 // ------------------------------------------------------------------ estructura
 export const nombreBloque = (e) => (e ? `EH_${e.id.replace(/^eh-/i, '')}` : 'EH_GENERICA').toUpperCase().replace(/[^A-Z0-9_]/g, '_').slice(0, 31);
 
+// ------------------------------------------------------------------ estructura dibujada según su lámina
+// g.lamina (ver estructuras_eh/laminas.py): crucetas, fases con su tipo de aislamiento, guarda, diagonales,
+// derivación, red compacta, equipos y transformador. z en la lámina = metros BAJO la cima (positivo hacia abajo).
+const ESP = 0.076;                                   // ángulo de la cruceta (76 mm)
+function carasLamina(e, g) {
+  const L = g.lamina, caras = [];
+  const px = g.postes || [0], py = g.postes_y || [0];
+  const rP = diametrosPoste(12)[1] / 2 + 0.01;
+  const hp = L.hpin || 0.22;
+  const add = (...c) => caras.push(...c);
+  const poste = (x) => px.reduce((a, b) => (Math.abs(b - x) < Math.abs(a - x) ? b : a), px[0]);
+  // ---- crucetas (en cada plano de postes a lo largo de la línea)
+  const crs = (L.cr || []).map(([z, x0, x1, n]) => ({ z, x0, x1, ys: n === 2 ? [-0.12, 0.12] : [0] }));
+  for (const yp of py) for (const c of crs) {
+    for (const yy of c.ys) add(...caja('3D_CRUCETAS', c.x0, c.x1, yp + yy - ESP / 2, yp + yy + ESP / 2, -c.z - ESP, -c.z));
+    if (c.ys.length === 2) for (const xs of [c.x0 + 0.05, c.x1 - 0.05]) add(...barra('3D_HERRAJES', [xs, yp - 0.12, -c.z - 0.04], [xs, yp + 0.12, -c.z - 0.04], 0.008));
+    for (const p of px) if (p >= c.x0 - 0.01 && p <= c.x1 + 0.01)
+      add(...caja('3D_HERRAJES', p - rP - 0.02, p + rP + 0.02, yp - rP - 0.02, yp + rP + 0.02, -c.z - ESP - 0.05, -c.z - ESP));
+  }
+  // ---- diagonales
+  const diag = L.d != null ? L.d : (px.length === 1 ? crs.filter((c) => c.x1 - c.x0 > 1.4).flatMap((c) => [-1, 1]
+    .filter((s) => (s < 0 ? -c.x0 : c.x1) > 0.6).map((s) => [s * Math.min(0.55, s < 0 ? -c.x0 - 0.2 : c.x1 - 0.2), c.z + 0.08, 0, c.z + 0.45])) : []);
+  for (const yp of py) for (const [xc, zc, xp, zp] of diag) {
+    const c = crs.find((k) => Math.abs(k.z - zc) < 0.2) || { ys: [0] };
+    for (const yy of c.ys) add(...barra('3D_HERRAJES', [xc, yp + yy, -zc], [xp, yp + yy, -zp], 0.018));
+  }
+  // cruceta sobre la que se apoya un aislador en x (la más cercana por encima)
+  const crEn = (x, z) => crs.filter((c) => x >= c.x0 - 0.05 && x <= c.x1 + 0.05 && c.z <= z + 0.06).sort((a, b) => b.z - a.z)[0];
+  // ---- fases
+  const grupos = [];
+  (L.f || []).forEach(([x, z, t], i) => {
+    for (const yp of py) {
+      const zc = -z;
+      if (t === 'E' || t === 'E2') {
+        const c = crEn(x, z);
+        for (const yy of (t === 'E2' || (c && c.ys.length === 2) ? [-0.12, 0.12] : [0])) add(...espigo(x, yp + yy, zc, zc + hp));
+      } else if (t === 'EP') {
+        add(...caja('3D_HERRAJES', x - 0.05, x + 0.05, yp - 0.05, yp + 0.05, zc - 0.25, zc), ...espigo(x, yp, zc, zc + hp + 0.05));
+      } else if (t === 'S') {
+        const c = crEn(x, z - 0.1);
+        const z0 = c ? -c.z - ESP : Math.min(zc + 0.5, 0);
+        add(...cadena([x, yp, z0], [x, yp, zc]), ...caja('3D_HERRAJES', x - 0.03, x + 0.03, yp - 0.05, yp + 0.05, zc - 0.05, zc));
+      } else if (t === 'R' || t === 'T') {
+        const c = crEn(x, z);
+        if (!c) { const p = poste(x); add(...barra('3D_HERRAJES', [p, yp, zc], [x, yp, zc], 0.02), ...caja('3D_HERRAJES', p - rP - 0.02, p + rP + 0.02, yp - rP - 0.02, yp + rP + 0.02, zc - 0.03, zc + 0.03)); }
+        for (const s of t === 'R' ? [-1, 1] : [1]) add(...cadena([x, yp + s * 0.14, zc], [x, yp + s * 0.62, zc]));
+      } else if (t === 'H') {
+        const p = poste(x), s = Math.sign(x - p) || 1;
+        add(...caja('3D_HERRAJES', p - rP - 0.02, p + rP + 0.02, yp - rP - 0.02, yp + rP + 0.02, zc - 0.03, zc + 0.03),
+          ...cadena([p + s * (rP + 0.05), yp, zc], [x, yp, zc - 0.05]));
+      } else if (t === 'L') {
+        const p = poste(x), s = Math.sign(x - p) || 1;
+        add(...caja('3D_HERRAJES', p + s * rP, p + s * (rP + 0.06), yp - 0.06, yp + 0.06, zc - 0.25, zc - 0.05),
+          ...cilindro('3D_AISLADORES', [p + s * (rP + 0.06), yp, zc - 0.18], [x, yp, zc], 0.05, 0.045, 10));
+        for (let k = 1; k <= 4; k++) { const t2 = k / 5; add(...cilindro('3D_AISLADORES', [p + s * (rP + 0.06) + (x - p - s * (rP + 0.06)) * t2, yp, zc - 0.18 + 0.18 * t2], [p + s * (rP + 0.06) + (x - p - s * (rP + 0.06)) * t2 + s * 0.015, yp, zc - 0.18 + 0.18 * t2], 0.075, 0.075, 10)); }
+      } else if (t === 'LV') {
+        add(...caja('3D_HERRAJES', x - 0.05, x + 0.05, yp - 0.05, yp + 0.05, -0.15, 0), ...cilindro('3D_AISLADORES', [x, yp, 0], [x, yp, zc], 0.05, 0.045, 10));
+        for (let k = 1; k <= 5; k++) add(...cilindro('3D_AISLADORES', [x, yp, zc * k / 6], [x, yp, zc * k / 6 + 0.015], 0.075, 0.075, 10));
+      } else if (t === 'P' || t === 'PR') {
+        add(...caja('3D_BT', rP, rP + 0.03, yp - 0.03, yp + 0.03, zc - 0.12, zc + 0.12),
+          ...cilindro('3D_AISLADORES', [x + 0.02, yp - 0.04, zc], [x + 0.02, yp + 0.04, zc], 0.04, 0.04, 8));
+        if (t === 'PR') for (const s of [-1, 1]) add(...barra('3D_BT', [x + 0.02, yp + s * 0.05, zc], [x + 0.02, yp + s * 0.35, zc], 0.012));
+      } else if (t === 'TZ') {
+        add(...caja('3D_BT', rP, x, yp - 0.025, yp + 0.025, zc + 0.02, zc + 0.06),
+          ...cilindro('3D_BT', [x, yp - 0.35, zc], [x, yp + 0.35, zc], 0.035, 0.035, 8));
+      } else if (t === 'C') {
+        const k = Math.floor(i / 3); (grupos[k] = grupos[k] || []).push([x, zc]);
+      }
+    }
+  });
+  // ---- red compacta: brazo antibalanceo, mensajero, espaciador romboidal
+  (L.brz || []).forEach(([zb, xt], k) => {
+    const s = Math.sign(xt) || -1, z = -zb, m = (L.m || [])[k], gr = grupos[k] || [];
+    add(...caja('3D_HERRAJES', s * rP, s * (rP + 0.05), -0.05, 0.05, z - 0.22, z + 0.02),
+      ...barra('3D_HERRAJES', [s * rP, 0, z], [xt, 0, z], 0.022), ...barra('3D_HERRAJES', [s * rP, 0, z - 0.2], [xt * 0.7, 0, z - 0.01], 0.015));
+    if (m) {
+      add(...barra('3D_HERRAJES', [xt, 0, z], [m[0], 0, -m[1]], 0.012), ...cilindro('3D_HERRAJES', [m[0], -0.06, -m[1]], [m[0], 0.06, -m[1]], 0.03, 0.03, 8));
+      if (gr.length === 3) {
+        const cx = m[0], top = -m[1] - 0.05, bot = gr[2][1] - 0.04, mid = gr[0][1], xl = gr[0][0] - 0.05, xr = gr[1][0] + 0.05;
+        const R = [[cx, 0, top], [xr, 0, mid], [cx, 0, bot], [xl, 0, mid]];
+        for (let j = 0; j < 4; j++) add(...barra('3D_AISLADORES', R[j], R[(j + 1) % 4], 0.012));
+        gr.forEach(([gx, gz]) => add(...cilindro('3D_AISLADORES', [gx, -0.05, gz], [gx, 0.05, gz], 0.03, 0.03, 8)));
+        add(...barra('3D_HERRAJES', [s * rP, 0, bot - 0.02], [gr[2][0], 0, bot], 0.01));
+      }
+    }
+  });
+  if (!L.brz) (L.m || []).forEach(([x, z]) => add(...caja('3D_HERRAJES', x - 0.04, x + 0.04, -0.05, 0.05, -z - 0.04, -z + 0.04)));
+  // ---- cable de guarda
+  for (const [gx, gz] of L.g || []) {
+    const p = poste(gx);
+    if (gz < 0) add(...barra('3D_HERRAJES', [p + (gx >= p ? 1 : -1) * rP, 0, Math.max(-0.6, -gz - 1.5)], [gx + (Math.abs(gx - p) < 0.05 ? rP : 0), 0, -gz], 0.025),
+      ...caja('3D_HERRAJES', p - rP - 0.02, p + rP + 0.02, -rP - 0.02, rP + 0.02, -0.3, -0.22), ...caja('3D_HERRAJES', gx + rP - 0.04, gx + rP + 0.06, -0.04, 0.04, -gz - 0.08, -gz));
+    else add(...caja('3D_HERRAJES', p - rP - 0.02, p + rP + 0.02, -rP - 0.02, rP + 0.02, -gz - 0.04, -gz + 0.04),
+      ...barra('3D_HERRAJES', [gx, -0.1, -gz], [gx, -0.4, -gz], 0.012), ...barra('3D_HERRAJES', [gx, 0.1, -gz], [gx, 0.4, -gz], 0.012));
+  }
+  // ---- derivación perpendicular (cruceta a lo largo de la línea, retenciones hacia +x)
+  if (L.dv) {
+    for (const [z, a0, a1, n] of L.dv.cr || []) for (const xx of n === 2 ? [-0.12, 0.12] : [0])
+      add(...caja('3D_CRUCETAS', xx - ESP / 2, xx + ESP / 2, a0, a1, -z - ESP, -z));
+    for (const [y, z, t] of L.dv.f || []) {
+      if (t === 'TZ') add(...cilindro('3D_BT', [0.1, y, -z], [0.6, y, -z], 0.035, 0.035, 8));
+      else add(...cadena([0.14, y, -z], [0.62, y, -z]));
+    }
+  }
+  // ---- equipos de maniobra
+  for (const q of L.eq || []) {
+    const [t] = q;
+    if (t === 'caja') { const [, x0, x1, y0, y1, z0, z1] = q; add(...caja('3D_TRANSFORMADOR', x0, x1, y0, y1, -z1, -z0)); }
+    else if (t === 'cort') { const [, x, z] = q; add(...cortacircuito(x, 0.1, -z)); }
+    else if (t === 'sec') { const [, x, z] = q; add(...cilindro('3D_AISLADORES', [x, 0.1, -z - 0.25], [x, 0.1, -z + 0.25], 0.05, 0.05, 10), ...caja('3D_HERRAJES', x - 0.03, x + 0.03, 0.06, 0.14, -z - 0.3, -z + 0.3)); }
+    else if (t === 'dps') { const [, x, z] = q; add(...cilindro('3D_AISLADORES', [x, 0.12, -z - 0.35], [x, 0.12, -z], 0.045, 0.045, 10)); }
+    else if (t === 'bajante') { const [, x, z0, z1] = q; add(...cilindro('3D_HERRAJES', [x, 0.12, -z1], [x, 0.12, -z0], 0.04, 0.04, 8)); }
+  }
+  if (L.tr) add(...transformador(L.tr, px, py, rP));
+  // riostras en X entre postes (H a lo ancho, o H a lo largo de la línea en subestaciones)
+  const zMin = Math.max(0.5, ...(L.cr || []).map((c) => c[0]), ...(L.f || []).map((f) => f[1])) + 0.9;
+  if (px.length === 2 && (L.cr || []).length) for (let k = 0; k + 1 < px.length; k++) {
+    const [a, b] = [px[k], px[k + 1]];
+    add(...barra('3D_HERRAJES', [a, 0, -zMin], [b, 0, -zMin - 2.6], 0.02), ...barra('3D_HERRAJES', [b, 0, -zMin], [a, 0, -zMin - 2.6], 0.02));
+  }
+  if (py.length === 2 && !L.tr) add(...barra('3D_HERRAJES', [0, py[0], -zMin], [0, py[1], -zMin - 2.6], 0.02), ...barra('3D_HERRAJES', [0, py[1], -zMin], [0, py[0], -zMin - 2.6], 0.02));
+  return caras;
+}
+function cortacircuito(x, y, z) {
+  return [...caja('3D_HERRAJES', x - 0.03, x + 0.03, y - 0.04, y + 0.04, z - 0.3, z + 0.1),
+    ...cilindro('3D_AISLADORES', [x + 0.04, y + 0.06, z - 0.28], [x + 0.12, y + 0.06, z + 0.12], 0.04, 0.04, 8),
+    ...cilindro('3D_HERRAJES', [x + 0.1, y + 0.13, z - 0.3], [x + 0.18, y + 0.13, z + 0.08], 0.022, 0.022, 6)];
+}
+function transformador(T, px, py, rP) {
+  const c = [], add = (...k) => c.push(...k);
+  const ejeY = !!T.ejeY, [cx, cy] = T.c || [0, 0];
+  const pos = (k, n, w) => (n === 1 ? 0 : -w / 2 + (w * k) / (n - 1));
+  // cortacircuitos y DPS en cruceta (a lo largo de la línea en H)
+  const nf = T.n === 3 ? 3 : 1;
+  const filas = T.auto ? [] : [[T.cort, 'cort'], [T.dps, 'dps']];
+  for (const [z, tipo] of filas) {
+    if (ejeY) add(...caja('3D_CRUCETAS', -ESP / 2, ESP / 2, -1.25, 1.25, -z - ESP, -z));
+    else add(...caja('3D_CRUCETAS', nf === 1 ? -0.3 : -0.6, nf === 1 ? 0.3 : 0.6, rP + 0.02, rP + 0.02 + ESP, -z - ESP, -z));
+    for (let k = 0; k < nf; k++) {
+      const a = pos(k, nf, ejeY ? 1.2 : 0.9);
+      const [x, y] = ejeY ? [0.08, a] : [a, rP + 0.12];
+      if (tipo === 'cort') add(...cortacircuito(x, y, -z + 0.25));
+      else add(...cilindro('3D_AISLADORES', [x, y, -z], [x, y, -z + 0.35], 0.045, 0.045, 10));
+    }
+  }
+  // cuba
+  const zt = -T.top, zb = -T.top - T.alto;
+  if (T.n === 1) {
+    add(...cilindro('3D_TRANSFORMADOR', [cx, cy, zb], [cx, cy, zt], T.a / 2, T.a / 2, 16));
+    add(...cilindro('3D_AISLADORES', [cx, cy, zt], [cx, cy, zt + 0.3], 0.045, 0.035, 8));
+  } else {
+    const [ax, by] = ejeY ? [T.b, T.a] : [T.b, T.a];       // fondo hacia el poste, ancho a lo largo de la línea
+    const [w, d] = Math.abs(cx) > 0.01 && !ejeY ? [ax, by] : [by, ax];
+    add(...caja('3D_TRANSFORMADOR', cx - w / 2 + 0.12, cx + w / 2 - 0.12, cy - d / 2, cy + d / 2, zb, zt));
+    for (const s of [-1, 1]) add(...caja('3D_TRANSFORMADOR', s > 0 ? cx + w / 2 - 0.12 : cx - w / 2, s > 0 ? cx + w / 2 : cx - w / 2 + 0.12, cy - d / 2 + 0.08, cy + d / 2 - 0.08, zb + 0.12, zt - 0.12));
+    add(...caja('3D_TRANSFORMADOR', cx - w / 2 + 0.08, cx + w / 2 - 0.08, cy - d / 2 + 0.04, cy + d / 2 - 0.04, zt, zt + 0.06));
+    for (let k = 0; k < 3; k++) add(...cilindro('3D_AISLADORES', [cx + pos(k, 3, w * 0.5), cy, zt + 0.06], [cx + pos(k, 3, w * 0.5), cy, zt + 0.42], 0.05, 0.035, 8));
+  }
+  // montaje
+  const yb = Math.max(...py.map(Math.abs));
+  if (T.mont === 'silleta') {
+    add(...caja('3D_HERRAJES', cx - 0.55, cx + 0.55, cy - 0.45, cy + 0.45, zb - 0.06, zb));
+    for (const s of [-1, 1]) add(...barra('3D_HERRAJES', [cx + s * 0.45, cy + 0.4, zb - 0.03], [s * 0.1, rP, zb - 0.7], 0.02), ...barra('3D_HERRAJES', [cx + s * 0.45, cy - 0.4, zb - 0.03], [s * 0.1, rP, zb - 0.03], 0.02));
+    add(...caja('3D_HERRAJES', -rP - 0.02, rP + 0.02, -rP - 0.02, rP + 0.02, zb - 0.75, zb - 0.65));
+  } else if (T.mont === 'plataforma') {
+    add(...caja('3D_HERRAJES', -0.6, 0.6, -yb - 0.1, yb + 0.1, zb - 0.08, zb));
+    for (const s of [-1, 1]) add(...caja('3D_HERRAJES', -0.6, 0.6, s * yb - 0.05, s * yb + 0.05, zb - 0.16, zb - 0.08));
+  } else {   // colgado / collarín: dos abrazaderas al poste
+    const sx = Math.sign(cx) || 0, sy = Math.sign(cy) || 0;
+    for (const zz of [zt - 0.15, zb + 0.2]) {
+      add(...caja('3D_HERRAJES', -rP - 0.02, rP + 0.02, -rP - 0.02, rP + 0.02, zz - 0.05, zz + 0.05));
+      add(...caja('3D_HERRAJES', sx ? Math.min(0, cx + sx * T.b / 2) : -0.05, sx ? Math.max(0, cx + sx * T.b / 2) : 0.05,
+        sy ? Math.min(0, cy - sy * T.a / 2) : -0.05, sy ? Math.max(0, cy - sy * T.a / 2) : 0.05, zz - 0.03, zz + 0.03));
+    }
+  }
+  // baja tensión
+  const zbt = -T.bt;
+  for (const yp of ejeY ? py : [0]) {
+    const xp = ejeY ? rP : -rP, sx = ejeY ? 1 : -1;
+    if (T.btn > 0) {
+      add(...caja('3D_BT', xp, xp + sx * 0.03, yp - 0.03, yp + 0.03, zbt - 0.2 * (T.btn - 1) - 0.12, zbt + 0.12));
+      for (let k = 0; k < T.btn; k++) add(...cilindro('3D_AISLADORES', [xp + sx * 0.05, yp - 0.04, zbt - 0.2 * k], [xp + sx * 0.05, yp + 0.04, zbt - 0.2 * k], 0.04, 0.04, 8));
+    } else add(...caja('3D_BT', xp, xp + sx * 0.12, yp - 0.025, yp + 0.025, zbt + 0.02, zbt + 0.06), ...cilindro('3D_BT', [xp + sx * 0.12, yp - 0.35, zbt], [xp + sx * 0.12, yp + 0.35, zbt], 0.035, 0.035, 8));
+  }
+  return c;
+}
+
 export function carasEstructura(e, bajoDefecto = 0.7) {
+  if (e?.geometria?.lamina) return carasLamina(e, e.geometria);
   const g = e?.geometria || { fases: [[-0.9, bajoDefecto], [0, bajoDefecto], [0.9, bajoDefecto]], guarda: [], postes: [0] };
   const t = (e?.nombre || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const aisl = e?.aislamiento || 'Espigo';

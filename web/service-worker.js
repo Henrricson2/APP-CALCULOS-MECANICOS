@@ -1,7 +1,7 @@
 // Igual que la app de APUs: network-first para el código propio, cache-first para
 // recursos estáticos y para Python en el navegador (Pyodide, ~40 MB, se descarga una vez).
-const CACHE = 'calculos-mt-v24';
-const APP = ['./', './index.html', './styles.css?v=17', './js/app.js?v=24', './js/motor.js?v=16', './js/perfil.js?v=15', './js/geo-ui.js?v=23', './js/estructuras-eh.js?v=4', './js/visor3d.js?v=1', './js/bloques3d.js?v=1', './js/earth3d.js?v=2', './js/cad.js?v=2', './js/clima.js?v=1', './js/mapa.js?v=15', './js/elevacion.js',
+const CACHE = 'calculos-mt-v26';
+const APP = ['./', './index.html', './styles.css?v=17', './js/app.js?v=25', './js/motor.js?v=16', './js/perfil.js?v=15', './js/geo-ui.js?v=24', './js/estructuras-eh.js?v=5', './js/visor3d.js?v=2', './js/bloques3d.js?v=2', './js/earth3d.js?v=3', './js/cad.js?v=3', './js/clima.js?v=1', './js/mapa.js?v=15', './js/elevacion.js',
   './manifest.webmanifest', './icon.svg', './icon-192.png', './defaults.json', './ejemplo.json', './clima_huila.json', './estructuras_eh.json'];
 
 self.addEventListener('install', (e) => {

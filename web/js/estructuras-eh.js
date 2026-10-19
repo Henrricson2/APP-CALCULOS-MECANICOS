@@ -1,5 +1,5 @@
 // Buscador de estructuras normalizadas de Electrohuila (web/estructuras_eh.json) para cada poste.
-import { visorEstructura } from './visor3d.js?v=1';
+import { visorEstructura } from './visor3d.js?v=2';
 let CAT = null;
 export async function cargarCatalogo() {
   if (!CAT) {

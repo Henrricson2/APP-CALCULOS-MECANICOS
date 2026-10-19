@@ -1,8 +1,8 @@
 // Plano de la línea para AutoCAD: DXF (R12, lo abre cualquier versión) con la PLANTA (capas PLANTA_*,
 // en el plano z = 0) y el MODELO 3D (capas 3D_*, con cotas reales). Coordenadas MAGNA-SIRGAS Origen
 // Nacional (CTM12) cuando las estructuras las tienen. El DWG lo produce el servidor con AutoCAD.
-import { modelo3D } from './earth3d.js?v=2';
-import { CAPAS_BLOQUES, carasEstructura, carasPoste, nombreBloque, nombrePoste, dxfBloque } from './bloques3d.js?v=1';
+import { modelo3D } from './earth3d.js?v=3';
+import { CAPAS_BLOQUES, carasEstructura, carasPoste, nombreBloque, nombrePoste, dxfBloque } from './bloques3d.js?v=2';
 
 const CAPAS = {
   PLANTA_EJE: 7, PLANTA_POSTES: 8, PLANTA_CRUCETAS: 30, PLANTA_FASES: 5, PLANTA_TEXTOS: 7, PLANTA_VANOS: 3, PLANTA_ANGULOS: 6,
@@ -79,7 +79,7 @@ export function generarDXF({ S, catalogo }) {
   // ---------------------------------------------------------------- PLANTA (z = 0)
   poli('PLANTA_EJE', M.postes.map((p) => [...en(p.en[0], p.en[1]), 0]), false);
   M.postes.forEach((p, k) => {
-    for (const dx of p.postesDx) circulo('PLANTA_POSTES', [...en(p.en[0] + dx * p.perp[0], p.en[1] + dx * p.perp[1]), 0], 0.25);
+    for (const dx of p.postesDx) for (const dy of p.postesDy || [0]) circulo('PLANTA_POSTES', [...en(p.en[0] + dx * p.perp[0] + dy * p.dir[0], p.en[1] + dx * p.perp[1] + dy * p.dir[1]), 0], 0.25);
     if (/^R/.test(p.tipo || '')) {   // retención: cuadro alrededor del poste
       const s = 0.6, d = p.dir, q = p.perp;
       const c = [[-s, -s], [s, -s], [s, s], [-s, s], [-s, -s]].map(([a, b]) => [...en(p.en[0] + a * d[0] + b * q[0], p.en[1] + a * d[1] + b * q[1]), 0]);
@@ -124,8 +124,8 @@ export function generarDXF({ S, catalogo }) {
     const rot = (Math.atan2(p.perp[1], p.perp[0]) + giro) * 180 / Math.PI;
     const top = [...en(p.en[0], p.en[1]), p.cima];
     inserts.push(['3D_HERRAJES', nb, top, rot]);
-    for (const dx of p.postesDx) {
-      const pp = [...en(p.en[0] + dx * p.perp[0], p.en[1] + dx * p.perp[1]), p.cima - L];
+    for (const dx of p.postesDx) for (const dy of p.postesDy || [0]) {
+      const pp = [...en(p.en[0] + dx * p.perp[0] + dy * p.dir[0], p.en[1] + dx * p.perp[1] + dy * p.dir[1]), p.cima - L];
       inserts.push(['3D_POSTES', np, pp, rot]);
       usa(pp[0], pp[1], pp[2]);
     }
@@ -161,7 +161,7 @@ export function generarBibliotecaDXF(catalogo, { bajo = 0.7 } = {}) {
   const longitudes = [8, 9, 10, 11, 12, 13, 14, 15, 16, 18];
   longitudes.forEach((L) => bloques.set(nombrePoste(L), carasPoste(L)));
   bloques.set('EH_GENERICA', carasEstructura(null, bajo));
-  const paso = 9, porFila = 12;
+  const paso = 10, porFila = 12;
   let fila = 0, col = 0, grupo = '';
   const ext = { x0: -10, y0: 10, z0: -3, x1: paso * porFila, y1: 0, z1: 20 };
   lista.forEach((e) => {
@@ -169,10 +169,11 @@ export function generarBibliotecaDXF(catalogo, { bajo = 0.7 } = {}) {
     if (g2 !== grupo) { if (col) { fila++; col = 0; } grupo = g2; textos.push([[-8, -fila * 14 - 2, 0], g2.toUpperCase(), 1.2]); }
     const nb = nombreBloque(e);
     bloques.set(nb, carasEstructura(e, bajo));
-    const L = e.poste === 'H' ? 14 : e.nivel === 'BT' ? 9 : 12, libre = L - (0.1 * L + 0.6);
+    const prof = Math.max(...(e.geometria?.lamina?.f || [[0, 0]]).map((f) => f[1]), e.geometria?.lamina?.tr ? e.geometria.lamina.tr.bt + 1 : 0);
+    const L = e.poste === 'H' || prof > 3.2 ? 14 : e.nivel === 'BT' ? 9 : 12, libre = L - (0.1 * L + 0.6);
     const x = col * paso, y = -fila * 14 - 6;
     ins.push(['3D_HERRAJES', nb, [x, y, libre], 0]);
-    for (const dx of e.geometria?.postes || [0]) ins.push(['3D_POSTES', nombrePoste(L), [x + dx, y, libre - L], 0]);
+    for (const dx of e.geometria?.postes || [0]) for (const dy of e.geometria?.postes_y || [0]) ins.push(['3D_POSTES', nombrePoste(L), [x + dx, y + dy, libre - L], 0]);
     textos.push([[x - 3, y - 4, 0], e.codigo, 0.45], [[x - 3, y - 4.7, 0], e.nombre.slice(0, 60), 0.22]);
     col++; if (col >= porFila) { col = 0; fila++; }
     ext.y0 = Math.min(ext.y0, y - 6);

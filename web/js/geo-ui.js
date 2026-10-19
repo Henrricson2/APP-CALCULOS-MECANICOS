@@ -2,7 +2,7 @@
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
 import { obtenerCotas, FUENTES, muestrasRecorrido, vincenty } from './elevacion.js';
 import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=15';
-import { cargarCatalogo, abrirSelector } from './estructuras-eh.js?v=4';
+import { cargarCatalogo, abrirSelector } from './estructuras-eh.js?v=5';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
