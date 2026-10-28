@@ -1,7 +1,7 @@
 // Igual que la app de APUs: network-first para el código propio, cache-first para
 // recursos estáticos y para Python en el navegador (Pyodide, ~40 MB, se descarga una vez).
-const CACHE = 'calculos-mt-v32';
-const APP = ['./', './index.html', './styles.css?v=19', './js/app.js?v=30', './js/motor.js?v=19', './js/perfil.js?v=15', './js/geo-ui.js?v=26', './js/estructuras-eh.js?v=6', './js/visor3d.js?v=2', './js/bloques3d.js?v=2', './js/earth3d.js?v=3', './js/cad.js?v=3', './js/clima.js?v=1', './js/mapa.js?v=15', './js/elevacion.js?v=2', './js/geo-ligero.js?v=1', './js/pyworker.js?v=1', './py/motor.json',
+const CACHE = 'calculos-mt-v33';
+const APP = ['./', './index.html', './styles.css?v=19', './js/app.js?v=31', './js/motor.js?v=19', './js/perfil.js?v=15', './js/geo-ui.js?v=27', './js/estructuras-eh.js?v=6', './js/visor3d.js?v=2', './js/bloques3d.js?v=2', './js/earth3d.js?v=3', './js/cad.js?v=3', './js/clima.js?v=1', './js/mapa.js?v=15', './js/elevacion.js?v=3', './js/geo-ligero.js?v=1', './js/pyworker.js?v=1', './py/motor.json',
   './manifest.webmanifest', './icon.svg', './icon-192.png', './defaults.json', './ejemplo.json', './clima_huila.json', './estructuras_eh.json'];
 
 self.addEventListener('install', (e) => {
