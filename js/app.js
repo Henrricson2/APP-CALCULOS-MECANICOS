@@ -108,7 +108,7 @@ function progresoMotor(msg, pct) {
   if (msg) {
     const p = pct != null ? ` ${Math.round(pct)} %` : '';
     if (txt) txt.textContent = `${msg}${p}`;
-    if (chip) chip.innerHTML = `○ <span class="txt">Cargando Python${p}</span>`;
+    if (chip) chip.innerHTML = `○${p} <span class="txt">Cargando Python</span>`;
     if (S.esperandoMotor) cargando(`${msg}${p}`);
   } else if (S.motor.py) { pintarMotor(); if (S.esperandoMotor) cargando(''); }
 }
