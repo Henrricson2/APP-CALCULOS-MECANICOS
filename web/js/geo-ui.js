@@ -2,7 +2,7 @@
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
 import { obtenerCotas, FUENTES, muestrasRecorrido, vincenty } from './elevacion.js';
 import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=15';
-import { cargarCatalogo, abrirSelector } from './estructuras-eh.js?v=5';
+import { cargarCatalogo, abrirSelector } from './estructuras-eh.js?v=6';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
@@ -436,7 +436,7 @@ export function instalarGeo(C) {
   function modalTempletes(i) {
     const p = S.apoyos[i]; if (!p) return;
     let filas = C.clon(p.templetes || []);
-    const amarre = p.poste_altura ? amarreDePoste(+p.poste_altura) : p.altura;
+    const amarre = p.poste_altura ? amarreDePoste(+p.poste_altura, p) : p.altura;
     const cables = S.catCables || [];
     const m = modal(`Templetes · ${p.nombre}`, '<div id="tp-cuerpo"></div>', '<button class="btn" data-x>Cancelar</button><button class="btn btn-primary" data-ok>Guardar</button>');
     const pintar = () => {

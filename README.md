@@ -1,4 +1,6 @@
-# App de Cálculos Mecánicos – Líneas de Media Tensión (v2.2 · Etapa 1)
+# App de Cálculos Mecánicos – Líneas de Media Tensión (versión 1.0)
+
+Notas de la versión: [CAMBIOS.md](CAMBIOS.md).
 
 Plantillado de catenarias, cambio de estado, distancias de seguridad, gravivano/eolovano y
 exportación a Excel, PDF y DXF. **Multiplataforma: PC, web y celular**, con la misma
