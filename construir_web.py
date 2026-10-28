@@ -7,7 +7,7 @@ Genera:
   web/defaults.json        parámetros por defecto y biblioteca de conductores
   web/ejemplo.json         proyecto de ejemplo (ejemplos/DATOS_EJEMPLO_COMPLETO.xlsx)
   web/icon-192.png / 512   iconos para instalar la app
-  web/py/                  copia del motor Python para el modo "Python en el navegador"
+  web/py/                  copia del motor Python (y py/motor.json, todo en un archivo) para el modo "Python en el navegador"
                            (web estática: GitHub Pages, celular sin servidor)
 """
 import json
@@ -59,7 +59,11 @@ def main():
         shutil.copy2(f, destino / f.name)
         archivos.append(f.name)
     (WEB / "py" / "manifest.json").write_text(json.dumps(archivos), encoding="utf-8")
-    iconos()
+    # todo el motor en un solo archivo: el modo web lo descarga de una vez (más rápido en celulares)
+    fuentes = {n: (destino / n).read_text(encoding="utf-8") for n in archivos}
+    (WEB / "py" / "motor.json").write_text(json.dumps(fuentes, ensure_ascii=False), encoding="utf-8")
+    if not (WEB / "icon-192.png").exists() or not (WEB / "icon-512.png").exists():
+        iconos()
     print("web/ preparada:", ", ".join(archivos))
 
 

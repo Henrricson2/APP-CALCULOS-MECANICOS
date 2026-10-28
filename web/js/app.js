@@ -1,5 +1,5 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
-import { detectarMotor } from './motor.js?v=17';
+import { detectarMotor } from './motor.js?v=18';
 import { dibujarPerfil, paginas, paginasEscala, perfilInteractivo, abscisaK, COLORES_CIRCUITOS } from './perfil.js?v=15';
 import { instalarGeo } from './geo-ui.js?v=25';
 import { generarKML3D } from './earth3d.js?v=3';
@@ -7,6 +7,8 @@ import { generarDXF, generarBibliotecaDXF } from './cad.js?v=3';
 import { visorProyecto } from './visor3d.js?v=2';
 import { cargarCatalogo } from './estructuras-eh.js?v=6';
 import { cargarClima, buscarMunicipio, propuesta, aplicarClima, editadas, menosExigente, renombrar, NORMA, MODOS, DELTA_CONDUCTOR } from './clima.js?v=1';
+// celulares y tabletas con navegador antiguo
+if (!Array.prototype.at) Object.defineProperty(Array.prototype, 'at', { value(n) { n = Math.trunc(n) || 0; if (n < 0) n += this.length; return this[n]; }, configurable: true, writable: true });
 
 const CLAVE = 'cm-proyecto-v2';
 const $ = (s, el = document) => el.querySelector(s);
@@ -87,13 +89,28 @@ function payload() { return { proyecto: S.proyecto, apoyos: S.apoyos, terreno: S
 // ------------------------------------------------------------------ motor
 async function asegurarMotor() {
   if (S.motor.tipo === 'navegador' && !S.motor.py) {
+    S.esperandoMotor = true; progresoMotor(S.motor.msg || 'Preparando Python en el navegador…', S.motor.pct);
     try { await S.motor.listo(); } catch (e) {
+      S.esperandoMotor = false;
       cargando(''); modal('No se pudo cargar Python en el navegador',
         `<p>${h(e.message)}</p><p class="muted small">La primera vez se necesita internet para descargar Python (Pyodide, unos 25 MB). Pulse «Calcular» para reintentar. En el PC también puede usar <code>INICIAR_APP.bat</code>.</p>`);
       throw e;
     }
+    S.esperandoMotor = false;
     pintarMotor();
   }
+}
+// avance de la carga de Python (modo web): en el pie del menú y, si el usuario está esperando, en pantalla
+function progresoMotor(msg, pct) {
+  if (!S.motor) return;
+  S.motor.msg = msg;
+  const txt = $('#motor-texto'), chip = $('#engine-chip');
+  if (msg) {
+    const p = pct != null ? ` ${Math.round(pct)} %` : '';
+    if (txt) txt.textContent = `${msg}${p}`;
+    if (chip) chip.innerHTML = `○${p} <span class="txt">Cargando Python</span>`;
+    if (S.esperandoMotor) cargando(`${msg}${p}`);
+  } else if (S.motor.py) { pintarMotor(); if (S.esperandoMotor) cargando(''); }
 }
 function pintarMotor() {
   const chip = $('#engine-chip'), dot = $('#motor-dot'), txt = $('#motor-texto');
@@ -104,8 +121,8 @@ function pintarMotor() {
     chip.className = 'engine-chip ok'; chip.innerHTML = `● <span class="txt">Python en el navegador</span>`;
     dot.className = 'status-dot ok'; txt.textContent = `Motor Python v${S.motor.version} (navegador)`;
   } else {
-    chip.className = 'engine-chip warn'; chip.innerHTML = `○ <span class="txt">Python en navegador (se carga al calcular)</span>`;
-    dot.className = 'status-dot'; txt.textContent = 'Modo web: Python se carga al primer cálculo';
+    chip.className = 'engine-chip warn'; chip.innerHTML = `○ <span class="txt">Cargando Python…</span>`;
+    dot.className = 'status-dot'; txt.textContent = S.motor.msg ? S.motor.msg + (S.motor.pct != null ? ` ${Math.round(S.motor.pct)} %` : '') : 'Modo web: cargando Python…';
   }
 }
 
@@ -898,7 +915,7 @@ async function iniciar() {
   S.meta = guardado.meta || {};
   asegurarClima();
 
-  S.motor = await detectarMotor((msg) => { if (msg) cargando(msg); });
+  S.motor = await detectarMotor((msg, pct) => progresoMotor(msg, pct));
   S.config = await S.motor.config();
   if (S.motor.tipo === 'servidor' && def.version && S.motor.version && S.motor.version !== def.version) {
     modal('Reinicie el servidor de la app', `<p>La app se actualizó a la versión <b>${h(def.version)}</b>, pero el servidor que está corriendo es la <b>${h(S.motor.version)}</b>. Algunas funciones nuevas no responderán hasta reiniciarlo.</p><ol class="steps"><li><span>Cierre la ventana negra del servidor (o pulse Ctrl+C en ella).</span></li><li><span>Ejecute de nuevo <code>INICIAR_APP.bat</code>.</span></li><li><span>Recargue esta página con <b>Ctrl+F5</b>.</span></li></ol>`);
@@ -909,6 +926,10 @@ async function iniciar() {
   if (sincronizado) toast('Se cargó la versión más reciente guardada del proyecto.', 'success');
   if (!S.meta.id && S.apoyos.length) GEO.guardarServidor(); // todo proyecto queda registrado
   if (S.apoyos.length >= 2 && S.motor.tipo === 'servidor' && !S.resultado) calcular();
+  // modo web: Python se descarga en segundo plano desde que abre la página (no hay que esperar al calcular)
+  if (S.motor.tipo === 'navegador') S.motor.listo().then(pintarMotor).catch((e) => {
+    const txt = $('#motor-texto'); if (txt) txt.textContent = 'No cargó Python: ' + e.message + ' · Toque «Calcular» para reintentar';
+  });
 }
 
 iniciar().catch((e) => { console.error(e); toast('No se pudo iniciar la app: ' + e.message, 'error'); });
