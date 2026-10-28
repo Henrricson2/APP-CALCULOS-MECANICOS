@@ -256,7 +256,8 @@ tr.row-actual td { background: var(--soft-teal); }
   .form-grid .full { grid-column: auto; }
   .page-head h1 { font-size: 20px; }
   .engine-chip span.txt { display: none; }
-  #install-button { display: none; }
+  #install-button .txt { display: none; }
+  #install-button { font-size: 17px; padding: 4px 8px; color: var(--navy); }
 }
 @media (max-width: 520px) {
   .grid-4 { grid-template-columns: 1fr 1fr; gap: 10px; }
