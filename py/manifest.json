@@ -1,1 +1,1 @@
-["__init__.py", "cambio_estado.py", "carga_estructuras.py", "catenaria.py", "config.py", "datos.py", "estructuras.py", "exportar.py", "geo.py", "importacion.py", "kml.py", "mapa_html.py", "motor.py", "multicircuito.py", "plantillado.py"]
+["__init__.py", "cambio_estado.py", "carga_estructuras.py", "catenaria.py", "config.py", "datos.py", "estructuras.py", "exportar.py", "geo.py", "importacion.py", "kml.py", "mapa_html.py", "motor.py", "multicircuito.py", "plantillado.py", "raices.py"]

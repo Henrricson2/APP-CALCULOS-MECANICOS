@@ -19,7 +19,7 @@ import math
 from dataclasses import dataclass
 
 import numpy as np
-from scipy.optimize import brentq
+from .raices import brentq
 
 from .cambio_estado import ErrorCalculo
 

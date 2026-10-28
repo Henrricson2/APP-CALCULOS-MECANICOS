@@ -1,5 +1,5 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
-import { detectarMotor } from './motor.js?v=16';
+import { detectarMotor } from './motor.js?v=17';
 import { dibujarPerfil, paginas, paginasEscala, perfilInteractivo, abscisaK, COLORES_CIRCUITOS } from './perfil.js?v=15';
 import { instalarGeo } from './geo-ui.js?v=25';
 import { generarKML3D } from './earth3d.js?v=3';
@@ -89,7 +89,7 @@ async function asegurarMotor() {
   if (S.motor.tipo === 'navegador' && !S.motor.py) {
     try { await S.motor.listo(); } catch (e) {
       cargando(''); modal('No se pudo cargar Python en el navegador',
-        `<p>${h(e.message)}</p><p class="muted small">La primera vez se necesita internet para descargar Pyodide (~40 MB). Alternativa: ejecute <code>INICIAR_APP.bat</code> en el PC.</p>`);
+        `<p>${h(e.message)}</p><p class="muted small">La primera vez se necesita internet para descargar Python (Pyodide, unos 25 MB). Pulse «Calcular» para reintentar. En el PC también puede usar <code>INICIAR_APP.bat</code>.</p>`);
       throw e;
     }
     pintarMotor();
