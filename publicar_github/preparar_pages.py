@@ -39,8 +39,7 @@ def main(destino: Path):
     sw = destino / "service-worker.js"
     s = sw.read_text(encoding="utf-8")
     s = re.sub(r"'\./js/app\.js\?v=\d+'", f"'./js/app.bundle.js?v={v}'", s)
-    s = re.sub(r", '\./js/(motor|perfil|geo-ui|estructuras-eh|visor3d|bloques3d|earth3d|cad|clima|mapa)\.js[^']*'", "", s)
-    s = s.replace("'./js/elevacion.js', ", "")
+    s = re.sub(r", '\./js/(motor|perfil|geo-ui|estructuras-eh|visor3d|bloques3d|earth3d|cad|clima|mapa|elevacion|geo-ligero)\.js[^']*'", "", s)
     sw.write_text(s, encoding="utf-8")
     print("web lista en", destino, "con js/app.bundle.js")
 
