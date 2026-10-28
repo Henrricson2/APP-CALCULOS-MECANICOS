@@ -5,7 +5,9 @@
 //     queda en caché del navegador y funciona sin internet.
 
 const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v0.27.2/full/';
-const PAQUETES = ['numpy', 'scipy', 'pandas', 'matplotlib', 'openpyxl'];
+// Al iniciar solo numpy y pandas (lo justo para calcular): así carga también en celulares y tabletas.
+// matplotlib (PDF) y openpyxl (Excel, desde PyPI con micropip) se cargan la primera vez que se usan.
+const PAQUETES = ['numpy', 'pandas'];
 
 async function leerError(r) {
   try { const j = await r.json(); return (j.errores || []).join('\n') || r.statusText; }
@@ -124,12 +126,12 @@ export class MotorPyodide {
     this.onProgreso = onProgreso || (() => {});
     this._promesa = null;
   }
-  listo() { return (this._promesa ||= this._iniciar()); }
+  listo() { return (this._promesa ||= this._iniciar().catch((e) => { this._promesa = null; throw e; })); }
   async _iniciar() {
     this.onProgreso('Descargando Python (Pyodide)…');
     if (!window.loadPyodide) await cargarScript(PYODIDE_URL + 'pyodide.js');
     const py = await window.loadPyodide({ indexURL: PYODIDE_URL });
-    this.onProgreso('Cargando numpy, scipy, pandas y matplotlib…');
+    this.onProgreso('Cargando numpy y pandas…');
     await py.loadPackage(PAQUETES);
     this.onProgreso('Cargando el motor de cálculo…');
     const lista = await (await fetch('py/manifest.json', { cache: 'no-cache' })).json();
@@ -141,14 +143,28 @@ export class MotorPyodide {
     py.runPython(`
 import sys, json
 sys.path.insert(0, '/app')
-import matplotlib
-matplotlib.use('Agg')
 from calculos_mecanicos import motor
 `);
     this.py = py;
     this.version = py.runPython('motor.info()["version"]');
     this.onProgreso('');
     return true;
+  }
+  // carga un paquete adicional solo cuando se necesita
+  async _asegurar(nombre) {
+    this._extra ||= {};
+    return (this._extra[nombre] ||= (async () => {
+      if (nombre === 'openpyxl') {
+        this.onProgreso('Descargando el lector de Excel (openpyxl)…');
+        await this.py.loadPackage('micropip');
+        await this.py.runPythonAsync("import micropip\nawait micropip.install('openpyxl')");
+      } else {
+        this.onProgreso(`Cargando ${nombre}…`);
+        await this.py.loadPackage(nombre);
+        if (nombre === 'matplotlib') this.py.runPython("import matplotlib\nmatplotlib.use('Agg')");
+      }
+      this.onProgreso('');
+    })().catch((e) => { delete this._extra[nombre]; this.onProgreso(''); throw e; }));
   }
   async info() {
     await this.listo();
@@ -161,11 +177,14 @@ from calculos_mecanicos import motor
   }
   async importar(archivo) {
     await this.listo();
+    await this._asegurar('openpyxl');
     this.py.FS.writeFile('/tmp/entrada.xlsx', new Uint8Array(await archivo.arrayBuffer()));
     return JSON.parse(this.py.runPython(`json.dumps(motor.importar_excel(open('/tmp/entrada.xlsx','rb').read()), ensure_ascii=False)`));
   }
   async exportar(payload, formato) {
     await this.listo();
+    if (formato === 'xlsx') await this._asegurar('openpyxl');
+    if (formato === 'pdf') await this._asegurar('matplotlib');
     this.py.globals.set('PAYLOAD', JSON.stringify(payload));
     this.py.globals.set('FMT', formato);
     const meta = JSON.parse(this.py.runPython(`
@@ -175,16 +194,30 @@ json.dumps([_n, _m])`));
     const datos = this.py.FS.readFile('/tmp/salida.bin');
     return { blob: new Blob([datos], { type: meta[1] }), nombre: meta[0] };
   }
+  // ejecuta y, si falta openpyxl o matplotlib, los carga y repite una vez
+  async _conPaquetes(fn) {
+    try { return fn(); } catch (e) {
+      const m = String(e?.message || e);
+      const falta = /openpyxl/.test(m) ? 'openpyxl' : /matplotlib/.test(m) ? 'matplotlib' : null;
+      if (!falta || this._extra?.[falta]) throw e;
+      await this._asegurar(falta);
+      return fn();
+    }
+  }
   async rpc(nombre, datos) {
     await this.listo();
-    this.py.globals.set('RPC_N', nombre);
-    this.py.globals.set('RPC_D', JSON.stringify(datos || {}));
-    return JSON.parse(this.py.runPython('motor.js_rpc(RPC_N, RPC_D)'));
+    if (/importar|plantilla|excel/i.test(nombre)) await this._asegurar('openpyxl');
+    return this._conPaquetes(() => {
+      this.py.globals.set('RPC_N', nombre);
+      this.py.globals.set('RPC_D', JSON.stringify(datos || {}));
+      return JSON.parse(this.py.runPython('motor.js_rpc(RPC_N, RPC_D)'));
+    });
   }
   async config() { try { return JSON.parse(localStorage.getItem('cm-config') || '{}'); } catch { return {}; } }
   async guardarConfig(c) { try { localStorage.setItem('cm-config', JSON.stringify(c)); } catch { /* */ } return { ok: true }; }
   async plantilla() {
     await this.listo();
+    await this._asegurar('openpyxl');
     this.py.runPython(`open('/tmp/plantilla.xlsx','wb').write(motor.plantilla_excel())`);
     return { blob: new Blob([this.py.FS.readFile('/tmp/plantilla.xlsx')]), nombre: 'PLANTILLA_DATOS.xlsx' };
   }
