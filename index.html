@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#17324d">
+  <meta name="description" content="Cálculos mecánicos y plantillado de catenarias para líneas de media tensión.">
+  <title>Cálculos Mecánicos MT</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="styles.css?v=18">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="26" height="26"><path d="M5 6v20M27 6v20" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M5 9c7 12 15 12 22 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <strong>Cálculos Mecánicos</strong>
+          <span>Líneas de media tensión</span>
+        </div>
+      </div>
+
+      <nav>
+        <div class="nav-group">
+          <span class="nav-label">Proyecto</span>
+          <button class="nav-item" data-view="proyectos"><span class="nav-icon">▣</span> Proyectos</button>
+          <button class="nav-item active" data-view="resumen"><span class="nav-icon">⌂</span> Resumen</button>
+          <button class="nav-item" data-view="datos"><span class="nav-icon">📍</span> Estructuras y mapa</button>
+          <button class="nav-item" data-view="parametros"><span class="nav-icon">⚙</span> Parámetros</button>
+        </div>
+        <div class="nav-group">
+          <span class="nav-label">Cálculo</span>
+          <button class="nav-item" data-view="perfil"><span class="nav-icon">⌒</span> Perfil / plantillado</button>
+          <button class="nav-item" data-view="vista3d"><span class="nav-icon">◆</span> Vista 3D</button>
+          <button class="nav-item" data-view="resultados"><span class="nav-icon">▦</span> Resultados</button>
+          <button class="nav-item" data-view="advertencias"><span class="nav-icon">⚠</span> Advertencias <span class="nav-count" id="nav-adv" hidden>0</span></button>
+        </div>
+        <div class="nav-group">
+          <span class="nav-label">Salidas</span>
+          <button class="nav-item" data-view="exportar"><span class="nav-icon">⇩</span> Exportar</button>
+          <button class="nav-item" data-view="acerca"><span class="nav-icon">ⓘ</span> Normas y ayuda</button>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="status-dot" id="motor-dot"></span>
+        <span id="motor-texto">Conectando motor…</span>
+      </div>
+    </aside>
+    <div class="scrim" id="scrim" hidden></div>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-button menu-button" id="menu-button" aria-label="Abrir menú">☰</button>
+          <div class="breadcrumb"><span class="bc-proyecto" id="bc-proyecto">Proyecto</span> <span>/</span> <strong id="breadcrumb-current">Resumen</strong></div>
+        </div>
+        <div class="top-actions">
+          <button class="icon-button" id="install-button" hidden title="Instalar aplicación">⇩ Instalar</button>
+          <span class="engine-chip" id="engine-chip" title="Motor de cálculo">…</span>
+          <button class="btn btn-primary" id="btn-calcular" type="button">▶ Calcular</button>
+        </div>
+      </header>
+
+      <div id="view-container" class="content-area" tabindex="-1"></div>
+    </main>
+  </div>
+
+  <div id="modal-root" class="modal-root" hidden></div>
+  <div id="toast-root" class="toast-root" aria-live="polite"></div>
+  <input type="file" id="file-excel" accept=".xlsx,.xlsm,.xls,.csv,.txt,.kml,.kmz" hidden>
+  <input type="file" id="file-json" accept=".json,application/json" hidden>
+
+  <script type="module" src="js/app.js?v=26"></script>
+</body>
+</html>

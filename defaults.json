@@ -1,0 +1,281 @@
+{
+ "version": "1.0.0",
+ "proyecto_defecto": {
+  "nombre": "Proyecto de línea de media tensión",
+  "conductor": {
+   "nombre": "2/0 ECO",
+   "seccion_mm2": 88.74,
+   "carga_rotura_kgf": 2404.0,
+   "peso_kgf_m": 0.5486,
+   "modulo_elasticidad": 8056.0,
+   "coef_dilatacion": 1.91e-05,
+   "diametro_mm": 16.6969
+  },
+  "hipotesis": {
+   "TMAX": {
+    "nombre": "Tensión máxima (0 °C + viento 100 km/h)",
+    "temperatura_c": 0.0,
+    "viento_kmh": 100.0,
+    "hielo_kgf_m": 0.0,
+    "limite_fraccion_rotura": 0.5
+   },
+   "EDS": {
+    "nombre": "Tensión de cada día EDS (20 °C)",
+    "temperatura_c": 20.0,
+    "viento_kmh": 0.0,
+    "hielo_kgf_m": 0.0,
+    "limite_fraccion_rotura": 0.2
+   },
+   "FMIN": {
+    "nombre": "Flecha mínima (0 °C, sin viento)",
+    "temperatura_c": 0.0,
+    "viento_kmh": 0.0,
+    "hielo_kgf_m": 0.0,
+    "limite_fraccion_rotura": null
+   },
+   "FMAX": {
+    "nombre": "Flecha máxima / plantilla caliente (50 °C)",
+    "temperatura_c": 50.0,
+    "viento_kmh": 0.0,
+    "hielo_kgf_m": 0.0,
+    "limite_fraccion_rotura": null
+   }
+  },
+  "criterios": {
+   "tension_kv": 13.2,
+   "distancia_minima_terreno_m": 5.8,
+   "k_separacion": 0.75,
+   "long_cadena_aisladores_m": 0.0,
+   "altura_amarre_defecto_m": null,
+   "fluencia_delta_t_c": 0.0,
+   "desperdicio_conductor": 0.03,
+   "n_fases": 3,
+   "vano_min_alerta_m": 15.0,
+   "vano_max_alerta_m": 300.0,
+   "pendiente_max_alerta": 0.15,
+   "hipotesis_estructuras": "TMAX",
+   "empotramiento_coef": 0.1,
+   "empotramiento_base_m": 0.6,
+   "amarre_bajo_cima_m": 0.7,
+   "poste_diametro_medio_m": 0.25,
+   "fs_poste": 2.5,
+   "fs_templete": 2.5,
+   "peso_herrajes_kgf": 40.0,
+   "nombre_circuito_principal": "Circuito 1",
+   "separacion_min_circuitos_m": 1.2,
+   "separacion_vano_factor": 0.75
+  },
+  "salida": {
+   "vanos_por_pagina": 5,
+   "exageracion_vertical_dxf": 1.0,
+   "intervalo_cotas_m": 5.0,
+   "exageracion_vertical_perfil": 5.0,
+   "altura_texto_dxf": 1.5,
+   "puntos_por_vano": 200
+  },
+  "modo_flecha": "cambio_estado",
+  "hipotesis_plantillado": "FMAX",
+  "hipotesis_arrancamiento": "FMIN",
+  "circuitos": []
+ },
+ "conductores": {
+  "2/0 ECO": {
+   "nombre": "2/0 ECO",
+   "seccion_mm2": 88.74,
+   "carga_rotura_kgf": 2404.0,
+   "peso_kgf_m": 0.5486,
+   "modulo_elasticidad": 8056.0,
+   "coef_dilatacion": 1.91e-05,
+   "diametro_mm": 16.6969
+  },
+  "2/0 ACSR QUAIL (EH-RAA-004)": {
+   "nombre": "2/0 ACSR QUAIL",
+   "seccion_mm2": 78.645,
+   "carga_rotura_kgf": 2425.0,
+   "peso_kgf_m": 0.2725,
+   "modulo_elasticidad": 8086.0,
+   "coef_dilatacion": 1.89e-05,
+   "diametro_mm": 11.354
+  },
+  "2 ACSR SPARROW 6/1": {
+   "nombre": "2 ACSR SPARROW",
+   "seccion_mm2": 39.22,
+   "carga_rotura_kgf": 1293.0,
+   "peso_kgf_m": 0.1356,
+   "modulo_elasticidad": 8086.0,
+   "coef_dilatacion": 1.89e-05,
+   "diametro_mm": 8.01
+  },
+  "1/0 ACSR RAVEN 6/1": {
+   "nombre": "1/0 ACSR RAVEN",
+   "seccion_mm2": 62.38,
+   "carga_rotura_kgf": 1987.0,
+   "peso_kgf_m": 0.216,
+   "modulo_elasticidad": 8086.0,
+   "coef_dilatacion": 1.89e-05,
+   "diametro_mm": 10.11
+  },
+  "3/0 ACSR PIGEON 6/1": {
+   "nombre": "3/0 ACSR PIGEON",
+   "seccion_mm2": 99.2,
+   "carga_rotura_kgf": 3003.0,
+   "peso_kgf_m": 0.3436,
+   "modulo_elasticidad": 8086.0,
+   "coef_dilatacion": 1.89e-05,
+   "diametro_mm": 12.75
+  },
+  "4/0 ACSR PENGUIN 6/1": {
+   "nombre": "4/0 ACSR PENGUIN",
+   "seccion_mm2": 125.1,
+   "carga_rotura_kgf": 3787.0,
+   "peso_kgf_m": 0.433,
+   "modulo_elasticidad": 8086.0,
+   "coef_dilatacion": 1.89e-05,
+   "diametro_mm": 14.31
+  },
+  "266.8 ACSR PARTRIDGE 26/7": {
+   "nombre": "266.8 ACSR PARTRIDGE",
+   "seccion_mm2": 157.2,
+   "carga_rotura_kgf": 5126.0,
+   "peso_kgf_m": 0.546,
+   "modulo_elasticidad": 7700.0,
+   "coef_dilatacion": 1.89e-05,
+   "diametro_mm": 16.31
+  },
+  "336.4 ACSR LINNET 26/7": {
+   "nombre": "336.4 ACSR LINNET",
+   "seccion_mm2": 198.2,
+   "carga_rotura_kgf": 6396.0,
+   "peso_kgf_m": 0.689,
+   "modulo_elasticidad": 7700.0,
+   "coef_dilatacion": 1.89e-05,
+   "diametro_mm": 18.31
+  }
+ },
+ "postes": [
+  {
+   "nombre": "8 m · 510 kgf",
+   "altura": 8,
+   "rotura": 510,
+   "peso": 500
+  },
+  {
+   "nombre": "9 m · 510 kgf",
+   "altura": 9,
+   "rotura": 510,
+   "peso": 580
+  },
+  {
+   "nombre": "10 m · 510 kgf",
+   "altura": 10,
+   "rotura": 510,
+   "peso": 680
+  },
+  {
+   "nombre": "10 m · 750 kgf",
+   "altura": 10,
+   "rotura": 750,
+   "peso": 800
+  },
+  {
+   "nombre": "11 m · 510 kgf",
+   "altura": 11,
+   "rotura": 510,
+   "peso": 780
+  },
+  {
+   "nombre": "12 m · 510 kgf",
+   "altura": 12,
+   "rotura": 510,
+   "peso": 900
+  },
+  {
+   "nombre": "12 m · 750 kgf",
+   "altura": 12,
+   "rotura": 750,
+   "peso": 1050
+  },
+  {
+   "nombre": "12 m · 1050 kgf",
+   "altura": 12,
+   "rotura": 1050,
+   "peso": 1250
+  },
+  {
+   "nombre": "12 m · 1350 kgf",
+   "altura": 12,
+   "rotura": 1350,
+   "peso": 1450
+  },
+  {
+   "nombre": "14 m · 750 kgf",
+   "altura": 14,
+   "rotura": 750,
+   "peso": 1350
+  },
+  {
+   "nombre": "14 m · 1050 kgf",
+   "altura": 14,
+   "rotura": 1050,
+   "peso": 1550
+  },
+  {
+   "nombre": "14 m · 1350 kgf",
+   "altura": 14,
+   "rotura": 1350,
+   "peso": 1750
+  },
+  {
+   "nombre": "16 m · 1050 kgf",
+   "altura": 16,
+   "rotura": 1050,
+   "peso": 1900
+  }
+ ],
+ "cables_templete": [
+  {
+   "nombre": "1/4\" Siemens-Martin",
+   "rotura": 1429
+  },
+  {
+   "nombre": "1/4\" alta resistencia (HS)",
+   "rotura": 2155
+  },
+  {
+   "nombre": "1/4\" extra alta resistencia (EHS)",
+   "rotura": 3016
+  },
+  {
+   "nombre": "5/16\" Siemens-Martin",
+   "rotura": 2427
+  },
+  {
+   "nombre": "5/16\" alta resistencia (HS)",
+   "rotura": 3629
+  },
+  {
+   "nombre": "5/16\" extra alta resistencia (EHS)",
+   "rotura": 5080
+  },
+  {
+   "nombre": "3/8\" Siemens-Martin",
+   "rotura": 3152
+  },
+  {
+   "nombre": "3/8\" alta resistencia (HS)",
+   "rotura": 4899
+  },
+  {
+   "nombre": "3/8\" extra alta resistencia (EHS)",
+   "rotura": 6985
+  },
+  {
+   "nombre": "1/2\" alta resistencia (HS)",
+   "rotura": 8528
+  },
+  {
+   "nombre": "1/2\" extra alta resistencia (EHS)",
+   "rotura": 12202
+  }
+ ]
+}

@@ -1,0 +1,4394 @@
+{
+ "version": 1,
+ "generado": "2026-10-16",
+ "fuente": {
+  "normales": "IDEAM – Normales Climatológicas de Colombia, periodo 1991-2020 (datos.gov.co, conjunto nsz2-kzcq)",
+  "extremos": "IDEAM – Temperatura Mínima del Aire (afdg-3zpb) y Temperatura Máxima del Aire (ccvq-rp9s), estaciones automáticas del Huila, extremos diarios depurados",
+  "cabeceras": "DANE – DIVIPOLA (gdxc-w37w); altura: modelo digital Copernicus DEM 90 m (Open-Meteo)"
+ },
+ "metodo": {
+  "gradiente_c_por_100m": {
+   "MED": -0.75,
+   "MIN": -0.606,
+   "MAX": -0.859
+  },
+  "r2": {
+   "MED": 0.967,
+   "MIN": 0.89,
+   "MAX": 0.969
+  },
+  "estaciones": {
+   "MED": 24,
+   "MIN": 26,
+   "MAX": 21
+  },
+  "margen_tmin_abs_c": -6.8,
+  "margen_tmax_abs_c": 6.9,
+  "pares_sensor_normal": [
+   {
+    "codigo": "21015020",
+    "estacion": "SEVILLA AUT",
+    "dias": 574,
+    "desde": "2024-12-12",
+    "hasta": "2026-10-14",
+    "dmin": -3.2,
+    "dmin_valido": true,
+    "dmax": 4.4,
+    "dmax_valido": true
+   },
+   {
+    "codigo": "21105030",
+    "estacion": "ALGECIRAS - AUT",
+    "dias": 1846,
+    "desde": "2019-03-05",
+    "hasta": "2026-10-14",
+    "dmin": -6.8,
+    "dmin_valido": true,
+    "dmax": null,
+    "dmax_valido": false
+   },
+   {
+    "codigo": "21045010",
+    "estacion": "BETULIA LA",
+    "dias": 647,
+    "desde": "2023-02-05",
+    "hasta": "2026-10-14",
+    "dmin": -3.4,
+    "dmin_valido": true,
+    "dmax": 5.8,
+    "dmax_valido": true
+   },
+   {
+    "codigo": "21145080",
+    "estacion": "SANTA ANA - AUT",
+    "dias": 865,
+    "desde": "2019-03-05",
+    "hasta": "2026-10-14",
+    "dmin": -3.3,
+    "dmin_valido": true,
+    "dmax": 5.9,
+    "dmax_valido": true
+   },
+   {
+    "codigo": "21065040",
+    "estacion": "ZULUAGA AUT",
+    "dias": 1263,
+    "desde": "2023-01-21",
+    "hasta": "2026-10-14",
+    "dmin": -3.7,
+    "dmin_valido": true,
+    "dmax": 6.5,
+    "dmax_valido": true
+   },
+   {
+    "codigo": "21055020",
+    "estacion": "ESCUELA AGRICOLA LA PLATA",
+    "dias": 314,
+    "desde": "2024-02-12",
+    "hasta": "2025-10-22",
+    "dmin": -3.1,
+    "dmin_valido": true,
+    "dmax": 4.7,
+    "dmax_valido": true
+   },
+   {
+    "codigo": "21025030",
+    "estacion": "ALTAMIRA EL GRIFO - AUT",
+    "dias": 991,
+    "desde": "2023-02-04",
+    "hasta": "2026-10-14",
+    "dmin": -1.3,
+    "dmin_valido": true,
+    "dmax": 6.9,
+    "dmax_valido": true
+   },
+   {
+    "codigo": "21035040",
+    "estacion": "LIBANO EL",
+    "dias": 1254,
+    "desde": "2023-01-24",
+    "hasta": "2026-10-14",
+    "dmin": -3.0,
+    "dmin_valido": true,
+    "dmax": 6.3,
+    "dmax_valido": true
+   },
+   {
+    "codigo": "21125010",
+    "estacion": "SANTA MARIA",
+    "dias": 1263,
+    "desde": "2023-02-06",
+    "hasta": "2026-10-14",
+    "dmin": -3.1,
+    "dmin_valido": true,
+    "dmax": 5.6,
+    "dmax_valido": true
+   },
+   {
+    "codigo": "21115100",
+    "estacion": "PALACIO-VEGALARGA",
+    "dias": 648,
+    "desde": "2023-02-07",
+    "hasta": "2026-10-14",
+    "dmin": -1.8,
+    "dmin_valido": true,
+    "dmax": 5.4,
+    "dmax_valido": true
+   },
+   {
+    "codigo": "21105040",
+    "estacion": "POTOSI HACIENDA",
+    "dias": 685,
+    "desde": "2023-02-05",
+    "hasta": "2025-01-21",
+    "dmin": -1.8,
+    "dmin_valido": true,
+    "dmax": null,
+    "dmax_valido": false
+   },
+   {
+    "codigo": "21105050",
+    "estacion": "ROSALES LOS",
+    "dias": 757,
+    "desde": "2023-02-05",
+    "hasta": "2025-04-27",
+    "dmin": -3.7,
+    "dmin_valido": true,
+    "dmax": 5.0,
+    "dmax_valido": true
+   },
+   {
+    "codigo": "21015030",
+    "estacion": "PARQUE ARQUEOLOGICO - AUT",
+    "dias": 1570,
+    "desde": "2019-03-05",
+    "hasta": "2026-10-14",
+    "dmin": -12.5,
+    "dmin_valido": false,
+    "dmax": 10.8,
+    "dmax_valido": false
+   }
+  ],
+  "descripcion": "Construye la base de datos de clima por municipio del Huila a partir de datos del IDEAM.\n\nEntrada:  ideam_huila_raw.json (extraído de datos.gov.co el 2026-10-15).\nSalida:   ../web/clima_huila.json (base que usa la app), clima_huila.json y clima_huila.csv (para revisar en Excel).\nUso:      python clima_ideam/construir_clima.py\n\nMétodo (resumen):\n1. Normales climatológicas IDEAM 1991-2020 (temperatura media, media de las mínimas y media de las\n   máximas, mensuales). Se usan: media anual, mínima media del mes más frío y máxima media del mes\n   más cálido.\n2. Gradiente térmico con la altura ajustado por mínimos cuadrados con las estaciones del Huila.\n3. Para cada cabecera municipal: promedio ponderado de las 3 estaciones más parecidas\n   (distancia + diferencia de altura), cada una corregida a la altura de la cabecera.\n4. Extremos absolutos = valor normal del mes extremo + margen. El margen es la diferencia observada,\n   en las estaciones automáticas del IDEAM con datos válidos, entre el extremo diario registrado y la\n   normal del mes extremo de la MISMA estación; se toma la envolvente (el margen más exigente).\n   Si hay una estación automática válida en el mismo municipio y su extremo (corregido por altura)\n   es más exigente, se usa ese."
+ },
+ "municipios": [
+  {
+   "municipio": "Neiva",
+   "departamento": "Huila",
+   "cod_dane": "41001",
+   "lat": 2.935432,
+   "lon": -75.277327,
+   "alt_m": 457,
+   "t_media_anual_c": 28.0,
+   "t_min_media_mes_frio_c": 22.3,
+   "t_max_media_mes_calido_c": 34.7,
+   "t_min_absoluta_c": 15.5,
+   "t_max_absoluta_c": 41.6,
+   "estacion_principal": "Aeropuerto Benito Salas (Neiva, 439 m, 2.1 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21115020",
+      "estacion": "Aeropuerto Benito Salas",
+      "municipio": "Neiva",
+      "alt_m": 439,
+      "dist_km": 2.1,
+      "valor_normal": 28.1,
+      "corregido": 28.0,
+      "peso": 0.98
+     },
+     {
+      "codigo": "21125020",
+      "estacion": "Palermo",
+      "municipio": "Palermo",
+      "alt_m": 550,
+      "dist_km": 18.3,
+      "valor_normal": 26.5,
+      "corregido": 27.2,
+      "peso": 0.02
+     },
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 27.4,
+      "valor_normal": 27.8,
+      "corregido": 27.6,
+      "peso": 0.01
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21115020",
+      "estacion": "Aeropuerto Benito Salas",
+      "municipio": "Neiva",
+      "alt_m": 439,
+      "dist_km": 2.1,
+      "valor_normal": 22.4,
+      "corregido": 22.3,
+      "peso": 0.98
+     },
+     {
+      "codigo": "21125020",
+      "estacion": "Palermo",
+      "municipio": "Palermo",
+      "alt_m": 550,
+      "dist_km": 18.3,
+      "valor_normal": 20.9,
+      "corregido": 21.5,
+      "peso": 0.02
+     },
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 27.4,
+      "valor_normal": 21.6,
+      "corregido": 21.4,
+      "peso": 0.01
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21115020",
+      "estacion": "Aeropuerto Benito Salas",
+      "municipio": "Neiva",
+      "alt_m": 439,
+      "dist_km": 2.1,
+      "valor_normal": 34.9,
+      "corregido": 34.7,
+      "peso": 0.99
+     },
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 27.4,
+      "valor_normal": 36.1,
+      "corregido": 35.9,
+      "peso": 0.01
+     },
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 29.7,
+      "valor_normal": 33.2,
+      "corregido": 33.6,
+      "peso": 0.01
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Acevedo",
+   "departamento": "Huila",
+   "cod_dane": "41006",
+   "lat": 1.805173,
+   "lon": -75.888706,
+   "alt_m": 1168,
+   "t_media_anual_c": 21.8,
+   "t_min_media_mes_frio_c": 16.2,
+   "t_max_media_mes_calido_c": 27.7,
+   "t_min_absoluta_c": 9.4,
+   "t_max_absoluta_c": 34.6,
+   "estacion_principal": "El Líbano (Suaza, 1045 m, 9.7 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 9.7,
+      "valor_normal": 22.7,
+      "corregido": 21.8,
+      "peso": 0.79
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 26.9,
+      "valor_normal": 20.5,
+      "corregido": 21.6,
+      "peso": 0.13
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 34.7,
+      "valor_normal": 21,
+      "corregido": 22.5,
+      "peso": 0.08
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 9.7,
+      "valor_normal": 16.9,
+      "corregido": 16.2,
+      "peso": 0.79
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 26.9,
+      "valor_normal": 14.9,
+      "corregido": 15.8,
+      "peso": 0.13
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 34.7,
+      "valor_normal": 16.3,
+      "corregido": 17.5,
+      "peso": 0.08
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 9.7,
+      "valor_normal": 28.6,
+      "corregido": 27.5,
+      "peso": 0.79
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 26.9,
+      "valor_normal": 27.1,
+      "corregido": 28.4,
+      "peso": 0.13
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 34.7,
+      "valor_normal": 26.6,
+      "corregido": 28.3,
+      "peso": 0.08
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Agrado",
+   "departamento": "Huila",
+   "cod_dane": "41013",
+   "lat": 2.25987,
+   "lon": -75.772022,
+   "alt_m": 855,
+   "t_media_anual_c": 24.0,
+   "t_min_media_mes_frio_c": 17.8,
+   "t_max_media_mes_calido_c": 31.7,
+   "t_min_absoluta_c": 11.0,
+   "t_max_absoluta_c": 38.6,
+   "estacion_principal": "La Betulia (Agrado, 780 m, 7.2 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 7.2,
+      "valor_normal": 24.5,
+      "corregido": 23.9,
+      "peso": 0.82
+     },
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 18.7,
+      "valor_normal": 22.7,
+      "corregido": 24.3,
+      "peso": 0.12
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 20.3,
+      "valor_normal": 21,
+      "corregido": 24.8,
+      "peso": 0.07
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 7.2,
+      "valor_normal": 18.1,
+      "corregido": 17.6,
+      "peso": 0.82
+     },
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 18.7,
+      "valor_normal": 16.8,
+      "corregido": 18.1,
+      "peso": 0.12
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 20.3,
+      "valor_normal": 16.3,
+      "corregido": 19.4,
+      "peso": 0.07
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 7.2,
+      "valor_normal": 32.4,
+      "corregido": 31.8,
+      "peso": 0.82
+     },
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 18.7,
+      "valor_normal": 29.9,
+      "corregido": 31.7,
+      "peso": 0.12
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 20.3,
+      "valor_normal": 26.6,
+      "corregido": 31.0,
+      "peso": 0.07
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Aipe",
+   "departamento": "Huila",
+   "cod_dane": "41016",
+   "lat": 3.223996,
+   "lon": -75.239017,
+   "alt_m": 388,
+   "t_media_anual_c": 28.3,
+   "t_min_media_mes_frio_c": 22.1,
+   "t_max_media_mes_calido_c": 36.3,
+   "t_min_absoluta_c": 15.3,
+   "t_max_absoluta_c": 43.2,
+   "estacion_principal": "Villavieja Ffcc (Villavieja, 430 m, 5.0 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 5.0,
+      "valor_normal": 27.8,
+      "corregido": 28.1,
+      "peso": 0.8
+     },
+     {
+      "codigo": "21115060",
+      "estacion": "San José",
+      "municipio": "Villavieja",
+      "alt_m": 400,
+      "dist_km": 13.5,
+      "valor_normal": 29,
+      "corregido": 29.1,
+      "peso": 0.15
+     },
+     {
+      "codigo": "21145040",
+      "estacion": "San Alfonso",
+      "municipio": "Villavieja",
+      "alt_m": 440,
+      "dist_km": 21.6,
+      "valor_normal": 28.9,
+      "corregido": 29.3,
+      "peso": 0.05
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 5.0,
+      "valor_normal": 21.6,
+      "corregido": 21.9,
+      "peso": 0.8
+     },
+     {
+      "codigo": "21115060",
+      "estacion": "San José",
+      "municipio": "Villavieja",
+      "alt_m": 400,
+      "dist_km": 13.5,
+      "valor_normal": 23.1,
+      "corregido": 23.2,
+      "peso": 0.15
+     },
+     {
+      "codigo": "21145040",
+      "estacion": "San Alfonso",
+      "municipio": "Villavieja",
+      "alt_m": 440,
+      "dist_km": 21.6,
+      "valor_normal": 22.7,
+      "corregido": 23.0,
+      "peso": 0.05
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 5.0,
+      "valor_normal": 36.1,
+      "corregido": 36.5,
+      "peso": 0.81
+     },
+     {
+      "codigo": "21115060",
+      "estacion": "San José",
+      "municipio": "Villavieja",
+      "alt_m": 400,
+      "dist_km": 13.5,
+      "valor_normal": 35.5,
+      "corregido": 35.6,
+      "peso": 0.15
+     },
+     {
+      "codigo": "21115160",
+      "estacion": "Hacienda Manila AUT",
+      "municipio": "Baraya",
+      "alt_m": 600,
+      "dist_km": 20.5,
+      "valor_normal": 33.9,
+      "corregido": 35.7,
+      "peso": 0.05
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Algeciras",
+   "departamento": "Huila",
+   "cod_dane": "41020",
+   "lat": 2.521674,
+   "lon": -75.315389,
+   "alt_m": 1000,
+   "t_media_anual_c": 24.4,
+   "t_min_media_mes_frio_c": 18.2,
+   "t_max_media_mes_calido_c": 29.7,
+   "t_min_absoluta_c": 10.5,
+   "t_max_absoluta_c": 36.6,
+   "estacion_principal": "Algeciras (Algeciras, 1155 m, 0.5 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21105030",
+      "estacion": "Algeciras",
+      "municipio": "Algeciras",
+      "alt_m": 1155,
+      "dist_km": 0.5,
+      "valor_normal": 23.3,
+      "corregido": 24.5,
+      "peso": 0.96
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 14.5,
+      "valor_normal": 26.5,
+      "corregido": 23.1,
+      "peso": 0.02
+     },
+     {
+      "codigo": "21105040",
+      "estacion": "Hacienda Potosí",
+      "municipio": "Campoalegre",
+      "alt_m": 680,
+      "dist_km": 19.9,
+      "valor_normal": 25.6,
+      "corregido": 23.2,
+      "peso": 0.02
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21105030",
+      "estacion": "Algeciras",
+      "municipio": "Algeciras",
+      "alt_m": 1155,
+      "dist_km": 0.5,
+      "valor_normal": 17.3,
+      "corregido": 18.2,
+      "peso": 0.96
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 14.5,
+      "valor_normal": 20.9,
+      "corregido": 18.2,
+      "peso": 0.02
+     },
+     {
+      "codigo": "21105040",
+      "estacion": "Hacienda Potosí",
+      "municipio": "Campoalegre",
+      "alt_m": 680,
+      "dist_km": 19.9,
+      "valor_normal": 20.5,
+      "corregido": 18.6,
+      "peso": 0.02
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 14.5,
+      "valor_normal": 33.9,
+      "corregido": 30.1,
+      "peso": 0.57
+     },
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 23.9,
+      "valor_normal": 33.2,
+      "corregido": 28.9,
+      "peso": 0.27
+     },
+     {
+      "codigo": "21065040",
+      "estacion": "Zuluaga",
+      "municipio": "Garzón",
+      "alt_m": 1270,
+      "dist_km": 38.5,
+      "valor_normal": 27.2,
+      "corregido": 29.5,
+      "peso": 0.16
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "extremo observado en ALGECIRAS - AUT (2019–2026), corregido por altura",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Altamira",
+   "departamento": "Huila",
+   "cod_dane": "41026",
+   "lat": 2.063841,
+   "lon": -75.788471,
+   "alt_m": 1032,
+   "t_media_anual_c": 23.3,
+   "t_min_media_mes_frio_c": 17.9,
+   "t_max_media_mes_calido_c": 29.4,
+   "t_min_absoluta_c": 11.1,
+   "t_max_absoluta_c": 36.4,
+   "estacion_principal": "El Grifo Altamira (Altamira, 1368 m, 5.7 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 5.7,
+      "valor_normal": 21,
+      "corregido": 23.5,
+      "peso": 0.68
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 22.0,
+      "valor_normal": 22.7,
+      "corregido": 22.8,
+      "peso": 0.21
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 25.6,
+      "valor_normal": 24.5,
+      "corregido": 22.6,
+      "peso": 0.11
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 5.7,
+      "valor_normal": 16.3,
+      "corregido": 18.3,
+      "peso": 0.68
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 22.0,
+      "valor_normal": 16.9,
+      "corregido": 17.0,
+      "peso": 0.21
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 25.6,
+      "valor_normal": 18.1,
+      "corregido": 16.6,
+      "peso": 0.11
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 5.7,
+      "valor_normal": 26.6,
+      "corregido": 29.5,
+      "peso": 0.68
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 22.0,
+      "valor_normal": 28.6,
+      "corregido": 28.7,
+      "peso": 0.21
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 25.6,
+      "valor_normal": 32.4,
+      "corregido": 30.2,
+      "peso": 0.11
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "extremo observado en ALTAMIRA EL GRIFO - AUT (2023–2026), corregido por altura"
+  },
+  {
+   "municipio": "Baraya",
+   "departamento": "Huila",
+   "cod_dane": "41078",
+   "lat": 3.152204,
+   "lon": -75.054843,
+   "alt_m": 605,
+   "t_media_anual_c": 27.0,
+   "t_min_media_mes_frio_c": 21.4,
+   "t_max_media_mes_calido_c": 33.9,
+   "t_min_absoluta_c": 14.6,
+   "t_max_absoluta_c": 40.8,
+   "estacion_principal": "Hacienda Manila AUT (Baraya, 600 m, 3.7 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21115160",
+      "estacion": "Hacienda Manila AUT",
+      "municipio": "Baraya",
+      "alt_m": 600,
+      "dist_km": 3.7,
+      "valor_normal": 27,
+      "corregido": 27.0,
+      "peso": 0.96
+     },
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 21.9,
+      "valor_normal": 27.8,
+      "corregido": 26.5,
+      "peso": 0.02
+     },
+     {
+      "codigo": "21115060",
+      "estacion": "San José",
+      "municipio": "Villavieja",
+      "alt_m": 400,
+      "dist_km": 24.2,
+      "valor_normal": 29,
+      "corregido": 27.5,
+      "peso": 0.02
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21115160",
+      "estacion": "Hacienda Manila AUT",
+      "municipio": "Baraya",
+      "alt_m": 600,
+      "dist_km": 3.7,
+      "valor_normal": 21.4,
+      "corregido": 21.4,
+      "peso": 0.96
+     },
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 21.9,
+      "valor_normal": 21.6,
+      "corregido": 20.5,
+      "peso": 0.02
+     },
+     {
+      "codigo": "21115060",
+      "estacion": "San José",
+      "municipio": "Villavieja",
+      "alt_m": 400,
+      "dist_km": 24.2,
+      "valor_normal": 23.1,
+      "corregido": 21.9,
+      "peso": 0.02
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21115160",
+      "estacion": "Hacienda Manila AUT",
+      "municipio": "Baraya",
+      "alt_m": 600,
+      "dist_km": 3.7,
+      "valor_normal": 33.9,
+      "corregido": 33.9,
+      "peso": 0.96
+     },
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 21.9,
+      "valor_normal": 36.1,
+      "corregido": 34.6,
+      "peso": 0.02
+     },
+     {
+      "codigo": "21115060",
+      "estacion": "San José",
+      "municipio": "Villavieja",
+      "alt_m": 400,
+      "dist_km": 24.2,
+      "valor_normal": 35.5,
+      "corregido": 33.7,
+      "peso": 0.02
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Campoalegre",
+   "departamento": "Huila",
+   "cod_dane": "41132",
+   "lat": 2.686767,
+   "lon": -75.325748,
+   "alt_m": 524,
+   "t_media_anual_c": 26.8,
+   "t_min_media_mes_frio_c": 21.4,
+   "t_max_media_mes_calido_c": 33.5,
+   "t_min_absoluta_c": 14.6,
+   "t_max_absoluta_c": 40.4,
+   "estacion_principal": "Hacienda Potosí (Campoalegre, 680 m, 3.2 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21105040",
+      "estacion": "Hacienda Potosí",
+      "municipio": "Campoalegre",
+      "alt_m": 680,
+      "dist_km": 3.2,
+      "valor_normal": 25.6,
+      "corregido": 26.8,
+      "peso": 0.67
+     },
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 10.8,
+      "valor_normal": 27.3,
+      "corregido": 27.1,
+      "peso": 0.21
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 14.2,
+      "valor_normal": 26.5,
+      "corregido": 26.7,
+      "peso": 0.12
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21105040",
+      "estacion": "Hacienda Potosí",
+      "municipio": "Campoalegre",
+      "alt_m": 680,
+      "dist_km": 3.2,
+      "valor_normal": 20.5,
+      "corregido": 21.4,
+      "peso": 0.81
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 14.2,
+      "valor_normal": 20.9,
+      "corregido": 21.1,
+      "peso": 0.15
+     },
+     {
+      "codigo": "21125020",
+      "estacion": "Palermo",
+      "municipio": "Palermo",
+      "alt_m": 550,
+      "dist_km": 27.9,
+      "valor_normal": 20.9,
+      "corregido": 21.1,
+      "peso": 0.04
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 10.8,
+      "valor_normal": 33.2,
+      "corregido": 33.0,
+      "peso": 0.59
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 14.2,
+      "valor_normal": 33.9,
+      "corregido": 34.1,
+      "peso": 0.34
+     },
+     {
+      "codigo": "21115020",
+      "estacion": "Aeropuerto Benito Salas",
+      "municipio": "Neiva",
+      "alt_m": 439,
+      "dist_km": 29.5,
+      "valor_normal": 34.9,
+      "corregido": 34.2,
+      "peso": 0.08
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Colombia",
+   "departamento": "Huila",
+   "cod_dane": "41206",
+   "lat": 3.376745,
+   "lon": -74.802815,
+   "alt_m": 770,
+   "t_media_anual_c": 25.7,
+   "t_min_media_mes_frio_c": 20.4,
+   "t_max_media_mes_calido_c": 31.3,
+   "t_min_absoluta_c": 13.6,
+   "t_max_absoluta_c": 38.2,
+   "estacion_principal": "Santa Ana (Colombia, 1410 m, 26.3 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21145080",
+      "estacion": "Santa Ana",
+      "municipio": "Colombia",
+      "alt_m": 1410,
+      "dist_km": 26.3,
+      "valor_normal": 20.1,
+      "corregido": 24.9,
+      "peso": 0.37
+     },
+     {
+      "codigo": "21145040",
+      "estacion": "San Alfonso",
+      "municipio": "Villavieja",
+      "alt_m": 440,
+      "dist_km": 34.1,
+      "valor_normal": 28.9,
+      "corregido": 26.4,
+      "peso": 0.34
+     },
+     {
+      "codigo": "21115160",
+      "estacion": "Hacienda Manila AUT",
+      "municipio": "Baraya",
+      "alt_m": 600,
+      "dist_km": 41.2,
+      "valor_normal": 27,
+      "corregido": 25.7,
+      "peso": 0.29
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21145070",
+      "estacion": "La Legiosa",
+      "municipio": "Colombia",
+      "alt_m": 1476,
+      "dist_km": 13.6,
+      "valor_normal": 15.7,
+      "corregido": 20.0,
+      "peso": 0.45
+     },
+     {
+      "codigo": "21145060",
+      "estacion": "Santo Domingo",
+      "municipio": "Baraya",
+      "alt_m": 1275,
+      "dist_km": 22.3,
+      "valor_normal": 18.9,
+      "corregido": 22.0,
+      "peso": 0.33
+     },
+     {
+      "codigo": "21145080",
+      "estacion": "Santa Ana",
+      "municipio": "Colombia",
+      "alt_m": 1410,
+      "dist_km": 26.3,
+      "valor_normal": 15.2,
+      "corregido": 19.1,
+      "peso": 0.22
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21145070",
+      "estacion": "La Legiosa",
+      "municipio": "Colombia",
+      "alt_m": 1476,
+      "dist_km": 13.6,
+      "valor_normal": 24.1,
+      "corregido": 30.2,
+      "peso": 0.45
+     },
+     {
+      "codigo": "21145060",
+      "estacion": "Santo Domingo",
+      "municipio": "Baraya",
+      "alt_m": 1275,
+      "dist_km": 22.3,
+      "valor_normal": 28.4,
+      "corregido": 32.7,
+      "peso": 0.33
+     },
+     {
+      "codigo": "21145080",
+      "estacion": "Santa Ana",
+      "municipio": "Colombia",
+      "alt_m": 1410,
+      "dist_km": 26.3,
+      "valor_normal": 26,
+      "corregido": 31.5,
+      "peso": 0.22
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Elías",
+   "departamento": "Huila",
+   "cod_dane": "41244",
+   "lat": 2.012854,
+   "lon": -75.938301,
+   "alt_m": 1298,
+   "t_media_anual_c": 21.0,
+   "t_min_media_mes_frio_c": 15.8,
+   "t_max_media_mes_calido_c": 26.9,
+   "t_min_absoluta_c": 9.0,
+   "t_max_absoluta_c": 33.8,
+   "estacion_principal": "El Grifo Altamira (Altamira, 1368 m, 23.3 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 23.3,
+      "valor_normal": 21,
+      "corregido": 21.5,
+      "peso": 0.38
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 19.9,
+      "valor_normal": 22.7,
+      "corregido": 20.8,
+      "peso": 0.37
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 30.2,
+      "valor_normal": 20.5,
+      "corregido": 20.7,
+      "peso": 0.25
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 23.3,
+      "valor_normal": 16.3,
+      "corregido": 16.7,
+      "peso": 0.38
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 19.9,
+      "valor_normal": 16.9,
+      "corregido": 15.4,
+      "peso": 0.37
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 30.2,
+      "valor_normal": 14.9,
+      "corregido": 15.0,
+      "peso": 0.25
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 23.3,
+      "valor_normal": 26.6,
+      "corregido": 27.2,
+      "peso": 0.38
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 19.9,
+      "valor_normal": 28.6,
+      "corregido": 26.4,
+      "peso": 0.37
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 30.2,
+      "valor_normal": 27.1,
+      "corregido": 27.3,
+      "peso": 0.25
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Garzón",
+   "departamento": "Huila",
+   "cod_dane": "41298",
+   "lat": 2.196493,
+   "lon": -75.627057,
+   "alt_m": 830,
+   "t_media_anual_c": 24.2,
+   "t_min_media_mes_frio_c": 18.1,
+   "t_max_media_mes_calido_c": 31.6,
+   "t_min_absoluta_c": 11.3,
+   "t_max_absoluta_c": 38.5,
+   "estacion_principal": "La Betulia (Agrado, 780 m, 13.1 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 13.1,
+      "valor_normal": 24.5,
+      "corregido": 24.1,
+      "peso": 0.59
+     },
+     {
+      "codigo": "21065040",
+      "estacion": "Zuluaga",
+      "municipio": "Garzón",
+      "alt_m": 1270,
+      "dist_km": 12.3,
+      "valor_normal": 20.5,
+      "corregido": 23.8,
+      "peso": 0.26
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 18.0,
+      "valor_normal": 21,
+      "corregido": 25.0,
+      "peso": 0.14
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 13.1,
+      "valor_normal": 18.1,
+      "corregido": 17.8,
+      "peso": 0.59
+     },
+     {
+      "codigo": "21065040",
+      "estacion": "Zuluaga",
+      "municipio": "Garzón",
+      "alt_m": 1270,
+      "dist_km": 12.3,
+      "valor_normal": 15.4,
+      "corregido": 18.1,
+      "peso": 0.26
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 18.0,
+      "valor_normal": 16.3,
+      "corregido": 19.6,
+      "peso": 0.14
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 13.1,
+      "valor_normal": 32.4,
+      "corregido": 32.0,
+      "peso": 0.59
+     },
+     {
+      "codigo": "21065040",
+      "estacion": "Zuluaga",
+      "municipio": "Garzón",
+      "alt_m": 1270,
+      "dist_km": 12.3,
+      "valor_normal": 27.2,
+      "corregido": 31.0,
+      "peso": 0.26
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 18.0,
+      "valor_normal": 26.6,
+      "corregido": 31.2,
+      "peso": 0.14
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Gigante",
+   "departamento": "Huila",
+   "cod_dane": "41306",
+   "lat": 2.384031,
+   "lon": -75.547681,
+   "alt_m": 799,
+   "t_media_anual_c": 24.3,
+   "t_min_media_mes_frio_c": 18.4,
+   "t_max_media_mes_calido_c": 31.8,
+   "t_min_absoluta_c": 11.6,
+   "t_max_absoluta_c": 38.7,
+   "estacion_principal": "La Betulia (Agrado, 780 m, 21.4 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 21.4,
+      "valor_normal": 24.5,
+      "corregido": 24.4,
+      "peso": 0.45
+     },
+     {
+      "codigo": "21065040",
+      "estacion": "Zuluaga",
+      "municipio": "Garzón",
+      "alt_m": 1270,
+      "dist_km": 15.0,
+      "valor_normal": 20.5,
+      "corregido": 24.0,
+      "peso": 0.36
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 27.9,
+      "valor_normal": 26.5,
+      "corregido": 24.7,
+      "peso": 0.2
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 21.4,
+      "valor_normal": 18.1,
+      "corregido": 18.0,
+      "peso": 0.45
+     },
+     {
+      "codigo": "21065040",
+      "estacion": "Zuluaga",
+      "municipio": "Garzón",
+      "alt_m": 1270,
+      "dist_km": 15.0,
+      "valor_normal": 15.4,
+      "corregido": 18.3,
+      "peso": 0.36
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 27.9,
+      "valor_normal": 20.9,
+      "corregido": 19.4,
+      "peso": 0.2
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 21.4,
+      "valor_normal": 32.4,
+      "corregido": 32.2,
+      "peso": 0.45
+     },
+     {
+      "codigo": "21065040",
+      "estacion": "Zuluaga",
+      "municipio": "Garzón",
+      "alt_m": 1270,
+      "dist_km": 15.0,
+      "valor_normal": 27.2,
+      "corregido": 31.2,
+      "peso": 0.36
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 27.9,
+      "valor_normal": 33.9,
+      "corregido": 31.8,
+      "peso": 0.2
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Guadalupe",
+   "departamento": "Huila",
+   "cod_dane": "41319",
+   "lat": 2.02426,
+   "lon": -75.757185,
+   "alt_m": 886,
+   "t_media_anual_c": 24.3,
+   "t_min_media_mes_frio_c": 18.6,
+   "t_max_media_mes_calido_c": 30.6,
+   "t_min_absoluta_c": 11.8,
+   "t_max_absoluta_c": 37.5,
+   "estacion_principal": "El Grifo Altamira (Altamira, 1368 m, 6.5 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 6.5,
+      "valor_normal": 21,
+      "corregido": 24.6,
+      "peso": 0.56
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 19.0,
+      "valor_normal": 22.7,
+      "corregido": 23.9,
+      "peso": 0.29
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 28.9,
+      "valor_normal": 24.5,
+      "corregido": 23.7,
+      "peso": 0.15
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 6.5,
+      "valor_normal": 16.3,
+      "corregido": 19.2,
+      "peso": 0.56
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 19.0,
+      "valor_normal": 16.9,
+      "corregido": 17.9,
+      "peso": 0.29
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 28.9,
+      "valor_normal": 18.1,
+      "corregido": 17.5,
+      "peso": 0.15
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 6.5,
+      "valor_normal": 26.6,
+      "corregido": 30.7,
+      "peso": 0.56
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 19.0,
+      "valor_normal": 28.6,
+      "corregido": 30.0,
+      "peso": 0.29
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 28.9,
+      "valor_normal": 32.4,
+      "corregido": 31.5,
+      "peso": 0.15
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Hobo",
+   "departamento": "Huila",
+   "cod_dane": "41349",
+   "lat": 2.580812,
+   "lon": -75.447697,
+   "alt_m": 604,
+   "t_media_anual_c": 26.1,
+   "t_min_media_mes_frio_c": 20.6,
+   "t_max_media_mes_calido_c": 33.4,
+   "t_min_absoluta_c": 13.8,
+   "t_max_absoluta_c": 40.3,
+   "estacion_principal": "Los Rosales (Campoalegre, 553 m, 3.7 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 3.7,
+      "valor_normal": 26.5,
+      "corregido": 26.1,
+      "peso": 0.89
+     },
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 14.7,
+      "valor_normal": 27.3,
+      "corregido": 26.5,
+      "peso": 0.07
+     },
+     {
+      "codigo": "21105040",
+      "estacion": "Hacienda Potosí",
+      "municipio": "Campoalegre",
+      "alt_m": 680,
+      "dist_km": 21.1,
+      "valor_normal": 25.6,
+      "corregido": 26.2,
+      "peso": 0.04
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 3.7,
+      "valor_normal": 20.9,
+      "corregido": 20.6,
+      "peso": 0.93
+     },
+     {
+      "codigo": "21105040",
+      "estacion": "Hacienda Potosí",
+      "municipio": "Campoalegre",
+      "alt_m": 680,
+      "dist_km": 21.1,
+      "valor_normal": 20.5,
+      "corregido": 21.0,
+      "peso": 0.04
+     },
+     {
+      "codigo": "21105030",
+      "estacion": "Algeciras",
+      "municipio": "Algeciras",
+      "alt_m": 1155,
+      "dist_km": 15.7,
+      "valor_normal": 17.3,
+      "corregido": 20.6,
+      "peso": 0.03
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 3.7,
+      "valor_normal": 33.9,
+      "corregido": 33.5,
+      "peso": 0.92
+     },
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 14.7,
+      "valor_normal": 33.2,
+      "corregido": 32.3,
+      "peso": 0.07
+     },
+     {
+      "codigo": "21085040",
+      "estacion": "Terpeya Colombia",
+      "municipio": "Íquira",
+      "alt_m": 1650,
+      "dist_km": 26.2,
+      "valor_normal": 24.8,
+      "corregido": 33.8,
+      "peso": 0.01
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Íquira",
+   "departamento": "Huila",
+   "cod_dane": "41357",
+   "lat": 2.649359,
+   "lon": -75.634497,
+   "alt_m": 1105,
+   "t_media_anual_c": 23.0,
+   "t_min_media_mes_frio_c": 18.9,
+   "t_max_media_mes_calido_c": 29.4,
+   "t_min_absoluta_c": 12.1,
+   "t_max_absoluta_c": 36.3,
+   "estacion_principal": "Íquira (Íquira, 1095 m, 0.5 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 0.5,
+      "valor_normal": 23.1,
+      "corregido": 23.0,
+      "peso": 0.99
+     },
+     {
+      "codigo": "21085040",
+      "estacion": "Terpeya Colombia",
+      "municipio": "Íquira",
+      "alt_m": 1650,
+      "dist_km": 4.1,
+      "valor_normal": 18.9,
+      "corregido": 23.0,
+      "peso": 0.0
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 24.4,
+      "valor_normal": 26.5,
+      "corregido": 22.4,
+      "peso": 0.0
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 0.5,
+      "valor_normal": 19,
+      "corregido": 18.9,
+      "peso": 0.99
+     },
+     {
+      "codigo": "21085040",
+      "estacion": "Terpeya Colombia",
+      "municipio": "Íquira",
+      "alt_m": 1650,
+      "dist_km": 4.1,
+      "valor_normal": 15.3,
+      "corregido": 18.6,
+      "peso": 0.0
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 24.4,
+      "valor_normal": 20.9,
+      "corregido": 17.6,
+      "peso": 0.0
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21085040",
+      "estacion": "Terpeya Colombia",
+      "municipio": "Íquira",
+      "alt_m": 1650,
+      "dist_km": 4.1,
+      "valor_normal": 24.8,
+      "corregido": 29.5,
+      "peso": 0.74
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 24.4,
+      "valor_normal": 33.9,
+      "corregido": 29.2,
+      "peso": 0.13
+     },
+     {
+      "codigo": "21125010",
+      "estacion": "Santa María",
+      "municipio": "Santa María",
+      "alt_m": 1300,
+      "dist_km": 32.7,
+      "valor_normal": 27.5,
+      "corregido": 29.2,
+      "peso": 0.12
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Isnos",
+   "departamento": "Huila",
+   "cod_dane": "41359",
+   "lat": 1.929467,
+   "lon": -76.217637,
+   "alt_m": 1757,
+   "t_media_anual_c": 18.6,
+   "t_min_media_mes_frio_c": 13.2,
+   "t_max_media_mes_calido_c": 24.7,
+   "t_min_absoluta_c": 6.4,
+   "t_max_absoluta_c": 31.6,
+   "estacion_principal": "Parque Arqueológico (San Agustín, 1800 m, 9.2 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 9.2,
+      "valor_normal": 18.6,
+      "corregido": 18.9,
+      "peso": 0.83
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 15.6,
+      "valor_normal": 20.5,
+      "corregido": 17.2,
+      "peso": 0.14
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 43.6,
+      "valor_normal": 22.7,
+      "corregido": 17.4,
+      "peso": 0.03
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 9.2,
+      "valor_normal": 13.1,
+      "corregido": 13.4,
+      "peso": 0.83
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 15.6,
+      "valor_normal": 14.9,
+      "corregido": 12.3,
+      "peso": 0.14
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 43.6,
+      "valor_normal": 16.9,
+      "corregido": 12.6,
+      "peso": 0.03
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 9.2,
+      "valor_normal": 24.6,
+      "corregido": 25.0,
+      "peso": 0.83
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 15.6,
+      "valor_normal": 27.1,
+      "corregido": 23.3,
+      "peso": 0.14
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 43.6,
+      "valor_normal": 28.6,
+      "corregido": 22.5,
+      "peso": 0.03
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "La Argentina",
+   "departamento": "Huila",
+   "cod_dane": "41378",
+   "lat": 2.198496,
+   "lon": -75.979763,
+   "alt_m": 1519,
+   "t_media_anual_c": 19.5,
+   "t_min_media_mes_frio_c": 14.5,
+   "t_max_media_mes_calido_c": 25.8,
+   "t_min_absoluta_c": 7.7,
+   "t_max_absoluta_c": 32.7,
+   "estacion_principal": "Escuela Agricola La Plata (La Plata, 1070 m, 22.5 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 22.5,
+      "valor_normal": 22.7,
+      "corregido": 19.3,
+      "peso": 0.42
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 29.7,
+      "valor_normal": 21,
+      "corregido": 19.9,
+      "peso": 0.39
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 31.3,
+      "valor_normal": 24.5,
+      "corregido": 19.0,
+      "peso": 0.2
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 22.5,
+      "valor_normal": 16.8,
+      "corregido": 14.1,
+      "peso": 0.42
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 29.7,
+      "valor_normal": 16.3,
+      "corregido": 15.4,
+      "peso": 0.39
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 31.3,
+      "valor_normal": 18.1,
+      "corregido": 13.6,
+      "peso": 0.2
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 22.5,
+      "valor_normal": 29.9,
+      "corregido": 26.0,
+      "peso": 0.42
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 29.7,
+      "valor_normal": 26.6,
+      "corregido": 25.3,
+      "peso": 0.39
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 31.3,
+      "valor_normal": 32.4,
+      "corregido": 26.1,
+      "peso": 0.2
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "La Plata",
+   "departamento": "Huila",
+   "cod_dane": "41396",
+   "lat": 2.389263,
+   "lon": -75.891254,
+   "alt_m": 1018,
+   "t_media_anual_c": 23.1,
+   "t_min_media_mes_frio_c": 17.1,
+   "t_max_media_mes_calido_c": 30.3,
+   "t_min_absoluta_c": 10.3,
+   "t_max_absoluta_c": 37.2,
+   "estacion_principal": "Escuela Agricola La Plata (La Plata, 1070 m, 1.0 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 1.0,
+      "valor_normal": 22.7,
+      "corregido": 23.1,
+      "peso": 0.99
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 23.5,
+      "valor_normal": 24.5,
+      "corregido": 22.7,
+      "peso": 0.01
+     },
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 41.0,
+      "valor_normal": 23.1,
+      "corregido": 23.7,
+      "peso": 0.0
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 1.0,
+      "valor_normal": 16.8,
+      "corregido": 17.1,
+      "peso": 0.99
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 23.5,
+      "valor_normal": 18.1,
+      "corregido": 16.7,
+      "peso": 0.01
+     },
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 41.0,
+      "valor_normal": 19,
+      "corregido": 19.5,
+      "peso": 0.0
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 1.0,
+      "valor_normal": 29.9,
+      "corregido": 30.3,
+      "peso": 0.99
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 23.5,
+      "valor_normal": 32.4,
+      "corregido": 30.4,
+      "peso": 0.01
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 38.3,
+      "valor_normal": 26.6,
+      "corregido": 29.6,
+      "peso": 0.0
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Nátaga",
+   "departamento": "Huila",
+   "cod_dane": "41483",
+   "lat": 2.5451,
+   "lon": -75.808756,
+   "alt_m": 1474,
+   "t_media_anual_c": 20.1,
+   "t_min_media_mes_frio_c": 15.9,
+   "t_max_media_mes_calido_c": 26.4,
+   "t_min_absoluta_c": 9.1,
+   "t_max_absoluta_c": 33.3,
+   "estacion_principal": "Terpeya Colombia (Íquira, 1650 m, 20.0 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21085040",
+      "estacion": "Terpeya Colombia",
+      "municipio": "Íquira",
+      "alt_m": 1650,
+      "dist_km": 20.0,
+      "valor_normal": 18.9,
+      "corregido": 20.2,
+      "peso": 0.44
+     },
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 20.5,
+      "valor_normal": 22.7,
+      "corregido": 19.7,
+      "peso": 0.3
+     },
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 23.0,
+      "valor_normal": 23.1,
+      "corregido": 20.3,
+      "peso": 0.26
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21085040",
+      "estacion": "Terpeya Colombia",
+      "municipio": "Íquira",
+      "alt_m": 1650,
+      "dist_km": 20.0,
+      "valor_normal": 15.3,
+      "corregido": 16.4,
+      "peso": 0.44
+     },
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 20.5,
+      "valor_normal": 16.8,
+      "corregido": 14.4,
+      "peso": 0.3
+     },
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 23.0,
+      "valor_normal": 19,
+      "corregido": 16.7,
+      "peso": 0.26
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21085040",
+      "estacion": "Terpeya Colombia",
+      "municipio": "Íquira",
+      "alt_m": 1650,
+      "dist_km": 20.0,
+      "valor_normal": 24.8,
+      "corregido": 26.3,
+      "peso": 0.51
+     },
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 20.5,
+      "valor_normal": 29.9,
+      "corregido": 26.4,
+      "peso": 0.35
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 31.5,
+      "valor_normal": 32.4,
+      "corregido": 26.4,
+      "peso": 0.14
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Oporapa",
+   "departamento": "Huila",
+   "cod_dane": "41503",
+   "lat": 2.025088,
+   "lon": -75.995165,
+   "alt_m": 1421,
+   "t_media_anual_c": 20.1,
+   "t_min_media_mes_frio_c": 15.0,
+   "t_max_media_mes_calido_c": 26.0,
+   "t_min_absoluta_c": 8.2,
+   "t_max_absoluta_c": 32.9,
+   "estacion_principal": "Sevilla (Pitalito, 1320 m, 27.3 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 27.3,
+      "valor_normal": 20.5,
+      "corregido": 19.7,
+      "peso": 0.36
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 29.0,
+      "valor_normal": 21,
+      "corregido": 20.6,
+      "peso": 0.35
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 25.2,
+      "valor_normal": 22.7,
+      "corregido": 19.9,
+      "peso": 0.29
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 27.3,
+      "valor_normal": 14.9,
+      "corregido": 14.3,
+      "peso": 0.36
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 29.0,
+      "valor_normal": 16.3,
+      "corregido": 16.0,
+      "peso": 0.35
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 25.2,
+      "valor_normal": 16.9,
+      "corregido": 14.6,
+      "peso": 0.29
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 27.3,
+      "valor_normal": 27.1,
+      "corregido": 26.2,
+      "peso": 0.36
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 29.0,
+      "valor_normal": 26.6,
+      "corregido": 26.1,
+      "peso": 0.35
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 25.2,
+      "valor_normal": 28.6,
+      "corregido": 25.4,
+      "peso": 0.29
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Paicol",
+   "departamento": "Huila",
+   "cod_dane": "41518",
+   "lat": 2.449651,
+   "lon": -75.773158,
+   "alt_m": 865,
+   "t_media_anual_c": 24.2,
+   "t_min_media_mes_frio_c": 18.3,
+   "t_max_media_mes_calido_c": 31.7,
+   "t_min_absoluta_c": 11.5,
+   "t_max_absoluta_c": 38.6,
+   "estacion_principal": "Escuela Agricola La Plata (La Plata, 1070 m, 15.1 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 15.1,
+      "valor_normal": 22.7,
+      "corregido": 24.2,
+      "peso": 0.47
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 20.1,
+      "valor_normal": 24.5,
+      "corregido": 23.9,
+      "peso": 0.36
+     },
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 27.4,
+      "valor_normal": 23.1,
+      "corregido": 24.8,
+      "peso": 0.17
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 15.1,
+      "valor_normal": 16.8,
+      "corregido": 18.0,
+      "peso": 0.47
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 20.1,
+      "valor_normal": 18.1,
+      "corregido": 17.6,
+      "peso": 0.36
+     },
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 27.4,
+      "valor_normal": 19,
+      "corregido": 20.4,
+      "peso": 0.17
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 15.1,
+      "valor_normal": 29.9,
+      "corregido": 31.7,
+      "peso": 0.5
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 20.1,
+      "valor_normal": 32.4,
+      "corregido": 31.7,
+      "peso": 0.39
+     },
+     {
+      "codigo": "21085040",
+      "estacion": "Terpeya Colombia",
+      "municipio": "Íquira",
+      "alt_m": 1650,
+      "dist_km": 26.0,
+      "valor_normal": 24.8,
+      "corregido": 31.5,
+      "peso": 0.11
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Palermo",
+   "departamento": "Huila",
+   "cod_dane": "41524",
+   "lat": 2.889649,
+   "lon": -75.435296,
+   "alt_m": 549,
+   "t_media_anual_c": 26.5,
+   "t_min_media_mes_frio_c": 20.9,
+   "t_max_media_mes_calido_c": 33.5,
+   "t_min_absoluta_c": 14.1,
+   "t_max_absoluta_c": 40.4,
+   "estacion_principal": "Palermo (Palermo, 550 m, 2.3 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21125020",
+      "estacion": "Palermo",
+      "municipio": "Palermo",
+      "alt_m": 550,
+      "dist_km": 2.3,
+      "valor_normal": 26.5,
+      "corregido": 26.5,
+      "peso": 0.97
+     },
+     {
+      "codigo": "21115020",
+      "estacion": "Aeropuerto Benito Salas",
+      "municipio": "Neiva",
+      "alt_m": 439,
+      "dist_km": 17.5,
+      "valor_normal": 28.1,
+      "corregido": 27.3,
+      "peso": 0.01
+     },
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 20.0,
+      "valor_normal": 27.3,
+      "corregido": 26.9,
+      "peso": 0.01
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21125020",
+      "estacion": "Palermo",
+      "municipio": "Palermo",
+      "alt_m": 550,
+      "dist_km": 2.3,
+      "valor_normal": 20.9,
+      "corregido": 20.9,
+      "peso": 0.98
+     },
+     {
+      "codigo": "21115020",
+      "estacion": "Aeropuerto Benito Salas",
+      "municipio": "Neiva",
+      "alt_m": 439,
+      "dist_km": 17.5,
+      "valor_normal": 22.4,
+      "corregido": 21.7,
+      "peso": 0.01
+     },
+     {
+      "codigo": "21105040",
+      "estacion": "Hacienda Potosí",
+      "municipio": "Campoalegre",
+      "alt_m": 680,
+      "dist_km": 25.9,
+      "valor_normal": 20.5,
+      "corregido": 21.3,
+      "peso": 0.01
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21115020",
+      "estacion": "Aeropuerto Benito Salas",
+      "municipio": "Neiva",
+      "alt_m": 439,
+      "dist_km": 17.5,
+      "valor_normal": 34.9,
+      "corregido": 34.0,
+      "peso": 0.45
+     },
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 20.0,
+      "valor_normal": 33.2,
+      "corregido": 32.8,
+      "peso": 0.39
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 32.3,
+      "valor_normal": 33.9,
+      "corregido": 33.9,
+      "peso": 0.16
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Palestina",
+   "departamento": "Huila",
+   "cod_dane": "41530",
+   "lat": 1.723725,
+   "lon": -76.133251,
+   "alt_m": 1534,
+   "t_media_anual_c": 19.2,
+   "t_min_media_mes_frio_c": 13.8,
+   "t_max_media_mes_calido_c": 25.5,
+   "t_min_absoluta_c": 7.0,
+   "t_max_absoluta_c": 32.4,
+   "estacion_principal": "Sevilla (Pitalito, 1320 m, 10.7 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 10.7,
+      "valor_normal": 20.5,
+      "corregido": 18.9,
+      "peso": 0.75
+     },
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 25.4,
+      "valor_normal": 18.6,
+      "corregido": 20.6,
+      "peso": 0.18
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 37.4,
+      "valor_normal": 22.7,
+      "corregido": 19.0,
+      "peso": 0.08
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 10.7,
+      "valor_normal": 14.9,
+      "corregido": 13.6,
+      "peso": 0.75
+     },
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 25.4,
+      "valor_normal": 13.1,
+      "corregido": 14.7,
+      "peso": 0.18
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 37.4,
+      "valor_normal": 16.9,
+      "corregido": 13.9,
+      "peso": 0.08
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 10.7,
+      "valor_normal": 27.1,
+      "corregido": 25.3,
+      "peso": 0.75
+     },
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 25.4,
+      "valor_normal": 24.6,
+      "corregido": 26.9,
+      "peso": 0.18
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 37.4,
+      "valor_normal": 28.6,
+      "corregido": 24.4,
+      "peso": 0.08
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Pital",
+   "departamento": "Huila",
+   "cod_dane": "41548",
+   "lat": 2.266618,
+   "lon": -75.804544,
+   "alt_m": 924,
+   "t_media_anual_c": 23.6,
+   "t_min_media_mes_frio_c": 17.6,
+   "t_max_media_mes_calido_c": 31.1,
+   "t_min_absoluta_c": 10.8,
+   "t_max_absoluta_c": 38.0,
+   "estacion_principal": "La Betulia (Agrado, 780 m, 10.6 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 10.6,
+      "valor_normal": 24.5,
+      "corregido": 23.4,
+      "peso": 0.58
+     },
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 15.8,
+      "valor_normal": 22.7,
+      "corregido": 23.8,
+      "peso": 0.3
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 22.0,
+      "valor_normal": 21,
+      "corregido": 24.3,
+      "peso": 0.11
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 10.6,
+      "valor_normal": 18.1,
+      "corregido": 17.2,
+      "peso": 0.58
+     },
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 15.8,
+      "valor_normal": 16.8,
+      "corregido": 17.7,
+      "peso": 0.3
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 22.0,
+      "valor_normal": 16.3,
+      "corregido": 19.0,
+      "peso": 0.11
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 10.6,
+      "valor_normal": 32.4,
+      "corregido": 31.2,
+      "peso": 0.58
+     },
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 15.8,
+      "valor_normal": 29.9,
+      "corregido": 31.2,
+      "peso": 0.3
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 22.0,
+      "valor_normal": 26.6,
+      "corregido": 30.4,
+      "peso": 0.11
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Pitalito",
+   "departamento": "Huila",
+   "cod_dane": "41551",
+   "lat": 1.852631,
+   "lon": -76.049441,
+   "alt_m": 1268,
+   "t_media_anual_c": 21.0,
+   "t_min_media_mes_frio_c": 15.3,
+   "t_max_media_mes_calido_c": 27.6,
+   "t_min_absoluta_c": 8.5,
+   "t_max_absoluta_c": 34.5,
+   "estacion_principal": "Sevilla (Pitalito, 1320 m, 9.7 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 9.7,
+      "valor_normal": 20.5,
+      "corregido": 20.9,
+      "peso": 0.82
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 24.5,
+      "valor_normal": 22.7,
+      "corregido": 21.0,
+      "peso": 0.11
+     },
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 27.1,
+      "valor_normal": 18.6,
+      "corregido": 22.6,
+      "peso": 0.07
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 9.7,
+      "valor_normal": 14.9,
+      "corregido": 15.2,
+      "peso": 0.82
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 24.5,
+      "valor_normal": 16.9,
+      "corregido": 15.5,
+      "peso": 0.11
+     },
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 27.1,
+      "valor_normal": 13.1,
+      "corregido": 16.3,
+      "peso": 0.07
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 9.7,
+      "valor_normal": 27.1,
+      "corregido": 27.5,
+      "peso": 0.82
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 24.5,
+      "valor_normal": 28.6,
+      "corregido": 26.7,
+      "peso": 0.11
+     },
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 27.1,
+      "valor_normal": 24.6,
+      "corregido": 29.2,
+      "peso": 0.07
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Rivera",
+   "departamento": "Huila",
+   "cod_dane": "41615",
+   "lat": 2.777586,
+   "lon": -75.258753,
+   "alt_m": 710,
+   "t_media_anual_c": 25.5,
+   "t_min_media_mes_frio_c": 20.3,
+   "t_max_media_mes_calido_c": 32.1,
+   "t_min_absoluta_c": 13.5,
+   "t_max_absoluta_c": 39.0,
+   "estacion_principal": "Hacienda Potosí (Campoalegre, 680 m, 9.8 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21105040",
+      "estacion": "Hacienda Potosí",
+      "municipio": "Campoalegre",
+      "alt_m": 680,
+      "dist_km": 9.8,
+      "valor_normal": 25.6,
+      "corregido": 25.4,
+      "peso": 0.73
+     },
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 19.4,
+      "valor_normal": 27.3,
+      "corregido": 25.7,
+      "peso": 0.14
+     },
+     {
+      "codigo": "21115020",
+      "estacion": "Aeropuerto Benito Salas",
+      "municipio": "Neiva",
+      "alt_m": 439,
+      "dist_km": 19.5,
+      "valor_normal": 28.1,
+      "corregido": 26.1,
+      "peso": 0.13
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21105040",
+      "estacion": "Hacienda Potosí",
+      "municipio": "Campoalegre",
+      "alt_m": 680,
+      "dist_km": 9.8,
+      "valor_normal": 20.5,
+      "corregido": 20.3,
+      "peso": 0.76
+     },
+     {
+      "codigo": "21115020",
+      "estacion": "Aeropuerto Benito Salas",
+      "municipio": "Neiva",
+      "alt_m": 439,
+      "dist_km": 19.5,
+      "valor_normal": 22.4,
+      "corregido": 20.8,
+      "peso": 0.13
+     },
+     {
+      "codigo": "21125020",
+      "estacion": "Palermo",
+      "municipio": "Palermo",
+      "alt_m": 550,
+      "dist_km": 24.9,
+      "valor_normal": 20.9,
+      "corregido": 19.9,
+      "peso": 0.1
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 19.4,
+      "valor_normal": 33.2,
+      "corregido": 31.4,
+      "peso": 0.4
+     },
+     {
+      "codigo": "21115020",
+      "estacion": "Aeropuerto Benito Salas",
+      "municipio": "Neiva",
+      "alt_m": 439,
+      "dist_km": 19.5,
+      "valor_normal": 34.9,
+      "corregido": 32.6,
+      "peso": 0.36
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 26.7,
+      "valor_normal": 33.9,
+      "corregido": 32.6,
+      "peso": 0.25
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Saladoblanco",
+   "departamento": "Huila",
+   "cod_dane": "41660",
+   "lat": 1.9934,
+   "lon": -76.044747,
+   "alt_m": 1466,
+   "t_media_anual_c": 19.8,
+   "t_min_media_mes_frio_c": 14.4,
+   "t_max_media_mes_calido_c": 26.0,
+   "t_min_absoluta_c": 7.6,
+   "t_max_absoluta_c": 32.9,
+   "estacion_principal": "Sevilla (Pitalito, 1320 m, 21.5 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 21.5,
+      "valor_normal": 20.5,
+      "corregido": 19.4,
+      "peso": 0.52
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 27.5,
+      "valor_normal": 22.7,
+      "corregido": 19.5,
+      "peso": 0.24
+     },
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 29.6,
+      "valor_normal": 18.6,
+      "corregido": 21.1,
+      "peso": 0.24
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 21.5,
+      "valor_normal": 14.9,
+      "corregido": 14.0,
+      "peso": 0.52
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 27.5,
+      "valor_normal": 16.9,
+      "corregido": 14.3,
+      "peso": 0.24
+     },
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 29.6,
+      "valor_normal": 13.1,
+      "corregido": 15.1,
+      "peso": 0.24
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 21.5,
+      "valor_normal": 27.1,
+      "corregido": 25.8,
+      "peso": 0.52
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 27.5,
+      "valor_normal": 28.6,
+      "corregido": 25.0,
+      "peso": 0.24
+     },
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 29.6,
+      "valor_normal": 24.6,
+      "corregido": 27.5,
+      "peso": 0.24
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "San Agustín",
+   "departamento": "Huila",
+   "cod_dane": "41668",
+   "lat": 1.881081,
+   "lon": -76.27036,
+   "alt_m": 1640,
+   "t_media_anual_c": 19.7,
+   "t_min_media_mes_frio_c": 14.0,
+   "t_max_media_mes_calido_c": 25.9,
+   "t_min_absoluta_c": 7.2,
+   "t_max_absoluta_c": 32.8,
+   "estacion_principal": "Parque Arqueológico (San Agustín, 1800 m, 2.4 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 2.4,
+      "valor_normal": 18.6,
+      "corregido": 19.8,
+      "peso": 0.94
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 17.0,
+      "valor_normal": 20.5,
+      "corregido": 18.1,
+      "peso": 0.05
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 49.0,
+      "valor_normal": 22.7,
+      "corregido": 18.2,
+      "peso": 0.01
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 2.4,
+      "valor_normal": 13.1,
+      "corregido": 14.1,
+      "peso": 0.94
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 17.0,
+      "valor_normal": 14.9,
+      "corregido": 13.0,
+      "peso": 0.05
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 49.0,
+      "valor_normal": 16.9,
+      "corregido": 13.3,
+      "peso": 0.01
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21015030",
+      "estacion": "Parque Arqueológico",
+      "municipio": "San Agustín",
+      "alt_m": 1800,
+      "dist_km": 2.4,
+      "valor_normal": 24.6,
+      "corregido": 26.0,
+      "peso": 0.94
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 17.0,
+      "valor_normal": 27.1,
+      "corregido": 24.4,
+      "peso": 0.05
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 49.0,
+      "valor_normal": 28.6,
+      "corregido": 23.5,
+      "peso": 0.01
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Santa María",
+   "departamento": "Huila",
+   "cod_dane": "41676",
+   "lat": 2.939603,
+   "lon": -75.586223,
+   "alt_m": 1307,
+   "t_media_anual_c": 20.7,
+   "t_min_media_mes_frio_c": 16.1,
+   "t_max_media_mes_calido_c": 27.4,
+   "t_min_absoluta_c": 9.3,
+   "t_max_absoluta_c": 34.3,
+   "estacion_principal": "Santa María (Santa María, 1300 m, 0.4 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21125010",
+      "estacion": "Santa María",
+      "municipio": "Santa María",
+      "alt_m": 1300,
+      "dist_km": 0.4,
+      "valor_normal": 20.8,
+      "corregido": 20.7,
+      "peso": 1.0
+     },
+     {
+      "codigo": "21135050",
+      "estacion": "La Julia",
+      "municipio": "Neiva",
+      "alt_m": 1691,
+      "dist_km": 18.9,
+      "valor_normal": 18.8,
+      "corregido": 21.7,
+      "peso": 0.0
+     },
+     {
+      "codigo": "21125020",
+      "estacion": "Palermo",
+      "municipio": "Palermo",
+      "alt_m": 550,
+      "dist_km": 16.6,
+      "valor_normal": 26.5,
+      "corregido": 20.8,
+      "peso": 0.0
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21125010",
+      "estacion": "Santa María",
+      "municipio": "Santa María",
+      "alt_m": 1300,
+      "dist_km": 0.4,
+      "valor_normal": 16.1,
+      "corregido": 16.1,
+      "peso": 1.0
+     },
+     {
+      "codigo": "21135050",
+      "estacion": "La Julia",
+      "municipio": "Neiva",
+      "alt_m": 1691,
+      "dist_km": 18.9,
+      "valor_normal": 15.1,
+      "corregido": 17.4,
+      "peso": 0.0
+     },
+     {
+      "codigo": "21125020",
+      "estacion": "Palermo",
+      "municipio": "Palermo",
+      "alt_m": 550,
+      "dist_km": 16.6,
+      "valor_normal": 20.9,
+      "corregido": 16.3,
+      "peso": 0.0
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21125010",
+      "estacion": "Santa María",
+      "municipio": "Santa María",
+      "alt_m": 1300,
+      "dist_km": 0.4,
+      "valor_normal": 27.5,
+      "corregido": 27.4,
+      "peso": 1.0
+     },
+     {
+      "codigo": "21135050",
+      "estacion": "La Julia",
+      "municipio": "Neiva",
+      "alt_m": 1691,
+      "dist_km": 18.9,
+      "valor_normal": 24.2,
+      "corregido": 27.5,
+      "peso": 0.0
+     },
+     {
+      "codigo": "21085040",
+      "estacion": "Terpeya Colombia",
+      "municipio": "Íquira",
+      "alt_m": 1650,
+      "dist_km": 32.5,
+      "valor_normal": 24.8,
+      "corregido": 27.7,
+      "peso": 0.0
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Suaza",
+   "departamento": "Huila",
+   "cod_dane": "41770",
+   "lat": 1.976051,
+   "lon": -75.79525,
+   "alt_m": 958,
+   "t_media_anual_c": 23.5,
+   "t_min_media_mes_frio_c": 17.9,
+   "t_max_media_mes_calido_c": 29.7,
+   "t_min_absoluta_c": 11.1,
+   "t_max_absoluta_c": 36.6,
+   "estacion_principal": "El Líbano (Suaza, 1045 m, 12.4 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 12.4,
+      "valor_normal": 22.7,
+      "corregido": 23.4,
+      "peso": 0.63
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 13.1,
+      "valor_normal": 21,
+      "corregido": 24.1,
+      "peso": 0.28
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 35.1,
+      "valor_normal": 24.5,
+      "corregido": 23.2,
+      "peso": 0.09
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 12.4,
+      "valor_normal": 16.9,
+      "corregido": 17.4,
+      "peso": 0.63
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 13.1,
+      "valor_normal": 16.3,
+      "corregido": 18.8,
+      "peso": 0.28
+     },
+     {
+      "codigo": "21035020",
+      "estacion": "Resina",
+      "municipio": "Guadalupe",
+      "alt_m": 2102,
+      "dist_km": 14.8,
+      "valor_normal": 12.1,
+      "corregido": 19.0,
+      "peso": 0.09
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 12.4,
+      "valor_normal": 28.6,
+      "corregido": 29.3,
+      "peso": 0.63
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 13.1,
+      "valor_normal": 26.6,
+      "corregido": 30.1,
+      "peso": 0.28
+     },
+     {
+      "codigo": "21035020",
+      "estacion": "Resina",
+      "municipio": "Guadalupe",
+      "alt_m": 2102,
+      "dist_km": 14.8,
+      "valor_normal": 20.9,
+      "corregido": 30.7,
+      "peso": 0.09
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Tarqui",
+   "departamento": "Huila",
+   "cod_dane": "41791",
+   "lat": 2.111325,
+   "lon": -75.823976,
+   "alt_m": 832,
+   "t_media_anual_c": 24.6,
+   "t_min_media_mes_frio_c": 18.7,
+   "t_max_media_mes_calido_c": 31.3,
+   "t_min_absoluta_c": 11.9,
+   "t_max_absoluta_c": 38.2,
+   "estacion_principal": "El Grifo Altamira (Altamira, 1368 m, 10.0 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 10.0,
+      "valor_normal": 21,
+      "corregido": 25.0,
+      "peso": 0.45
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 22.6,
+      "valor_normal": 24.5,
+      "corregido": 24.1,
+      "peso": 0.35
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 26.8,
+      "valor_normal": 22.7,
+      "corregido": 24.3,
+      "peso": 0.2
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 10.0,
+      "valor_normal": 16.3,
+      "corregido": 19.5,
+      "peso": 0.45
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 22.6,
+      "valor_normal": 18.1,
+      "corregido": 17.8,
+      "peso": 0.35
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 26.8,
+      "valor_normal": 16.9,
+      "corregido": 18.2,
+      "peso": 0.2
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 10.0,
+      "valor_normal": 26.6,
+      "corregido": 31.2,
+      "peso": 0.45
+     },
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 22.6,
+      "valor_normal": 32.4,
+      "corregido": 32.0,
+      "peso": 0.35
+     },
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 26.8,
+      "valor_normal": 28.6,
+      "corregido": 30.4,
+      "peso": 0.2
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Tesalia",
+   "departamento": "Huila",
+   "cod_dane": "41797",
+   "lat": 2.486364,
+   "lon": -75.730271,
+   "alt_m": 835,
+   "t_media_anual_c": 24.5,
+   "t_min_media_mes_frio_c": 18.8,
+   "t_max_media_mes_calido_c": 31.9,
+   "t_min_absoluta_c": 12.0,
+   "t_max_absoluta_c": 38.8,
+   "estacion_principal": "La Betulia (Agrado, 780 m, 23.1 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 23.1,
+      "valor_normal": 24.5,
+      "corregido": 24.1,
+      "peso": 0.37
+     },
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 21.3,
+      "valor_normal": 22.7,
+      "corregido": 24.5,
+      "peso": 0.32
+     },
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 21.3,
+      "valor_normal": 23.1,
+      "corregido": 25.0,
+      "peso": 0.31
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 23.1,
+      "valor_normal": 18.1,
+      "corregido": 17.8,
+      "peso": 0.37
+     },
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 21.3,
+      "valor_normal": 16.8,
+      "corregido": 18.2,
+      "peso": 0.32
+     },
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 21.3,
+      "valor_normal": 19,
+      "corregido": 20.6,
+      "peso": 0.31
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21045010",
+      "estacion": "La Betulia",
+      "municipio": "Agrado",
+      "alt_m": 780,
+      "dist_km": 23.1,
+      "valor_normal": 32.4,
+      "corregido": 31.9,
+      "peso": 0.44
+     },
+     {
+      "codigo": "21055020",
+      "estacion": "Escuela Agricola La Plata",
+      "municipio": "La Plata",
+      "alt_m": 1070,
+      "dist_km": 21.3,
+      "valor_normal": 29.9,
+      "corregido": 31.9,
+      "peso": 0.38
+     },
+     {
+      "codigo": "21085040",
+      "estacion": "Terpeya Colombia",
+      "municipio": "Íquira",
+      "alt_m": 1650,
+      "dist_km": 20.4,
+      "valor_normal": 24.8,
+      "corregido": 31.8,
+      "peso": 0.19
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Tello",
+   "departamento": "Huila",
+   "cod_dane": "41799",
+   "lat": 3.067538,
+   "lon": -75.138773,
+   "alt_m": 571,
+   "t_media_anual_c": 27.1,
+   "t_min_media_mes_frio_c": 21.4,
+   "t_max_media_mes_calido_c": 34.2,
+   "t_min_absoluta_c": 14.6,
+   "t_max_absoluta_c": 41.1,
+   "estacion_principal": "Hacienda Manila AUT (Baraya, 600 m, 9.5 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21115160",
+      "estacion": "Hacienda Manila AUT",
+      "municipio": "Baraya",
+      "alt_m": 600,
+      "dist_km": 9.5,
+      "valor_normal": 27,
+      "corregido": 27.2,
+      "peso": 0.7
+     },
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 17.6,
+      "valor_normal": 27.8,
+      "corregido": 26.7,
+      "peso": 0.17
+     },
+     {
+      "codigo": "21115020",
+      "estacion": "Aeropuerto Benito Salas",
+      "municipio": "Neiva",
+      "alt_m": 439,
+      "dist_km": 21.3,
+      "valor_normal": 28.1,
+      "corregido": 27.1,
+      "peso": 0.13
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21115160",
+      "estacion": "Hacienda Manila AUT",
+      "municipio": "Baraya",
+      "alt_m": 600,
+      "dist_km": 9.5,
+      "valor_normal": 21.4,
+      "corregido": 21.6,
+      "peso": 0.7
+     },
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 17.6,
+      "valor_normal": 21.6,
+      "corregido": 20.7,
+      "peso": 0.17
+     },
+     {
+      "codigo": "21115020",
+      "estacion": "Aeropuerto Benito Salas",
+      "municipio": "Neiva",
+      "alt_m": 439,
+      "dist_km": 21.3,
+      "valor_normal": 22.4,
+      "corregido": 21.6,
+      "peso": 0.13
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21115160",
+      "estacion": "Hacienda Manila AUT",
+      "municipio": "Baraya",
+      "alt_m": 600,
+      "dist_km": 9.5,
+      "valor_normal": 33.9,
+      "corregido": 34.1,
+      "peso": 0.7
+     },
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 17.6,
+      "valor_normal": 36.1,
+      "corregido": 34.9,
+      "peso": 0.17
+     },
+     {
+      "codigo": "21115020",
+      "estacion": "Aeropuerto Benito Salas",
+      "municipio": "Neiva",
+      "alt_m": 439,
+      "dist_km": 21.3,
+      "valor_normal": 34.9,
+      "corregido": 33.8,
+      "peso": 0.13
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Teruel",
+   "departamento": "Huila",
+   "cod_dane": "41801",
+   "lat": 2.740968,
+   "lon": -75.567034,
+   "alt_m": 873,
+   "t_media_anual_c": 24.6,
+   "t_min_media_mes_frio_c": 19.8,
+   "t_max_media_mes_calido_c": 30.7,
+   "t_min_absoluta_c": 13.0,
+   "t_max_absoluta_c": 37.6,
+   "estacion_principal": "Íquira (Íquira, 1095 m, 12.3 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 12.3,
+      "valor_normal": 23.1,
+      "corregido": 24.8,
+      "peso": 0.55
+     },
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 16.7,
+      "valor_normal": 27.3,
+      "corregido": 24.5,
+      "peso": 0.26
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 22.6,
+      "valor_normal": 26.5,
+      "corregido": 24.1,
+      "peso": 0.18
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 12.3,
+      "valor_normal": 19,
+      "corregido": 20.3,
+      "peso": 0.61
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 22.6,
+      "valor_normal": 20.9,
+      "corregido": 19.0,
+      "peso": 0.2
+     },
+     {
+      "codigo": "21125020",
+      "estacion": "Palermo",
+      "municipio": "Palermo",
+      "alt_m": 550,
+      "dist_km": 23.5,
+      "valor_normal": 20.9,
+      "corregido": 18.9,
+      "peso": 0.19
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 16.7,
+      "valor_normal": 33.2,
+      "corregido": 30.0,
+      "peso": 0.43
+     },
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 22.6,
+      "valor_normal": 33.9,
+      "corregido": 31.2,
+      "peso": 0.3
+     },
+     {
+      "codigo": "21085040",
+      "estacion": "Terpeya Colombia",
+      "municipio": "Íquira",
+      "alt_m": 1650,
+      "dist_km": 14.6,
+      "valor_normal": 24.8,
+      "corregido": 31.5,
+      "peso": 0.28
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Timaná",
+   "departamento": "Huila",
+   "cod_dane": "41807",
+   "lat": 1.974539,
+   "lon": -75.932167,
+   "alt_m": 1013,
+   "t_media_anual_c": 23.1,
+   "t_min_media_mes_frio_c": 17.3,
+   "t_max_media_mes_calido_c": 29.2,
+   "t_min_absoluta_c": 10.5,
+   "t_max_absoluta_c": 36.1,
+   "estacion_principal": "El Líbano (Suaza, 1045 m, 16.2 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 16.2,
+      "valor_normal": 22.7,
+      "corregido": 22.9,
+      "peso": 0.65
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 24.4,
+      "valor_normal": 21,
+      "corregido": 23.7,
+      "peso": 0.19
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 27.9,
+      "valor_normal": 20.5,
+      "corregido": 22.8,
+      "peso": 0.16
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 16.2,
+      "valor_normal": 16.9,
+      "corregido": 17.1,
+      "peso": 0.65
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 24.4,
+      "valor_normal": 16.3,
+      "corregido": 18.5,
+      "peso": 0.19
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 27.9,
+      "valor_normal": 14.9,
+      "corregido": 16.8,
+      "peso": 0.16
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21035040",
+      "estacion": "El Líbano",
+      "municipio": "Suaza",
+      "alt_m": 1045,
+      "dist_km": 16.2,
+      "valor_normal": 28.6,
+      "corregido": 28.9,
+      "peso": 0.65
+     },
+     {
+      "codigo": "21025030",
+      "estacion": "El Grifo Altamira",
+      "municipio": "Altamira",
+      "alt_m": 1368,
+      "dist_km": 24.4,
+      "valor_normal": 26.6,
+      "corregido": 29.7,
+      "peso": 0.19
+     },
+     {
+      "codigo": "21015020",
+      "estacion": "Sevilla",
+      "municipio": "Pitalito",
+      "alt_m": 1320,
+      "dist_km": 27.9,
+      "valor_normal": 27.1,
+      "corregido": 29.7,
+      "peso": 0.16
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Villavieja",
+   "departamento": "Huila",
+   "cod_dane": "41872",
+   "lat": 3.218822,
+   "lon": -75.217174,
+   "alt_m": 385,
+   "t_media_anual_c": 28.4,
+   "t_min_media_mes_frio_c": 22.2,
+   "t_max_media_mes_calido_c": 36.3,
+   "t_min_absoluta_c": 15.4,
+   "t_max_absoluta_c": 43.2,
+   "estacion_principal": "Villavieja Ffcc (Villavieja, 430 m, 5.6 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 5.6,
+      "valor_normal": 27.8,
+      "corregido": 28.1,
+      "peso": 0.75
+     },
+     {
+      "codigo": "21115060",
+      "estacion": "San José",
+      "municipio": "Villavieja",
+      "alt_m": 400,
+      "dist_km": 13.0,
+      "valor_normal": 29,
+      "corregido": 29.1,
+      "peso": 0.18
+     },
+     {
+      "codigo": "21145040",
+      "estacion": "San Alfonso",
+      "municipio": "Villavieja",
+      "alt_m": 440,
+      "dist_km": 20.6,
+      "valor_normal": 28.9,
+      "corregido": 29.3,
+      "peso": 0.07
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 5.6,
+      "valor_normal": 21.6,
+      "corregido": 21.9,
+      "peso": 0.75
+     },
+     {
+      "codigo": "21115060",
+      "estacion": "San José",
+      "municipio": "Villavieja",
+      "alt_m": 400,
+      "dist_km": 13.0,
+      "valor_normal": 23.1,
+      "corregido": 23.2,
+      "peso": 0.18
+     },
+     {
+      "codigo": "21145040",
+      "estacion": "San Alfonso",
+      "municipio": "Villavieja",
+      "alt_m": 440,
+      "dist_km": 20.6,
+      "valor_normal": 22.7,
+      "corregido": 23.0,
+      "peso": 0.07
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21115080",
+      "estacion": "Villavieja Ffcc",
+      "municipio": "Villavieja",
+      "alt_m": 430,
+      "dist_km": 5.6,
+      "valor_normal": 36.1,
+      "corregido": 36.5,
+      "peso": 0.75
+     },
+     {
+      "codigo": "21115060",
+      "estacion": "San José",
+      "municipio": "Villavieja",
+      "alt_m": 400,
+      "dist_km": 13.0,
+      "valor_normal": 35.5,
+      "corregido": 35.6,
+      "peso": 0.18
+     },
+     {
+      "codigo": "21115160",
+      "estacion": "Hacienda Manila AUT",
+      "municipio": "Baraya",
+      "alt_m": 600,
+      "dist_km": 18.2,
+      "valor_normal": 33.9,
+      "corregido": 35.7,
+      "peso": 0.06
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  },
+  {
+   "municipio": "Yaguará",
+   "departamento": "Huila",
+   "cod_dane": "41885",
+   "lat": 2.664694,
+   "lon": -75.518023,
+   "alt_m": 575,
+   "t_media_anual_c": 26.6,
+   "t_min_media_mes_frio_c": 21.1,
+   "t_max_media_mes_calido_c": 33.2,
+   "t_min_absoluta_c": 14.3,
+   "t_max_absoluta_c": 40.1,
+   "estacion_principal": "Los Rosales (Campoalegre, 553 m, 13.0 km)",
+   "referencias": {
+    "media": [
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 13.0,
+      "valor_normal": 26.5,
+      "corregido": 26.3,
+      "peso": 0.43
+     },
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 12.0,
+      "valor_normal": 27.3,
+      "corregido": 26.7,
+      "peso": 0.43
+     },
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 12.5,
+      "valor_normal": 23.1,
+      "corregido": 27.0,
+      "peso": 0.15
+     }
+    ],
+    "minima": [
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 13.0,
+      "valor_normal": 20.9,
+      "corregido": 20.8,
+      "peso": 0.62
+     },
+     {
+      "codigo": "21085020",
+      "estacion": "Íquira",
+      "municipio": "Íquira",
+      "alt_m": 1095,
+      "dist_km": 12.5,
+      "valor_normal": 19,
+      "corregido": 22.2,
+      "peso": 0.22
+     },
+     {
+      "codigo": "21105040",
+      "estacion": "Hacienda Potosí",
+      "municipio": "Campoalegre",
+      "alt_m": 680,
+      "dist_km": 24.5,
+      "valor_normal": 20.5,
+      "corregido": 21.1,
+      "peso": 0.16
+     }
+    ],
+    "maxima": [
+     {
+      "codigo": "21105050",
+      "estacion": "Los Rosales",
+      "municipio": "Campoalegre",
+      "alt_m": 553,
+      "dist_km": 13.0,
+      "valor_normal": 33.9,
+      "corregido": 33.7,
+      "peso": 0.47
+     },
+     {
+      "codigo": "21105060",
+      "estacion": "Hidrobetania",
+      "municipio": "Campoalegre",
+      "alt_m": 500,
+      "dist_km": 12.0,
+      "valor_normal": 33.2,
+      "corregido": 32.6,
+      "peso": 0.47
+     },
+     {
+      "codigo": "21085040",
+      "estacion": "Terpeya Colombia",
+      "municipio": "Íquira",
+      "alt_m": 1650,
+      "dist_km": 16.9,
+      "valor_normal": 24.8,
+      "corregido": 34.0,
+      "peso": 0.06
+     }
+    ]
+   },
+   "nota_t_min_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila",
+   "nota_t_max_absoluta": "normal del mes extremo + margen de las estaciones automáticas IDEAM del Huila"
+  }
+ ]
+}
