@@ -1,7 +1,7 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
 import { detectarMotor } from './motor.js?v=19';
 import { dibujarPerfil, paginas, paginasEscala, perfilInteractivo, abscisaK, COLORES_CIRCUITOS } from './perfil.js?v=15';
-import { instalarGeo } from './geo-ui.js?v=26';
+import { instalarGeo } from './geo-ui.js?v=27';
 import { generarKML3D } from './earth3d.js?v=3';
 import { generarDXF, generarBibliotecaDXF } from './cad.js?v=3';
 import { visorProyecto } from './visor3d.js?v=2';

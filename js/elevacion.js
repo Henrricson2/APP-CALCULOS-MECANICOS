@@ -1,7 +1,8 @@
 // Cotas del terreno desde un modelo digital de elevación, a partir de latitud/longitud.
 //   - Google (Elevation, el mismo modelo que muestra Google Earth): requiere la clave de Google Maps
 //     con «Maps JavaScript API» y «Elevation API» habilitadas.
-//   - Gratis sin clave: OpenTopoData SRTM 30 m; si falla, Open-Meteo (Copernicus DEM 90 m).
+//   - Gratis sin clave: OpenTopoData SRTM 30 m (con el servidor de la app); en celular/tableta/web,
+//     AWS Terrain Tiles (SRTM, sin límite de consultas); último respaldo Open-Meteo (Copernicus 90 m).
 // Son modelos de SUPERFICIE: pueden medir sobre árboles o construcciones (error típico 2–10 m).
 import { cargarGoogle } from './mapa.js?v=15';
 
@@ -11,8 +12,64 @@ const lotes = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, 
 export const FUENTES = {
   google: 'Google (mismo modelo de Google Earth)',
   srtm: 'Gratis: SRTM 30 m (OpenTopoData)',
+  terreno: 'Gratis: SRTM (AWS Terrain Tiles)',
   openmeteo: 'Gratis: Copernicus 90 m (Open-Meteo)',
 };
+
+// ---- AWS Terrain Tiles (formato «terrarium»): imágenes PNG públicas con CORS y sin límite de
+// consultas. Cota = R·256 + G + B/256 − 32768. Se interpola bilinealmente dentro del mosaico.
+const TERRARIO = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium';
+const mosaicos = new Map();
+function mosaico(z, x, y) {
+  const k = `${z}/${x}/${y}`;
+  if (!mosaicos.has(k)) {
+    mosaicos.set(k, new Promise((ok, mal) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+          const cx = c.getContext('2d', { willReadFrequently: true });
+          cx.drawImage(img, 0, 0);
+          const d = cx.getImageData(0, 0, c.width, c.height).data, n = c.width;
+          const z16 = new Float32Array(n * n);
+          for (let i = 0; i < n * n; i++) z16[i] = d[4 * i] * 256 + d[4 * i + 1] + d[4 * i + 2] / 256 - 32768;
+          ok({ n, z: z16 });
+        } catch (e) { mal(e); }
+      };
+      img.onerror = () => mal(new Error('No se pudo descargar el mosaico de elevación ' + k));
+      img.src = `${TERRARIO}/${k}.png`;
+    }).catch((e) => { mosaicos.delete(k); throw e; }));
+  }
+  return mosaicos.get(k);
+}
+function pixel(lat, lon, z) { // coordenadas de píxel globales (Web Mercator, mosaicos de 256)
+  const n = 256 * 2 ** z, r = lat * Math.PI / 180;
+  return [(lon + 180) / 360 * n, (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n];
+}
+async function cotaEn(px, py, z) {
+  const val = async (X, Y) => {
+    const t = await mosaico(z, Math.floor(X / 256), Math.floor(Y / 256));
+    return t.z[(Y % 256) * t.n + (X % 256)];
+  };
+  const x0 = Math.floor(px - 0.5), y0 = Math.floor(py - 0.5), fx = px - 0.5 - x0, fy = py - 0.5 - y0;
+  const [a, b, c, d] = await Promise.all([val(x0, y0), val(x0 + 1, y0), val(x0, y0 + 1), val(x0 + 1, y0 + 1)]);
+  return a * (1 - fx) * (1 - fy) + b * fx * (1 - fy) + c * (1 - fx) * fy + d * fx * fy;
+}
+async function terreno(puntos, avance) {
+  let z = 14;
+  const cuenta = (zz) => new Set(puntos.map((p) => pixel(p.lat, p.lon, zz).map((v) => Math.floor(v / 256)).join())).size;
+  while (z > 10 && cuenta(z) > 40) z--;
+  const total = cuenta(z);
+  avance?.(`Descargando el modelo de elevación… (${total} mosaico${total === 1 ? '' : 's'})`);
+  const out = [];
+  for (const [i, g] of lotes(puntos, 200).entries()) {
+    out.push(...await Promise.all(g.map((p) => cotaEn(...pixel(p.lat, p.lon, z), z))));
+    avance?.(`Calculando cotas… ${Math.min((i + 1) * 200, puntos.length)}/${puntos.length}`);
+  }
+  if (out.some((v) => !Number.isFinite(v) || v < -500)) throw new Error('El modelo de elevación no tiene datos en esta zona.');
+  return out;
+}
 
 async function google(puntos, clave, avance) {
   if (!clave) throw new Error('Falta la clave de Google Maps (Parámetros → Mapa satelital).');
@@ -50,8 +107,14 @@ async function consulta(fuente, g, rpc) {
     if (j.status !== 'OK') throw new Error(j.error || 'OpenTopoData no devolvió datos');
     return j.results.map((x) => x.elevation);
   }
-  const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${g.map((p) => p.lat.toFixed(6)).join(',')}&longitude=${g.map((p) => p.lon.toFixed(6)).join(',')}`);
-  if (!r.ok) throw new Error(`Open-Meteo respondió ${r.status}`);
+  const url = `https://api.open-meteo.com/v1/elevation?latitude=${g.map((p) => p.lat.toFixed(6)).join(',')}&longitude=${g.map((p) => p.lon.toFixed(6)).join(',')}`;
+  let r;
+  for (let intento = 0; ; intento++) { // 429 = demasiadas consultas: se espera y se reintenta
+    r = await fetch(url);
+    if (r.status !== 429 || intento >= 3) break;
+    await espera(2000 * (intento + 1));
+  }
+  if (!r.ok) throw new Error(r.status === 429 ? 'Open-Meteo está saturado (429): intente en un minuto.' : `Open-Meteo respondió ${r.status}`);
   const j = await r.json();
   if (!Array.isArray(j.elevation)) throw new Error(j.reason || 'Open-Meteo no devolvió datos');
   return j.elevation;
@@ -90,20 +153,30 @@ async function openmeteo(puntos, avance, rpc) {
   for (const [k, g] of grupos.entries()) {
     avance?.(`Consultando Copernicus 90 m… ${k + 1}/${grupos.length}`);
     out.push(...await consulta('openmeteo', g, rpc));
+    if (!rpc && k < grupos.length - 1) await espera(700);
   }
   return suavizarEscalones(out);
 }
 
-/** Devuelve { cotas: number[], fuente: 'google'|'srtm'|'openmeteo' } en el mismo orden que `puntos`. */
+/** Devuelve { cotas: number[], fuente: 'google'|'srtm'|'terreno'|'openmeteo' } en el mismo orden que `puntos`. */
 export async function obtenerCotas(puntos, fuente, { clave, avance, rpc } = {}) {
   let cotas, usada = fuente;
   if (fuente === 'google') cotas = await google(puntos, clave, avance);
   else {
     // sin el servidor de la app (web, celular, tableta) OpenTopoData no deja consultar desde el navegador
     // (bloqueo CORS): se va directo a Open-Meteo, que sí lo permite
-    if (!rpc) { cotas = await openmeteo(puntos, avance, null); usada = 'openmeteo'; }
+    // (bloqueo CORS): se usan los mosaicos SRTM de AWS (sin límite de consultas) y, si fallan, Open-Meteo
+    const respaldo = async (motivo) => {
+      try { cotas = await terreno(puntos, avance); usada = 'terreno'; }
+      catch (e) {
+        console.warn('Terrain Tiles:', e.message, motivo || '');
+        avance?.('Probando Copernicus 90 m (Open-Meteo)…');
+        cotas = await openmeteo(puntos, avance, rpc); usada = 'openmeteo';
+      }
+    };
+    if (!rpc) await respaldo();
     else try { cotas = await srtm(puntos, avance, rpc); usada = 'srtm'; }
-    catch (e) { console.warn('SRTM:', e.message); avance?.('SRTM no respondió; probando Copernicus 90 m…'); cotas = await openmeteo(puntos, avance, rpc); usada = 'openmeteo'; }
+    catch (e) { console.warn('SRTM:', e.message); avance?.('SRTM no respondió; probando otro modelo…'); await respaldo(e.message); }
   }
   if (cotas.length !== puntos.length || cotas.some((z) => z == null || !Number.isFinite(+z))) {
     throw new Error('El modelo de elevación no tiene datos para algunos puntos.');

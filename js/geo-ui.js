@@ -1,6 +1,6 @@
 // Etapa 1: proyectos persistentes, asistente de importación con sistemas de coordenadas,
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
-import { obtenerCotas, FUENTES, muestrasRecorrido, vincenty } from './elevacion.js?v=2';
+import { obtenerCotas, FUENTES, muestrasRecorrido, vincenty } from './elevacion.js?v=3';
 import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=15';
 import { cargarCatalogo, abrirSelector } from './estructuras-eh.js?v=6';
 import { rpcLigero } from './geo-ligero.js?v=1';
@@ -635,7 +635,7 @@ export function instalarGeo(C) {
       <div class="form-grid">
         <label class="field-group full"><span class="field-label">Fuente de las alturas</span><select class="select" id="pf-fuente">
           <option value="google" ${clave ? 'selected' : 'disabled'}>${FUENTES.google}${clave ? '' : ' — falta la clave'}</option>
-          <option value="srtm" ${clave ? '' : 'selected'}>${servidor() ? FUENTES.srtm : FUENTES.openmeteo} (sin clave)</option></select>
+          <option value="srtm" ${clave ? '' : 'selected'}>${servidor() ? FUENTES.srtm : FUENTES.terreno} (sin clave)</option></select>
           <span class="field-help">${clave ? 'Google requiere tener habilitada «Elevation API» para su clave.' : 'Para usar Google, pegue su clave en Parámetros → Mapa satelital y habilite «Elevation API».'}</span></label>
         <label class="field-group"><span class="field-label">Un punto cada (m)</span><input class="input" id="pf-paso" inputmode="decimal" value="${S.meta.terreno?.paso && S.meta.terreno.paso < 50 ? S.meta.terreno.paso : 10}"></label>
         <label class="field-group" style="display:flex;gap:8px;align-items:center;margin-top:22px"><input type="checkbox" id="pf-reemp"> <span class="small">Reemplazar también las cotas de topografía o escritas a mano</span></label>
@@ -657,7 +657,7 @@ export function instalarGeo(C) {
     catch { r = muestrasRecorrido(pts, paso); } // servidor viejo o sin esa función: se calcula aquí mismo
     const { cotas, fuente: usada } = await obtenerCotas(r.muestras, fuente, { clave: S.config?.google_maps_key, avance: cargando, rpc: servidor() ? (n, d) => S.motor.rpc(n, d) : null });
     cargando('');
-    const etiqueta = usada === 'google' ? 'Google (estimada)' : usada === 'srtm' ? 'SRTM 30 m (estimada)' : 'Copernicus 90 m (estimada)';
+    const etiqueta = usada === 'google' ? 'Google (estimada)' : usada === 'srtm' ? 'SRTM 30 m (estimada)' : usada === 'terreno' ? 'SRTM AWS (estimada)' : 'Copernicus 90 m (estimada)';
     const protegida = (a) => !reemplazar && a.z != null && /topograf|manual|archivo/i.test(a.z_fuente || '');
     let n = 0, prot = 0;
     cambiar(() => {
