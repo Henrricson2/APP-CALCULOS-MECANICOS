@@ -5,9 +5,6 @@
 //     queda en caché del navegador y funciona sin internet.
 
 const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v0.27.2/full/';
-// Al iniciar solo numpy y pandas (lo justo para calcular): así carga también en celulares y tabletas.
-// matplotlib (PDF) y openpyxl (Excel, desde PyPI con micropip) se cargan la primera vez que se usan.
-const PAQUETES = ['numpy', 'pandas'];
 
 async function leerError(r) {
   try { const j = await r.json(); return (j.errores || []).join('\n') || r.statusText; }
@@ -124,102 +121,56 @@ export class MotorPyodide {
   constructor(onProgreso) {
     this.tipo = 'navegador'; this.etiqueta = 'Python en el navegador';
     this.onProgreso = onProgreso || (() => {});
-    this._promesa = null;
+    this._promesa = null; this._n = 0; this._pend = new Map(); this.py = null; this.pct = 0;
   }
-  listo() { return (this._promesa ||= this._iniciar().catch((e) => { this._promesa = null; throw e; })); }
-  async _iniciar() {
-    this.onProgreso('Descargando Python (Pyodide)…');
-    if (!window.loadPyodide) await cargarScript(PYODIDE_URL + 'pyodide.js');
-    const py = await window.loadPyodide({ indexURL: PYODIDE_URL });
-    this.onProgreso('Cargando numpy y pandas…');
-    await py.loadPackage(PAQUETES);
-    this.onProgreso('Cargando el motor de cálculo…');
-    const lista = await (await fetch('py/manifest.json', { cache: 'no-cache' })).json();
-    py.FS.mkdirTree('/app/calculos_mecanicos');
-    for (const nombre of lista) {
-      const txt = await (await fetch(`py/calculos_mecanicos/${nombre}`, { cache: 'no-cache' })).text();
-      py.FS.writeFile(`/app/calculos_mecanicos/${nombre}`, txt);
-    }
-    py.runPython(`
-import sys, json
-sys.path.insert(0, '/app')
-from calculos_mecanicos import motor
-`);
-    this.py = py;
-    this.version = py.runPython('motor.info()["version"]');
-    this.onProgreso('');
-    return true;
+  _worker() {
+    if (this._w) return this._w;
+    this._w = new Worker('js/pyworker.js?v=1');
+    this._w.onmessage = (ev) => {
+      const m = ev.data || {};
+      if (m.tipo === 'progreso') { if (m.pct != null) this.pct = m.pct; this.onProgreso(m.msg, m.pct); return; }
+      const p = this._pend.get(m.id); if (!p) return;
+      this._pend.delete(m.id);
+      m.ok ? p.ok(m.r) : p.mal(new Error(m.error || 'Error en Python'));
+    };
+    this._w.onerror = (e) => {
+      const err = new Error('El navegador detuvo Python: ' + (e.message || 'sin memoria o sin conexión') + '.');
+      for (const p of this._pend.values()) p.mal(err);
+      this._pend.clear(); this._w = null; this._promesa = null; this.py = null;
+    };
+    return this._w;
   }
-  // carga un paquete adicional solo cuando se necesita
-  async _asegurar(nombre) {
-    this._extra ||= {};
-    return (this._extra[nombre] ||= (async () => {
-      if (nombre === 'openpyxl') {
-        this.onProgreso('Descargando el lector de Excel (openpyxl)…');
-        await this.py.loadPackage('micropip');
-        await this.py.runPythonAsync("import micropip\nawait micropip.install('openpyxl')");
-      } else {
-        this.onProgreso(`Cargando ${nombre}…`);
-        await this.py.loadPackage(nombre);
-        if (nombre === 'matplotlib') this.py.runPython("import matplotlib\nmatplotlib.use('Agg')");
-      }
-      this.onProgreso('');
-    })().catch((e) => { delete this._extra[nombre]; this.onProgreso(''); throw e; }));
+  _llamar(op, args = {}, transfer = []) {
+    return new Promise((ok, mal) => {
+      const id = ++this._n; this._pend.set(id, { ok, mal });
+      this._worker().postMessage({ id, op, ...args }, transfer);
+    });
   }
-  async info() {
-    await this.listo();
-    return JSON.parse(this.py.runPython('motor.js_info()'));
+  // se puede llamar al abrir la página: carga Python en segundo plano
+  listo() {
+    return (this._promesa ||= this._llamar('iniciar').then((v) => { this.version = v; this.py = true; return true; })
+      .catch((e) => { this._promesa = null; throw e; }));
   }
-  async calcular(payload) {
-    await this.listo();
-    this.py.globals.set('PAYLOAD', JSON.stringify(payload));
-    return JSON.parse(this.py.runPython('motor.js_calcular(PAYLOAD)'));
-  }
+  async info() { await this.listo(); return JSON.parse(await this._llamar('info')); }
+  async calcular(payload) { await this.listo(); return JSON.parse(await this._llamar('calcular', { datos: JSON.stringify(payload) })); }
   async importar(archivo) {
     await this.listo();
-    await this._asegurar('openpyxl');
-    this.py.FS.writeFile('/tmp/entrada.xlsx', new Uint8Array(await archivo.arrayBuffer()));
-    return JSON.parse(this.py.runPython(`json.dumps(motor.importar_excel(open('/tmp/entrada.xlsx','rb').read()), ensure_ascii=False)`));
+    const bytes = new Uint8Array(await archivo.arrayBuffer());
+    return JSON.parse(await this._llamar('importar', { bytes }, [bytes.buffer]));
   }
   async exportar(payload, formato) {
     await this.listo();
-    if (formato === 'xlsx') await this._asegurar('openpyxl');
-    if (formato === 'pdf') await this._asegurar('matplotlib');
-    this.py.globals.set('PAYLOAD', JSON.stringify(payload));
-    this.py.globals.set('FMT', formato);
-    const meta = JSON.parse(this.py.runPython(`
-_b, _n, _m = motor.exportar(json.loads(PAYLOAD), FMT)
-open('/tmp/salida.bin', 'wb').write(_b)
-json.dumps([_n, _m])`));
-    const datos = this.py.FS.readFile('/tmp/salida.bin');
-    return { blob: new Blob([datos], { type: meta[1] }), nombre: meta[0] };
+    const { meta, bytes } = await this._llamar('exportar', { datos: JSON.stringify(payload), formato });
+    const [nombre, mime] = JSON.parse(meta);
+    return { blob: new Blob([bytes], { type: mime }), nombre };
   }
-  // ejecuta y, si falta openpyxl o matplotlib, los carga y repite una vez
-  async _conPaquetes(fn) {
-    try { return fn(); } catch (e) {
-      const m = String(e?.message || e);
-      const falta = /openpyxl/.test(m) ? 'openpyxl' : /matplotlib/.test(m) ? 'matplotlib' : null;
-      if (!falta || this._extra?.[falta]) throw e;
-      await this._asegurar(falta);
-      return fn();
-    }
-  }
-  async rpc(nombre, datos) {
-    await this.listo();
-    if (/importar|plantilla|excel/i.test(nombre)) await this._asegurar('openpyxl');
-    return this._conPaquetes(() => {
-      this.py.globals.set('RPC_N', nombre);
-      this.py.globals.set('RPC_D', JSON.stringify(datos || {}));
-      return JSON.parse(this.py.runPython('motor.js_rpc(RPC_N, RPC_D)'));
-    });
-  }
+  async rpc(nombre, datos) { await this.listo(); return JSON.parse(await this._llamar('rpc', { nombre, datos: JSON.stringify(datos || {}) })); }
   async config() { try { return JSON.parse(localStorage.getItem('cm-config') || '{}'); } catch { return {}; } }
   async guardarConfig(c) { try { localStorage.setItem('cm-config', JSON.stringify(c)); } catch { /* */ } return { ok: true }; }
   async plantilla() {
     await this.listo();
-    await this._asegurar('openpyxl');
-    this.py.runPython(`open('/tmp/plantilla.xlsx','wb').write(motor.plantilla_excel())`);
-    return { blob: new Blob([this.py.FS.readFile('/tmp/plantilla.xlsx')]), nombre: 'PLANTILLA_DATOS.xlsx' };
+    const { bytes } = await this._llamar('plantilla');
+    return { blob: new Blob([bytes]), nombre: 'PLANTILLA_DATOS.xlsx' };
   }
 }
 
