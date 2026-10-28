@@ -285,7 +285,7 @@ tr.row-actual td { background: var(--soft-teal); }
 .dm-der { position: sticky; top: 80px; display: flex; flex-direction: column; gap: 10px; height: calc(100vh - 245px); min-height: 460px; }
 .dm-der .mapa-card { flex: 1; display: flex; min-height: 0; }
 .dm-der .mapa-toolbar { margin: 0; }
-.mapa-cont.dm-mapa { flex: 1; height: auto; min-height: 300px; }
+.mapa-cont.dm-mapa { flex: 1; width: 100%; height: auto; min-height: 300px; }
 .dm-form { display: grid; grid-template-columns: 1.1fr 1.3fr 1.3fr .9fr .9fr 1fr auto; gap: 8px; align-items: end; }
 .dm-form .field-group { margin: 0; min-width: 0; }
 .dm-form .input, .dm-form .select { width: 100%; }
@@ -299,7 +299,7 @@ tr.row-actual td { background: var(--soft-teal); }
 @media (max-width: 1500px) {
   .dm-layout { grid-template-columns: minmax(0, 1fr); }
   .dm-der { position: static; order: -1; height: auto; min-height: 0; }
-  .mapa-cont.dm-mapa { height: 46vh; min-height: 300px; flex: none; }
+  .mapa-cont.dm-mapa { width: 100%; height: 46vh; min-height: 300px; flex: none; }
   .dm-tabla-wrap { max-height: none; }
 }
 @media (max-width: 560px) { .dm-form { grid-template-columns: 1fr 1fr; } .dm-form .field-group:first-child { grid-column: 1 / -1; } }

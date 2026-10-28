@@ -1,5 +1,7 @@
 // Buscador de estructuras normalizadas de Electrohuila (web/estructuras_eh.json) para cada poste.
 import { visorEstructura } from './visor3d.js?v=2';
+// las láminas PDF solo están en el PC (no se publican en la web): el enlace se muestra cuando la app corre en el PC o la red local
+const LAMINAS_LOCALES = /^(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname);
 let CAT = null;
 export async function cargarCatalogo() {
   if (!CAT) {
@@ -74,7 +76,7 @@ export function abrirSelector(C, i, { onElegir }) {
         ${e.mini ? `<img loading="lazy" src="estructuras_eh/mini/${h(e.id)}.jpg" alt="">` : '<div class="eh-noimg">sin imagen</div>'}
         <div class="eh-info"><b>${h(e.codigo)}</b><div class="small">${h(e.nombre)}</div>
           <div class="eh-tags"><span class="badge">${h(e.nivel)}</span><span class="badge ${e.tipo === 'R' ? 'badge-orange' : 'badge-green'}">${h(e.funcion)}</span>${e.aislamiento ? `<span class="badge">${h(e.aislamiento)}</span>` : ''}${e.poste === 'H' ? '<span class="badge">Poste en H</span>' : ''}${e.circuitos > 1 ? `<span class="badge badge-gold">${e.circuitos} circuitos</span>` : ''}${e.guarda ? '<span class="badge">Cable de guarda</span>' : ''}</div>
-          <div class="eh-acc"><button class="btn btn-small btn-primary" data-usar>Usar</button><button class="btn btn-small" data-3d>3D</button>${e.pdf ? `<a class="btn btn-small" href="estructuras_eh/pdf/${h(e.id)}.pdf" target="_blank" rel="noopener">Ver lámina</a>` : ''}</div></div></div>`).join('') || '<p class="muted">Sin resultados. Pruebe con menos palabras o quite filtros.</p>';
+          <div class="eh-acc"><button class="btn btn-small btn-primary" data-usar>Usar</button><button class="btn btn-small" data-3d>3D</button>${e.pdf && LAMINAS_LOCALES ? `<a class="btn btn-small" href="estructuras_eh/pdf/${h(e.id)}.pdf" target="_blank" rel="noopener">Ver lámina</a>` : ''}</div></div></div>`).join('') || '<p class="muted">Sin resultados. Pruebe con menos palabras o quite filtros.</p>';
     $$('.eh-card', m.root).forEach((c) => {
       const usar = () => { const e = cat.find((x) => x.id === c.dataset.id); const todas = !!$('#eh-todas', m.root)?.checked; m.cerrar(); onElegir(e, todas); };
       $('[data-usar]', c).onclick = usar;

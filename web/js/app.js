@@ -1,11 +1,11 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
 import { detectarMotor } from './motor.js?v=16';
 import { dibujarPerfil, paginas, paginasEscala, perfilInteractivo, abscisaK, COLORES_CIRCUITOS } from './perfil.js?v=15';
-import { instalarGeo } from './geo-ui.js?v=24';
+import { instalarGeo } from './geo-ui.js?v=25';
 import { generarKML3D } from './earth3d.js?v=3';
 import { generarDXF, generarBibliotecaDXF } from './cad.js?v=3';
 import { visorProyecto } from './visor3d.js?v=2';
-import { cargarCatalogo } from './estructuras-eh.js?v=5';
+import { cargarCatalogo } from './estructuras-eh.js?v=6';
 import { cargarClima, buscarMunicipio, propuesta, aplicarClima, editadas, menosExigente, renombrar, NORMA, MODOS, DELTA_CONDUCTOR } from './clima.js?v=1';
 
 const CLAVE = 'cm-proyecto-v2';
@@ -170,7 +170,7 @@ async function exportar3D() {
   if (S.desactualizado) toast('Ojo: el cálculo está desactualizado; recalcule para que el 3D refleje los últimos cambios.', 'warn');
   try {
     const kml = generarKML3D({ S, catalogo: await cargarCatalogo() });
-    descargar(new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' }), `${(S.proyecto.nombre || 'proyecto').replace(/[^\w\-]+/g, '_')}_3D.kml`);
+    descargar(new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' }), `${(S.proyecto.nombre || 'proyecto').replace(/[^\p{L}\p{N}\-]+/gu, '_')}_3D.kml`);
     toast('Diseño 3D descargado: ábralo con Google Earth (Pro o web → Proyectos → Importar).', 'success');
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -179,7 +179,7 @@ async function exportar3D() {
 async function exportarCAD(fmt) {
   if (!S.resultado) return toast('Primero calcule el proyecto (▶ Calcular).', 'warn');
   if (S.desactualizado) toast('Ojo: el cálculo está desactualizado; recalcule para que el plano refleje los últimos cambios.', 'warn');
-  const base = (S.proyecto.nombre || 'proyecto').replace(/[^\w\-]+/g, '_');
+  const base = (S.proyecto.nombre || 'proyecto').replace(/[^\p{L}\p{N}\-]+/gu, '_');
   try {
     const r = generarDXF({ S, catalogo: await cargarCatalogo() });
     if (fmt === 'dxf') {
@@ -211,14 +211,22 @@ async function bibliotecaEH(fmt) {
 
 function guardarProyecto() {
   const blob = new Blob([JSON.stringify({ app: 'calculos-mecanicos-mt', version: 3, ...estadoProyecto(), meta: { ...S.meta, id: undefined } }, null, 2)], { type: 'application/json' });
-  descargar(blob, `${(S.proyecto.nombre || 'proyecto').replace(/[^\w\-]+/g, '_')}.cmt.json`);
+  descargar(blob, `${(S.proyecto.nombre || 'proyecto').replace(/[^\p{L}\p{N}\-]+/gu, '_')}.cmt.json`);
+  toast('Proyecto guardado como archivo .cmt.json (ábralo con «Abrir proyecto» en otro equipo o en el celular).', 'success');
 }
 // Abrir un archivo .cmt.json crea un proyecto propio (no sobrescribe el abierto), con su cálculo si lo trae.
 async function abrirProyecto(archivo) {
   try {
     const d = JSON.parse(await archivo.text());
     if (!d.proyecto || !Array.isArray(d.apoyos)) throw new Error('El archivo no es un proyecto de esta app.');
-    await GEO.crearProyecto({ nombre: d.proyecto.nombre || archivo.name.replace(/\.[^.]+$/, ''), meta: { ...(d.meta || {}), id: undefined },
+    // si ya hay un proyecto con ese nombre, el abierto queda como «(copia)» para no confundirlos en la lista
+    let nombre = d.proyecto.nombre || archivo.name.replace(/\.[^.]+$/, '');
+    try {
+      const usados = new Set((await S.motor?.proyectos?.listar?.() || []).map((p) => p.nombre));
+      if (usados.has(nombre)) { let k = 1; while (usados.has(`${nombre} (copia${k > 1 ? ` ${k}` : ''})`)) k++; nombre = `${nombre} (copia${k > 1 ? ` ${k}` : ''})`; }
+    } catch { /* sin lista: se deja el nombre */ }
+    d.proyecto.nombre = nombre;
+    await GEO.crearProyecto({ nombre, meta: { ...(d.meta || {}), id: undefined },
       estado: { ...d, archivo: d.archivo || archivo.name } });
     toast('Proyecto abierto desde archivo.', 'success');
     if (S.resultado) ir('resumen', true); else await calcular({ irA: 'resumen' });
@@ -699,7 +707,7 @@ const ENLACES = {
     $('#v3-todo', vc).onclick = abrir;
     $('#v3-frio', vc).onchange = abrir;
     $('#v3-ex', vc).onchange = abrir;
-    $('#v3-img', vc).onclick = async () => { if (!S.visor) return; descargar(await (await fetch(S.visor.imagen())).blob(), `${(S.proyecto.nombre || 'proyecto').replace(/[^\w\-]+/g, '_')}_3D.png`); };
+    $('#v3-img', vc).onclick = async () => { if (!S.visor) return; descargar(await (await fetch(S.visor.imagen())).blob(), `${(S.proyecto.nombre || 'proyecto').replace(/[^\p{L}\p{N}\-]+/gu, '_')}_3D.png`); };
   },
   resumen(vc) {
     enlazarAcciones(vc); enlazarColocar(vc);
