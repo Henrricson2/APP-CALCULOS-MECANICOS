@@ -1,8 +1,9 @@
 // Etapa 1: proyectos persistentes, asistente de importación con sistemas de coordenadas,
 // pestaña «Estructuras y mapa»: tabla CRUD sincronizada con el mapa (Leaflet, Google o planta propia), deshacer/rehacer.
-import { obtenerCotas, FUENTES, muestrasRecorrido, vincenty } from './elevacion.js';
+import { obtenerCotas, FUENTES, muestrasRecorrido, vincenty } from './elevacion.js?v=2';
 import { PlantaSVG, PlantaGoogle, PlantaLeaflet, cargarGoogle, cargarLeaflet } from './mapa.js?v=15';
 import { cargarCatalogo, abrirSelector } from './estructuras-eh.js?v=6';
+import { rpcLigero } from './geo-ligero.js?v=1';
 
 export function instalarGeo(C) {
   const { S, $, $$, h, nf, num, toast, modal, cargando } = C;
@@ -18,6 +19,10 @@ export function instalarGeo(C) {
   const servidor = () => S.motor?.tipo === 'servidor';
   const almacen = () => S.motor?.proyectos; // servidor (SQLite) o este dispositivo (modo navegador)
   async function rpc(nombre, datos) {
+    if (S.motor.tipo === 'navegador') {                 // modo web: lo liviano se resuelve sin esperar a Python
+      const lig = rpcLigero(nombre, datos || {});
+      if (lig !== undefined) { if (!lig.ok && lig.errores) throw new Error(lig.errores.join(' ')); return lig; }
+    }
     await C.asegurarMotor();
     const r = await S.motor.rpc(nombre, datos || {});
     if (!r.ok && r.errores) throw new Error(r.errores.join(' '));
@@ -630,7 +635,7 @@ export function instalarGeo(C) {
       <div class="form-grid">
         <label class="field-group full"><span class="field-label">Fuente de las alturas</span><select class="select" id="pf-fuente">
           <option value="google" ${clave ? 'selected' : 'disabled'}>${FUENTES.google}${clave ? '' : ' — falta la clave'}</option>
-          <option value="srtm" ${clave ? '' : 'selected'}>${FUENTES.srtm} (sin clave)</option></select>
+          <option value="srtm" ${clave ? '' : 'selected'}>${servidor() ? FUENTES.srtm : FUENTES.openmeteo} (sin clave)</option></select>
           <span class="field-help">${clave ? 'Google requiere tener habilitada «Elevation API» para su clave.' : 'Para usar Google, pegue su clave en Parámetros → Mapa satelital y habilite «Elevation API».'}</span></label>
         <label class="field-group"><span class="field-label">Un punto cada (m)</span><input class="input" id="pf-paso" inputmode="decimal" value="${S.meta.terreno?.paso && S.meta.terreno.paso < 50 ? S.meta.terreno.paso : 10}"></label>
         <label class="field-group" style="display:flex;gap:8px;align-items:center;margin-top:22px"><input type="checkbox" id="pf-reemp"> <span class="small">Reemplazar también las cotas de topografía o escritas a mano</span></label>
@@ -667,7 +672,7 @@ export function instalarGeo(C) {
       const ahora = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 19);
       S.meta.terreno = { fuente: usada, fecha: ahora, paso: r.paso_m, firma: firmaTrazado(), puntos: r.muestras.length };
     }, 'perfil del terreno');
-    toast(`Perfil listo: ${r.muestras.length} puntos (${FUENTES[usada]}). ${n} cota(s) Z actualizadas${prot ? `, ${prot} de topografía conservadas` : ''}.`, 'success');
+    toast(`Perfil listo: ${r.muestras.length} puntos (${FUENTES[usada]}). ${n} cota(s) Z actualizadas${prot ? `, ${prot} de topografía conservadas${n ? '' : ' (para usar las del mapa marque «Reemplazar también las cotas de topografía o escritas a mano»)'}` : ''}.`, 'success');
     const listos = S.apoyos.every((a) => a.poste_altura || a.altura != null);
     if (listos) await C.calcular({ irA: 'perfil' });
     else toast('Asigne el poste a cada estructura para calcular el plantillado.', 'warn');

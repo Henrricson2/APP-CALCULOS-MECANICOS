@@ -99,7 +99,10 @@ export async function obtenerCotas(puntos, fuente, { clave, avance, rpc } = {}) 
   let cotas, usada = fuente;
   if (fuente === 'google') cotas = await google(puntos, clave, avance);
   else {
-    try { cotas = await srtm(puntos, avance, rpc); usada = 'srtm'; }
+    // sin el servidor de la app (web, celular, tableta) OpenTopoData no deja consultar desde el navegador
+    // (bloqueo CORS): se va directo a Open-Meteo, que sí lo permite
+    if (!rpc) { cotas = await openmeteo(puntos, avance, null); usada = 'openmeteo'; }
+    else try { cotas = await srtm(puntos, avance, rpc); usada = 'srtm'; }
     catch (e) { console.warn('SRTM:', e.message); avance?.('SRTM no respondió; probando Copernicus 90 m…'); cotas = await openmeteo(puntos, avance, rpc); usada = 'openmeteo'; }
   }
   if (cotas.length !== puntos.length || cotas.some((z) => z == null || !Number.isFinite(+z))) {

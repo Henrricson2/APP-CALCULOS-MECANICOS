@@ -1,7 +1,7 @@
 // App Cálculos Mecánicos MT — interfaz PWA (PC, web y celular).
-import { detectarMotor } from './motor.js?v=18';
+import { detectarMotor } from './motor.js?v=19';
 import { dibujarPerfil, paginas, paginasEscala, perfilInteractivo, abscisaK, COLORES_CIRCUITOS } from './perfil.js?v=15';
-import { instalarGeo } from './geo-ui.js?v=25';
+import { instalarGeo } from './geo-ui.js?v=26';
 import { generarKML3D } from './earth3d.js?v=3';
 import { generarDXF, generarBibliotecaDXF } from './cad.js?v=3';
 import { visorProyecto } from './visor3d.js?v=2';
@@ -11,6 +11,8 @@ import { cargarClima, buscarMunicipio, propuesta, aplicarClima, editadas, menosE
 if (!Array.prototype.at) Object.defineProperty(Array.prototype, 'at', { value(n) { n = Math.trunc(n) || 0; if (n < 0) n += this.length; return this[n]; }, configurable: true, writable: true });
 
 const CLAVE = 'cm-proyecto-v2';
+const WEB_APP = 'https://henrricson2.github.io/APP-CALCULOS-MECANICOS/';
+const ZIP_PC = 'https://github.com/Henrricson2/APP-CALCULOS-MECANICOS/archive/refs/heads/main.zip';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const h = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -249,6 +251,40 @@ async function abrirProyecto(archivo) {
     if (S.resultado) ir('resumen', true); else await calcular({ irA: 'resumen' });
   } catch (e) { toast(e.message, 'error'); }
 }
+// ------------------------------------------------------------- instalar la app (PC, celular, tableta)
+let evInstalarApp = null;
+const esInstalada = () => window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+function equipo() {
+  const ua = navigator.userAgent || '';
+  const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return { ios, android: /Android/.test(ua), safari: /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|Chrome|Edg/.test(ua), movil: ios || /Android|Mobile/.test(ua) };
+}
+async function instalarApp() {
+  if (esInstalada()) return toast('La app ya está instalada en este equipo.', 'success');
+  if (evInstalarApp) {
+    evInstalarApp.prompt();
+    const r = await evInstalarApp.userChoice; evInstalarApp = null;
+    if (r?.outcome === 'accepted') return;
+  }
+  const q = equipo();
+  const pasos = q.ios
+    ? `<ol class="steps"><li><span>Abra esta página en <b>Safari</b>${q.safari ? '' : ' (en iPhone y iPad solo Safari permite instalarla)'}.</span></li><li><span>Toque <b>Compartir</b> (el cuadro con la flecha hacia arriba).</span></li><li><span>Elija <b>Agregar a pantalla de inicio</b> y luego <b>Agregar</b>.</span></li></ol>`
+    : q.android
+      ? `<ol class="steps"><li><span>Abra esta página en <b>Chrome</b>.</span></li><li><span>Toque el menú <b>⋮</b> (arriba a la derecha).</span></li><li><span>Elija <b>Instalar app</b> o <b>Agregar a pantalla principal</b>.</span></li></ol>`
+      : `<ol class="steps"><li><span>Abra esta página en <b>Chrome</b> o <b>Edge</b>.</span></li><li><span>Pulse el icono de instalar (⊕ o 🖥) al final de la barra de direcciones, o el menú <b>⋮</b> → <b>Instalar Cálculos Mecánicos MT</b>.</span></li><li><span>Queda en el menú Inicio y en el escritorio como una app.</span></li></ol>`;
+  modal('Instalar la app', `<p>${q.movil ? 'En este celular o tableta:' : 'En este PC:'}</p>${pasos}
+    <p class="muted small">Dirección de la app: <code>${h(WEB_APP)}</code>. La primera vez necesita internet para descargar Python (unos 25 MB, mejor con Wi-Fi); después abre más rápido.</p>
+    ${q.movil ? '' : '<p class="small">¿Necesita el DWG con AutoCAD, la base de datos de proyectos en el PC o trabajar sin internet? <a href="#" id="ins-pc">Descargue la versión completa para PC</a>.</p>'}`);
+  const l = $('#ins-pc'); if (l) l.onclick = (e) => { e.preventDefault(); modalPC(); };
+}
+function modalPC() {
+  modal('Versión completa para PC (Windows)', `<p>Incluye el servidor Python de la app: proyectos con versiones en una base de datos del PC, DWG con AutoCAD, biblioteca 3D EH, láminas en PDF y uso sin internet. También sirve a los celulares de la misma red Wi-Fi.</p>
+    <ol class="steps"><li><span>Instale <b>Python 3.11</b> desde python.org (marque «Add Python to PATH») si no lo tiene.</span></li>
+    <li><span>Descargue la app: <a href="${ZIP_PC}" target="_blank" rel="noopener"><b>APP-CALCULOS-MECANICOS (ZIP)</b></a> y descomprímala, por ejemplo en <code>C:\\APP-CALCULOS-MECANICOS</code>.</span></li>
+    <li><span>Ejecute <b>INSTALAR.bat</b> (una sola vez).</span></li>
+    <li><span>Abra la app con <b>INICIAR_APP.bat</b>. Para usarla también desde el celular: <b>INICIAR_APP_RED.bat</b>.</span></li></ol>
+    <div class="actions"><a class="btn btn-primary" href="${ZIP_PC}" target="_blank" rel="noopener">⇩ Descargar ZIP para PC</a></div>`);
+}
 async function cargarEjemplo() {
   const d = await (await fetch('ejemplo.json')).json();
   await GEO.crearProyecto({ nombre: 'Ejemplo DATOS.xlsx', estado: { ...d, archivo: 'ejemplo' } });
@@ -343,6 +379,8 @@ const ACCIONES = {
   'abrir-proyecto': () => $('#file-json').click(),
   xlsx: () => exportar('xlsx'), pdf: () => exportar('pdf'), dxf: () => exportar('dxf'),
   calcular: () => calcular(),
+  instalar: () => instalarApp(),
+  'instalar-pc': () => modalPC(),
 };
 
 // ================================================================== VISTAS
@@ -678,11 +716,10 @@ const VISTAS = {
     <div class="grid grid-2" style="margin-top:18px">
       <div class="card"><div class="section-head"><h2>Proyecto</h2></div><p class="muted small">Guarde el proyecto completo (datos + parámetros) en un archivo <code>.cmt.json</code> para abrirlo en otro equipo o en el celular.</p>
         <div class="actions"><button class="btn" data-act="guardar-proyecto">⇩ Guardar proyecto</button><button class="btn" data-act="abrir-proyecto">⇪ Abrir proyecto</button></div></div>
-      <div class="card"><div class="section-head"><h2>Usar en el celular</h2></div><ol class="steps">
-        <li><span>En el PC ejecute <code>INICIAR_APP_RED.bat</code> (misma red Wi-Fi).</span></li>
-        <li><span>En el celular abra la dirección que muestra la ventana negra, p. ej. <code>http://192.168.x.x:8766</code>.</span></li>
-        <li><span>Menú del navegador → <b>Agregar a pantalla de inicio</b> / <b>Instalar app</b>.</span></li></ol>
-        <p class="muted small">Dirección actual: <code>${h(url)}</code></p></div>
+      <div class="card"><div class="section-head"><h2>Instalar la app</h2></div>
+        <p class="muted small">Queda como una app más, con su icono, en el PC, el celular o la tableta. Funciona con la misma información y, después de la primera vez, abre sin esperar descargas.</p>
+        <div class="actions"><button class="btn btn-primary" data-act="instalar">⇩ Instalar en este equipo</button><button class="btn" data-act="instalar-pc">🖥 Versión completa para PC (Windows)</button></div>
+        <p class="muted small" style="margin-top:10px">Dirección para abrirla en otro equipo: <code>${h(WEB_APP)}</code></p></div>
     </div>`;
   },
 
@@ -900,9 +937,11 @@ async function iniciar() {
   document.addEventListener('keydown', (e) => { if (e.key === 'F5' || (e.ctrlKey && e.key === 'Enter')) { e.preventDefault(); calcular(); } });
 
   // instalación PWA
-  let evInstalar = null;
-  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); evInstalar = e; $('#install-button').hidden = false; });
-  $('#install-button').onclick = async () => { if (!evInstalar) return; evInstalar.prompt(); await evInstalar.userChoice; evInstalar = null; $('#install-button').hidden = true; };
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); evInstalarApp = e; });
+  // el botón «Instalar» se muestra siempre que la app se abra en el navegador (no instalada)
+  $('#install-button').hidden = esInstalada();
+  $('#install-button').onclick = () => instalarApp();
+  window.addEventListener('appinstalled', () => { $('#install-button').hidden = true; toast('App instalada. Búsquela con su icono «Cálculos MT».', 'success'); });
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname))) {
     navigator.serviceWorker.register('service-worker.js').catch(() => {});
   }

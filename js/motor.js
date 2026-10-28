@@ -3,6 +3,7 @@
 //  2) Pyodide (Python en el navegador) -> web estática / celular sin servidor.
 //     La primera carga descarga ~40 MB (numpy, scipy, pandas, matplotlib); luego
 //     queda en caché del navegador y funciona sin internet.
+import { rpcLigero } from './geo-ligero.js?v=1';
 
 const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v0.27.2/full/';
 
@@ -164,7 +165,11 @@ export class MotorPyodide {
     const [nombre, mime] = JSON.parse(meta);
     return { blob: new Blob([bytes], { type: mime }), nombre };
   }
-  async rpc(nombre, datos) { await this.listo(); return JSON.parse(await this._llamar('rpc', { nombre, datos: JSON.stringify(datos || {}) })); }
+  async rpc(nombre, datos) {
+    const lig = rpcLigero(nombre, datos || {});          // coordenadas, perfil, listas: al instante, sin Python
+    if (lig !== undefined) return lig;
+    await this.listo(); return JSON.parse(await this._llamar('rpc', { nombre, datos: JSON.stringify(datos || {}) }));
+  }
   async config() { try { return JSON.parse(localStorage.getItem('cm-config') || '{}'); } catch { return {}; } }
   async guardarConfig(c) { try { localStorage.setItem('cm-config', JSON.stringify(c)); } catch { /* */ } return { ok: true }; }
   async plantilla() {
